@@ -12,7 +12,7 @@ android {
         targetSdkVersion 27
         flavorDimensions "default"
 
-        versionName "v6.15"
+        versionName "v6.16-jnduli"
         versionCode 205
     }
     buildTypes {
