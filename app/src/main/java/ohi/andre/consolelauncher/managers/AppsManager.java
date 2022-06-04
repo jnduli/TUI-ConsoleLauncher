@@ -393,17 +393,19 @@ public class AppsManager implements XMLPrefsElement {
 //                activityInfos.addAll(launcherApps.getActivityList(info.packageName, android.os.Process.myUserHandle()));
 //            }
 //        } else {
-            Intent i = new Intent(Intent.ACTION_MAIN);
-            i.addCategory(Intent.CATEGORY_LAUNCHER);
+        Intent i = new Intent(Intent.ACTION_MAIN);
+        i.addCategory(Intent.CATEGORY_LAUNCHER);
 
-            List<ResolveInfo> main;
-            try {
-                main = mgr.queryIntentActivities(i, 0);
-            } catch (Exception e) {
-                return infos;
-            }
+        List<ResolveInfo> main;
+        try {
+            main = mgr.queryIntentActivities(i, 0);
+        } catch (Exception e) {
+            return infos;
+        }
 //        }
 
+        // Note: For SIM TOolkit, the name 'SIM Toolkit' is defined as one of the shortcuts so not the actual app name found by
+        // resovleinfo.loadLabel(mgr), so ensure T-UI is the default for this to work
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1 && Tuils.isMyLauncherDefault(context.getPackageManager())) {
             LauncherApps launcherApps = (LauncherApps) context.getSystemService(Context.LAUNCHER_APPS_SERVICE);
             for (ResolveInfo ri : main) {
