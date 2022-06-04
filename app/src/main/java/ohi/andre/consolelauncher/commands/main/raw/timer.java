@@ -1,3 +1,6 @@
+/**
+ * Ref: https://developer.android.com/reference/android/provider/AlarmClock
+ */
 package ohi.andre.consolelauncher.commands.main.raw;
 
 import android.Manifest;
@@ -23,16 +26,28 @@ public class timer implements CommandAbstraction {
         }
 
         String time = pack.getString();
-        char lastChar = time.charAt(time.length()-1);
+        char lastChar = Character.toLowerCase(time.charAt(time.length()-1));
         String substring = time.substring(0, time.length() - 1);
+        String invalidFormat = String.format("The time: %s is invalid. Expected format is 5m or 5s or 5h", substring);
+
         int seconds;
         try {
             seconds = Integer.parseInt(substring);
         } catch (NumberFormatException e) {
-            return String.format("The time: %s is invalid.", substring);
+            return invalidFormat;
         }
-        if (lastChar == 'm') {
+        if (lastChar == 's') {
+            seconds = seconds;
+        } else if (lastChar == 'm') {
             seconds = seconds * 60;
+        } else if (lastChar == 'h') {
+            seconds = seconds * 3600;
+        } else {
+            return invalidFormat;
+        }
+
+        if (seconds > (60 * 60 * 24)) {
+            return "The timer cannot be longer than 24 hours";
         }
         // be harder on the time conditions here, ie check for s, otherwise  exception
 
@@ -41,7 +56,7 @@ public class timer implements CommandAbstraction {
                 .putExtra(AlarmClock.EXTRA_MESSAGE, "started from tui")
                 .putExtra(AlarmClock.EXTRA_SKIP_UI, true);
         pack.context.startActivity(timerIntent);
-        return Integer.toString(seconds) + " seconds";
+        return String.format("Timer started for %s", time);
     }
 
     @Override
