@@ -337,7 +337,8 @@
         \n$ time [index] (index means the index of the desired time_format</string>
     <string name="help_timer">Sets a timer with the given value.
         \n\nUsage
-        \n$ timer 5s/5m (5s is 5 seconds, 5m is 5 minutes)
+        \n$ timer 5s/5m/5h (5s is 5 seconds, 5m is 5 minutes, 5h is 5 hours)
+        \n $ timer 5s title_of_timer
     </string>
     <string name="help_tuixt">Open the text editor.
         \n\nUsage:

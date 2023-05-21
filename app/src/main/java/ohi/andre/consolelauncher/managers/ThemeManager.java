@@ -37,7 +37,6 @@ public class ThemeManager {
     OkHttpClient client;
     Context context;
     Reloadable reloadable;
-
     Pattern parser = Pattern.compile("(<SUGGESTIONS>.+<\\/SUGGESTIONS>).*(<THEME>.+<\\/THEME>)", Pattern.DOTALL);
 
     BroadcastReceiver receiver = new BroadcastReceiver() {
