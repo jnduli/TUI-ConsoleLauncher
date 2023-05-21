@@ -1,7 +1,6 @@
 apply plugin: 'com.android.application'
 android {
     compileSdkVersion 27
-    buildToolsVersion '28.0.3'
     dexOptions {
     }
 
@@ -36,7 +35,8 @@ android {
     dependencies {
         implementation 'com.android.support:appcompat-v7:27.1.1'
     }
-    lintOptions {
+    namespace 'ohi.andre.consolelauncher'
+    lint {
         checkReleaseBuilds false
     }
     android.applicationVariants.all { variant ->
