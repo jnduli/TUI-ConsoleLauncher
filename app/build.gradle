@@ -1,8 +1,6 @@
 apply plugin: 'com.android.application'
 android {
     compileSdkVersion 27
-    dexOptions {
-    }
 
     defaultConfig {
         applicationId "ohi.andre.consolelauncher"
