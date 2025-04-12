@@ -15,8 +15,18 @@
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_INTERNAL_STORAGE" />
+    <!-- Required only if your app needs to access images or photos
+     that other apps created. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- Required only if your app needs to access videos
+         that other apps created. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+    <!-- Required only if your app needs to access audio files
+         that other apps created. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
@@ -32,13 +42,14 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK"  />
 
-
+    <!--
     <permission
         android:name="android.permission.FLASHLIGHT"
         android:description="@string/help_flash"
         android:label="@string/help_flash"
         android:permissionGroup="android.permission-group.HARDWARE_CONTROLS"
         android:protectionLevel="normal" />
+        -->
 
     <!-- features -->
     <uses-feature
@@ -116,7 +127,8 @@
         <receiver
             android:name=".tuils.stuff.PolicyReceiver"
             android:description="@string/admin_permission"
-            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
             <meta-data
                 android:name="android.app.device_admin"
                 android:resource="@xml/policy" />
@@ -142,7 +154,8 @@
             android:label="@string/tuixt_label"
             android:noHistory="true"
             android:theme="@style/Custom.Solid"
-            android:windowSoftInputMode="stateAlwaysVisible|adjustResize">
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
+            android:exported="true">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".LauncherActivity" />
@@ -221,7 +234,8 @@
         <service
             android:name=".managers.notifications.NotificationService"
             android:label="@string/notification_reader"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
@@ -230,7 +244,8 @@
 
         <activity
             android:name=".tuils.stuff.FakeLauncherActivity"
-            android:enabled="false">
+            android:enabled="false"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

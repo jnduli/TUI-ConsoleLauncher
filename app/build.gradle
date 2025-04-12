@@ -2,11 +2,15 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 27
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId "ohi.andre.consolelauncher"
 
         minSdkVersion 14
-        targetSdkVersion 27
+        targetSdkVersion 33
         flavorDimensions "default"
 
         versionName "v6.16-jnduli"
