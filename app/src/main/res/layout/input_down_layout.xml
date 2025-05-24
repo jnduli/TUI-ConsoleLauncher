@@ -4,12 +4,13 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <HorizontalScrollView android:id="@+id/suggestions_container"
+    <HorizontalScrollView
+        android:id="@+id/suggestions_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:focusable="false"
+        android:layout_alignParentBottom="true"
 
-        android:layout_alignParentBottom="true">
+        android:focusable="false">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -19,10 +20,8 @@
                 android:id="@+id/suggestions_group"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="left|center_vertical"
-                android:orientation="horizontal">
-
-            </LinearLayout>
+                android:gravity="start|center_vertical"
+                android:orientation="horizontal"></LinearLayout>
 
         </LinearLayout>
 

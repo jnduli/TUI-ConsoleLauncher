@@ -87,7 +87,9 @@ public class ReplyManager implements XMLPrefsElement {
         instance = this;
 
         load(true);
-
+        if (values.get(Reply.reply_enabled) == null) {
+            return;
+        }
         enabled = Boolean.parseBoolean(values.get(Reply.reply_enabled).value);
         if(!enabled) {
             notificationWears = null;

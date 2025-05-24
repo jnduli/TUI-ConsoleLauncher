@@ -85,12 +85,11 @@ public class ThemeManager {
                     return;
                 }
 
-                String url = "https://tui.tarunshankerpandey.com/show_data.php?data_type=xml&theme_id=" + themeName;
 
+                String url = "https://tui.tarunshankerpandey.com/show_data.php?data_type=xml&theme_id=" + themeName;
                 Request.Builder builder = new Request.Builder()
                         .url(url)
                         .get();
-
                 Response response;
                 try {
                     response = client.newCall(builder.build()).execute();
@@ -99,7 +98,9 @@ public class ThemeManager {
                     return;
                 }
 
-                if(response.isSuccessful()) {
+                if (!response.isSuccessful()) {
+                    Tuils.sendOutput(Color.RED, context, "theme url unavailable");
+                } else {
                     String string;
                     try {
                         string = response.body().string();

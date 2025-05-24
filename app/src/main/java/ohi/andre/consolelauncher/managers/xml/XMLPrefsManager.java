@@ -91,17 +91,12 @@ public class XMLPrefsManager {
             }
         };
 
-//        notifications
-//        apps
-//        alias
-
         public String path;
         XMLPrefsList values;
         public List<XMLPrefsSave> enums;
 
         XMLPrefsRoot(XMLPrefsSave[] en) {
             this.values = new XMLPrefsList();
-
             this.enums = new ArrayList<>(Arrays.asList(en));
             this.path = this.name().toLowerCase() + ".xml";
         }
@@ -325,12 +320,6 @@ public class XMLPrefsManager {
 
     public static <T> T get(Class<T> c, XMLPrefsSave prefsSave) {
         try {
-//            if(prefsSave.is(Notifications.show_notifications.label())) {
-//                Tuils.log("----------------");
-//                Tuils.log("label", prefsSave.label());
-//                Tuils.log("parent", prefsSave.parent().toString());
-//                Tuils.log("values tostring", prefsSave.parent().getValues().toString());
-//            }
             return (T) transform(prefsSave.parent().getValues().get(prefsSave).value, c);
         } catch (Exception e) {
             Tuils.log(e);
@@ -372,9 +361,6 @@ public class XMLPrefsManager {
         return s;
     }
 
-//    rootName is needed in order to rebuild the file if it's corrupted
-//    [0] = document
-//    [1] = root
     public static Object[] buildDocument(File file, String rootName) throws Exception {
         if(!file.exists()) {
             resetFile(file, rootName);
@@ -778,79 +764,4 @@ public class XMLPrefsManager {
             this.id = id;
         }
     }
-
-//    private static HashMap<XMLPrefsSave, String> getOld(BufferedReader reader) {
-//        HashMap<XMLPrefsSave, String> map = new HashMap<>();
-//
-//        String line;
-//        try {
-//            while((line = reader.readLine()) != null) {
-//                String[] split = line.split("=");
-//                if(split.length != 2) continue;
-//
-//                String name = split[0].trim();
-//                String value = split[1];
-//
-//                XMLPrefsSave s = getCorresponding(name);
-//                if(s == null) continue;
-//
-//                map.put(s, value);
-//            }
-//        } catch (IOException e) {
-//            return null;
-//        }
-//
-//        return map;
-//    }
-
-//    static final SimpleMutableEntry[] OLD = {
-//            new SimpleMutableEntry("deviceColor", Theme.device_color),
-//            new SimpleMutableEntry("inputColor", Theme.input_color),
-//            new SimpleMutableEntry("outputColor", Theme.output_color),
-//            new SimpleMutableEntry("backgroundColor", Theme.bg_color),
-//            new SimpleMutableEntry("useSystemFont", Ui.system_font),
-//            new SimpleMutableEntry("fontSize", Ui.font_size),
-//            new SimpleMutableEntry("ramColor", Theme.ram_color),
-//            new SimpleMutableEntry("inputFieldBottom", Ui.input_bottom),
-//            new SimpleMutableEntry("username", Ui.username),
-//            new SimpleMutableEntry("showSubmit", Ui.show_enter_button),
-//            new SimpleMutableEntry("deviceName", Ui.deviceName),
-//            new SimpleMutableEntry("showRam", Ui.show_ram),
-//            new SimpleMutableEntry("showDevice", Ui.show_device_name),
-//            new SimpleMutableEntry("showToolbar", Toolbar.show_toolbar),
-//
-//            new SimpleMutableEntry("suggestionTextColor", Suggestions.default_text_color),
-//            new SimpleMutableEntry("transparentSuggestions", Suggestions.transparent),
-//            new SimpleMutableEntry("aliasSuggestionBg", Suggestions.alias_bg_color),
-//            new SimpleMutableEntry("appSuggestionBg", Suggestions.apps_bg_color),
-//            new SimpleMutableEntry("commandSuggestionsBg", Suggestions.cmd_bg_color),
-//            new SimpleMutableEntry("songSuggestionBg", Suggestions.song_bg_color),
-//            new SimpleMutableEntry("contactSuggestionBg", Suggestions.contact_bg_color),
-//            new SimpleMutableEntry("fileSuggestionBg", Suggestions.file_bg_color),
-//            new SimpleMutableEntry("defaultSuggestionBg", Suggestions.default_bg_color),
-//
-//            new SimpleMutableEntry("useSystemWallpaper", Ui.system_wallpaper),
-//            new SimpleMutableEntry("fullscreen", Ui.fullscreen),
-//            new SimpleMutableEntry("keepAliveWithNotification", Behavior.tui_notification),
-//            new SimpleMutableEntry("openKeyboardOnStart", Behavior.auto_show_keyboard),
-//
-//            new SimpleMutableEntry("fromMediastore", Behavior.songs_from_mediastore),
-//            new SimpleMutableEntry("playRandom", Behavior.random_play),
-//            new SimpleMutableEntry("songsFolder", Behavior.songs_folder),
-//
-//            new SimpleMutableEntry("closeOnDbTap", Behavior.double_tap_closes),
-//            new SimpleMutableEntry("showSuggestions", Suggestions.show_suggestions),
-//            new SimpleMutableEntry("showDonationMessage", Behavior.donation_message),
-//            new SimpleMutableEntry("showAliasValue", Behavior.show_alias_content),
-//            new SimpleMutableEntry("showAppsHistory", Behavior.show_launch_history),
-//
-//            new SimpleMutableEntry("defaultSearch", Cmd.default_search)
-//    };
-//
-//    private static XMLPrefsSave getCorresponding(String old) {
-//        for(SimpleMutableEntry<String, XMLPrefsSave> s : OLD) {
-//            if(old.equals(s.getKey())) return s.getValue();
-//        }
-//        return null;
-//    }
 }

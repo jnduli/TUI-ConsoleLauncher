@@ -76,7 +76,7 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
     private boolean openKeyboardOnStart, canApplyTheme, backButtonEnabled;
 
     private Set<ReloadMessageCategory> categories;
-    private Runnable stopActivity = () -> {
+    private final Runnable stopActivity = () -> {
             dispose();
             finish();
 
@@ -92,7 +92,7 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
             startActivity(startMain);
     };
 
-    private Inputable in = new Inputable() {
+    private final Inputable in = new Inputable() {
 
         @Override
         public void in(String s) {
@@ -110,7 +110,7 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
         }
     };
 
-    private Outputable out = new Outputable() {
+    private final Outputable out = new Outputable() {
 
         private final int DELAY = 500;
 
@@ -385,7 +385,9 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
         try {
             LocalBroadcastManager.getInstance(this.getApplicationContext()).unregisterReceiver(privateIOReceiver);
             getApplicationContext().unregisterReceiver(publicIOReceiver);
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            Tuils.log(e);
+        }
 
         try {
             stopService(new Intent(this, NotificationMonitorService.class));
