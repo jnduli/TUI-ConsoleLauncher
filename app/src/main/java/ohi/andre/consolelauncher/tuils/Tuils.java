@@ -908,7 +908,7 @@ public class Tuils {
             while((line = reader.readLine()) != null) {
                 if(line.startsWith("MemTotal")) {
                     line = line.replaceAll("\\D+", Tuils.EMPTYSTRING);
-                    return Long.parseLong(line);
+                    return Long.parseLong(line) * 1024L;
                 }
             }
         } catch (Exception e) {}

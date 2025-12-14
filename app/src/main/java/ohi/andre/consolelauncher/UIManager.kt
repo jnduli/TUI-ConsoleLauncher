@@ -604,168 +604,9 @@ class UIManager(
         return labelSizes[label.ordinal]
     }
 
-    private var memory: ActivityManager.MemoryInfo? = null
-    private var activityManager: ActivityManager? = null
+    public var activityManager: ActivityManager? = null
 
     private var ramRunnable: RamRunnable? = null
-
-    private inner class RamRunnable : Runnable {
-        private val AV = "%av"
-        private val TOT = "%tot"
-
-        var ramPatterns: MutableList<Pattern?>? = null
-        var ramFormat: String? = null
-
-        var color: Int = 0
-
-        override fun run() {
-            if (ramFormat == null) {
-                ramFormat = XMLPrefsManager.get(Behavior.ram_format) as String?
-
-                color = XMLPrefsManager.getColor(Theme.ram_color)
-            }
-
-            if (ramPatterns == null) {
-                ramPatterns = ArrayList<Pattern?>()
-
-                ramPatterns!!.add(
-                    Pattern.compile(
-                        AV + "tb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                ramPatterns!!.add(
-                    Pattern.compile(
-                        AV + "gb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                ramPatterns!!.add(
-                    Pattern.compile(
-                        AV + "mb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                ramPatterns!!.add(
-                    Pattern.compile(
-                        AV + "kb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                ramPatterns!!.add(
-                    Pattern.compile(
-                        AV + "b",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                ramPatterns!!.add(
-                    Pattern.compile(
-                        AV + "%",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-
-                ramPatterns!!.add(
-                    Pattern.compile(
-                        TOT + "tb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                ramPatterns!!.add(
-                    Pattern.compile(
-                        TOT + "gb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                ramPatterns!!.add(
-                    Pattern.compile(
-                        TOT + "mb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                ramPatterns!!.add(
-                    Pattern.compile(
-                        TOT + "kb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                ramPatterns!!.add(
-                    Pattern.compile(
-                        TOT + "b",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-
-                ramPatterns!!.add(Tuils.patternNewline)
-            }
-
-            var copy = ramFormat
-
-            val av = Tuils.freeRam(activityManager, memory)
-            val tot = (Tuils.totalRam() * 1024L).toDouble()
-
-            copy = ramPatterns!!.get(0)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(av.toLong(), Tuils.TERA).toString()
-                )
-            ) as String?
-            copy = ramPatterns!!.get(1)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(av.toLong(), Tuils.GIGA).toString()
-                )
-            ) as String?
-            copy = ramPatterns!!.get(2)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(av.toLong(), Tuils.MEGA).toString()
-                )
-            ) as String?
-            copy = ramPatterns!!.get(3)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(av.toLong(), Tuils.KILO).toString()
-                )
-            ) as String?
-            copy = ramPatterns!!.get(4)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(av.toLong(), Tuils.BYTE).toString()
-                )
-            ) as String?
-            copy = ramPatterns!!.get(5)!!.matcher(copy)
-                .replaceAll(Matcher.quoteReplacement(Tuils.percentage(av, tot).toString())) as String?
-
-            copy = ramPatterns!!.get(6)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(tot.toLong(), Tuils.TERA).toString()
-                )
-            ) as String?
-            copy = ramPatterns!!.get(7)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(tot.toLong(), Tuils.GIGA).toString()
-                )
-            ) as String?
-            copy = ramPatterns!!.get(8)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(tot.toLong(), Tuils.MEGA).toString()
-                )
-            ) as String?
-            copy = ramPatterns!!.get(9)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(tot.toLong(), Tuils.KILO).toString()
-                )
-            ) as String?
-            copy = ramPatterns!!.get(10)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(tot.toLong(), Tuils.BYTE).toString()
-                )
-            ) as String?
-
-            copy = ramPatterns!!.get(11)!!.matcher(copy)
-                .replaceAll(Matcher.quoteReplacement(Tuils.NEWLINE)) as String?
-
-            updateText(Label.ram, Tuils.span(mContext, copy, color, labelSizes[Label.ram.ordinal]))
-
-            handler!!.postDelayed(this, RAM_DELAY.toLong())
-        }
-    }
 
     private var networkRunnable: NetworkRunnable? = null
 
@@ -1801,9 +1642,7 @@ class UIManager(
         }
 
         if (show[Label.ram.ordinal]) {
-            ramRunnable = RamRunnable()
-
-            memory = ActivityManager.MemoryInfo()
+            ramRunnable = RamRunnable(this, handler!!)
             activityManager = context.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
             handler!!.post(ramRunnable)
         }
@@ -2016,19 +1855,6 @@ class UIManager(
             submitView = null
         }
 
-        //        final ImageButton finalSubmitView = submitView;
-//        inputView.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
-//            @Override
-//            public boolean onPreDraw() {
-//                Tuils.scaleImage(finalSubmitView, 20, 20);
-//
-//                inputView.getViewTreeObserver().removeOnPreDrawListener(this);
-//
-//                return false;
-//            }
-//        });
-
-//        toolbar
         val showToolbar = XMLPrefsManager.getBoolean(Toolbar.show_toolbar)
         var backView: ImageButton? = null
         var nextView: ImageButton? = null
