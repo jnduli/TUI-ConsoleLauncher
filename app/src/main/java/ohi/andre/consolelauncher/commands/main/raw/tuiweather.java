@@ -43,7 +43,7 @@ public class tuiweather extends ParamCommand {
             public String exec(ExecutePack pack) {
                 XMLPrefsSave save = Ui.show_weather;
 
-                save.parent().write(save, "true");
+                save.parent().write(pack.context, save, "true");
                 ((Reloadable) pack.context).addMessage(save.parent().path(), save.label() + " -> " + "true");
                 ((Reloadable) pack.context).reload();
 
@@ -55,7 +55,7 @@ public class tuiweather extends ParamCommand {
             public String exec(ExecutePack pack) {
                 XMLPrefsSave save = Ui.show_weather;
 
-                save.parent().write(save, "false");
+                save.parent().write(pack.context, save, "false");
                 ((Reloadable) pack.context).addMessage(save.parent().path(), save.label() + " -> " + "false");
                 ((Reloadable) pack.context).reload();
 
@@ -77,7 +77,7 @@ public class tuiweather extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                Behavior.weather_key.parent().write(Behavior.weather_key, pack.getString());
+                Behavior.weather_key.parent().write(pack.context, Behavior.weather_key, pack.getString());
                 return null;
             }
         };

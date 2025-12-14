@@ -189,7 +189,7 @@ public class NotesManager {
         if(loadClasses) classes.clear();
         notes.clear();
 
-        File file = new File(Tuils.getFolder(), PATH);
+        File file = new File(Tuils.getFolder(context), PATH);
         if(!file.exists()) {
             resetFile(file, NAME);
         }
@@ -366,7 +366,7 @@ public class NotesManager {
         notes.add(new Note(t, s, lock));
         Collections.sort(notes);
 
-        File file = new File(Tuils.getFolder(), PATH);
+        File file = new File(Tuils.getFolder(mContext), PATH);
         if(!file.exists()) {
             resetFile(file, NAME);
         }
@@ -389,7 +389,7 @@ public class NotesManager {
 
         long time = notes.remove(index).creationTime;
 
-        File file = new File(Tuils.getFolder(), PATH);
+        File file = new File(Tuils.getFolder(mContext), PATH);
         if(!file.exists()) {
             resetFile(file, NAME);
         }
@@ -431,7 +431,7 @@ public class NotesManager {
             if(!n.lock) iterator.remove();
         }
 
-        File file = new File(Tuils.getFolder(), PATH);
+        File file = new File(Tuils.getFolder(context), PATH);
         if(!file.exists()) resetFile(file, NAME);
 
         String output = XMLPrefsManager.removeNode(file, new String[] {LOCK}, new String[] {String.valueOf(false)}, true, true);
@@ -464,7 +464,7 @@ public class NotesManager {
 
         long time = n.creationTime;
 
-        File file = new File(Tuils.getFolder(), PATH);
+        File file = new File(Tuils.getFolder(context), PATH);
         if(!file.exists()) {
             resetFile(file, NAME);
         }

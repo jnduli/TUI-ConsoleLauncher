@@ -1,9 +1,13 @@
 package ohi.andre.consolelauncher.managers.notifications;
 
+import android.Manifest;
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -18,6 +22,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import ohi.andre.consolelauncher.LauncherActivity;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.managers.RegexManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
@@ -62,8 +67,8 @@ public class NotificationManager implements XMLPrefsElement {
     }
 
     @Override
-    public void write(XMLPrefsSave save, String value) {
-        set(new File(Tuils.getFolder(), PATH), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
+    public void write(Context c, XMLPrefsSave save, String value) {
+        set(new File(Tuils.getFolder(c), PATH), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
     }
 
     @Override
@@ -91,7 +96,7 @@ public class NotificationManager implements XMLPrefsElement {
         values = new XMLPrefsList();
 
         try {
-            File r = Tuils.getFolder();
+            File r = Tuils.getFolder(context);
             if(r == null) {
                 Tuils.sendOutput(Color.RED, context, R.string.tuinotfound_notifications);
                 return;
@@ -263,32 +268,32 @@ public class NotificationManager implements XMLPrefsElement {
         instance = null;
     }
 
-    public static String setState(String pkg, boolean state) {
-        return XMLPrefsManager.set(new File(Tuils.getFolder(), PATH), pkg, new String[] {ENABLED_ATTRIBUTE}, new String[] {String.valueOf(state)});
+    public static String setState(Context c, String pkg, boolean state) {
+        return XMLPrefsManager.set(new File(Tuils.getFolder(c), PATH), pkg, new String[] {ENABLED_ATTRIBUTE}, new String[] {String.valueOf(state)});
     }
 
-    public static String setColor(String pkg, String color) {
-        return XMLPrefsManager.set(new File(Tuils.getFolder(), PATH), pkg, new String[] {ENABLED_ATTRIBUTE, COLOR_ATTRIBUTE}, new String[] {String.valueOf(true), color});
+    public static String setColor(Context c, String pkg, String color) {
+        return XMLPrefsManager.set(new File(Tuils.getFolder(c), PATH), pkg, new String[] {ENABLED_ATTRIBUTE, COLOR_ATTRIBUTE}, new String[] {String.valueOf(true), color});
     }
 
-    public static String setFormat(String pkg, String format) {
-        return XMLPrefsManager.set(new File(Tuils.getFolder(), PATH), pkg, new String[] {FORMAT_ATTRIBUTE}, new String[] {format});
+    public static String setFormat(Context c, String pkg, String format) {
+        return XMLPrefsManager.set(new File(Tuils.getFolder(c), PATH), pkg, new String[] {FORMAT_ATTRIBUTE}, new String[] {format});
     }
 
-    public static String addFilter(String pattern, int id) {
-        return XMLPrefsManager.add(new File(Tuils.getFolder(), PATH), FILTER_ATTRIBUTE, new String[] {ID_ATTRIBUTE, VALUE_ATTRIBUTE}, new String[] {String.valueOf(id), pattern});
+    public static String addFilter(Context c, String pattern, int id) {
+        return XMLPrefsManager.add(new File(Tuils.getFolder(c), PATH), FILTER_ATTRIBUTE, new String[] {ID_ATTRIBUTE, VALUE_ATTRIBUTE}, new String[] {String.valueOf(id), pattern});
     }
 
-    public static String addFormat(String format, int id) {
-        return XMLPrefsManager.add(new File(Tuils.getFolder(), PATH), FORMAT_ATTRIBUTE, new String[] {ID_ATTRIBUTE, VALUE_ATTRIBUTE}, new String[] {String.valueOf(id), format});
+    public static String addFormat(Context c, String format, int id) {
+        return XMLPrefsManager.add(new File(Tuils.getFolder(c), PATH), FORMAT_ATTRIBUTE, new String[] {ID_ATTRIBUTE, VALUE_ATTRIBUTE}, new String[] {String.valueOf(id), format});
     }
 
-    public static String rmFilter(int id) {
-        return XMLPrefsManager.removeNode(new File(Tuils.getFolder(), PATH), FILTER_ATTRIBUTE, new String[] {ID_ATTRIBUTE}, new String[] {String.valueOf(id)});
+    public static String rmFilter(Context c, int id) {
+        return XMLPrefsManager.removeNode(new File(Tuils.getFolder(c), PATH), FILTER_ATTRIBUTE, new String[] {ID_ATTRIBUTE}, new String[] {String.valueOf(id)});
     }
 
-    public static String rmFormat(int id) {
-        return XMLPrefsManager.removeNode(new File(Tuils.getFolder(), PATH), FORMAT_ATTRIBUTE, new String[] {ID_ATTRIBUTE}, new String[] {String.valueOf(id)});
+    public static String rmFormat(Context c, int id) {
+        return XMLPrefsManager.removeNode(new File(Tuils.getFolder(c), PATH), FORMAT_ATTRIBUTE, new String[] {ID_ATTRIBUTE}, new String[] {String.valueOf(id)});
     }
 
     public boolean match(String text) {

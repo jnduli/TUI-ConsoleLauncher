@@ -119,7 +119,7 @@ public class MusicService extends Service implements
                 player.setDataSource(path);
             } catch (IOException e) {
                 Tuils.log(e);
-                Tuils.toFile(e);
+                // Tuils.toFile(e);
                 return null;
             }
         } else {
@@ -131,7 +131,7 @@ public class MusicService extends Service implements
             }
             catch(Exception e) {
                 Tuils.log(e);
-                Tuils.toFile(e);
+                // Tuils.toFile(e);
                 return null;
             }
         }

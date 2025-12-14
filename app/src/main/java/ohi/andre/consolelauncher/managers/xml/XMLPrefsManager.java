@@ -102,8 +102,8 @@ public class XMLPrefsManager {
         }
 
         @Override
-        public void write(XMLPrefsSave save, String value) {
-            set(new File(Tuils.getFolder(), path), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
+        public void write(Context c, XMLPrefsSave save, String value) {
+            set(new File(Tuils.getFolder(c), path), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
         }
 
         public XMLPrefsList getValues() {
@@ -131,7 +131,7 @@ public class XMLPrefsManager {
         if(commonsLoaded) return;
         commonsLoaded = true;
 
-        File folder = Tuils.getFolder();
+        File folder = Tuils.getFolder(context);
         if(folder == null) {
             Tuils.sendOutput(Color.RED, context, R.string.tuinotfound_xmlprefs);
             return;
@@ -518,7 +518,7 @@ public class XMLPrefsManager {
             return null;
         } catch (Exception e) {
             Tuils.log(e);
-            Tuils.toFile(e);
+            // Tuils.toFile(e);
             return e.toString();
         }
     }

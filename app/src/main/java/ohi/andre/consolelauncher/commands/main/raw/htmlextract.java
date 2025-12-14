@@ -170,7 +170,7 @@ public class htmlextract extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                File file = new File(Tuils.getFolder(), HTMLExtractManager.PATH);
+                File file = new File(Tuils.getFolder(pack.context), HTMLExtractManager.PATH);
                 pack.context.startActivity(Tuils.openFile(pack.context, file));
                 return null;
             }

@@ -31,7 +31,7 @@ public class notifications extends ParamCommand implements APICommand {
         inc {
             @Override
             public String exec(ExecutePack pack) {
-                String output = NotificationManager.setState(pack.getLaunchInfo().componentName.getPackageName(), true);
+                String output = NotificationManager.setState(pack.context, pack.getLaunchInfo().componentName.getPackageName(), true);
                 if(output == null || output.length() == 0) return null;
                 return output;
             }
@@ -49,7 +49,7 @@ public class notifications extends ParamCommand implements APICommand {
         exc {
             @Override
             public String exec(ExecutePack pack) {
-                String output = NotificationManager.setState(pack.getLaunchInfo().componentName.getPackageName(), false);
+                String output = NotificationManager.setState(pack.context, pack.getLaunchInfo().componentName.getPackageName(), false);
                 if(output == null || output.length() == 0) return null;
                 return output;
             }
@@ -68,7 +68,7 @@ public class notifications extends ParamCommand implements APICommand {
             @Override
             public String exec(ExecutePack pack) {
                 String color = pack.getString();
-                String output = NotificationManager.setColor(pack.getLaunchInfo().componentName.getPackageName(), color);
+                String output = NotificationManager.setColor(pack.context, pack.getLaunchInfo().componentName.getPackageName(), color);
                 if(output == null || output.length() == 0) return null;
                 return output;
             }
@@ -91,7 +91,7 @@ public class notifications extends ParamCommand implements APICommand {
             @Override
             public String exec(ExecutePack pack) {
                 String s = pack.getString();
-                String output = NotificationManager.setFormat(pack.getLaunchInfo().componentName.getPackageName(), s);
+                String output = NotificationManager.setFormat(pack.context, pack.getLaunchInfo().componentName.getPackageName(), s);
                 if(output == null || output.length() == 0) return null;
                 return output;
             }
@@ -110,7 +110,7 @@ public class notifications extends ParamCommand implements APICommand {
             @Override
             public String exec(ExecutePack pack) {
                 int id = pack.getInt();
-                String output = NotificationManager.addFilter(pack.getString(), id);
+                String output = NotificationManager.addFilter(pack.context, pack.getString(), id);
                 if(output == null || output.length() == 0) return null;
                 return output;
             }
@@ -129,7 +129,7 @@ public class notifications extends ParamCommand implements APICommand {
             @Override
             public String exec(ExecutePack pack) {
                 int id = pack.getInt();
-                String output = NotificationManager.addFormat(pack.getString(), id);
+                String output = NotificationManager.addFormat(pack.context, pack.getString(), id);
                 if(output == null || output.length() == 0) return null;
                 return output;
             }
@@ -147,7 +147,7 @@ public class notifications extends ParamCommand implements APICommand {
         rm_filter {
             @Override
             public String exec(ExecutePack pack) {
-                String output = NotificationManager.rmFilter(pack.getInt());
+                String output = NotificationManager.rmFilter(pack.context, pack.getInt());
                 if(output == null || output.length() == 0) return null;
                 return output;
             }
@@ -165,7 +165,7 @@ public class notifications extends ParamCommand implements APICommand {
         rm_format {
             @Override
             public String exec(ExecutePack pack) {
-                String output = NotificationManager.rmFormat(pack.getInt());
+                String output = NotificationManager.rmFormat(pack.context, pack.getInt());
                 if(output == null || output.length() == 0) return null;
                 return output;
             }
@@ -188,7 +188,7 @@ public class notifications extends ParamCommand implements APICommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.openFile(pack.context, new File(Tuils.getFolder(), NotificationManager.PATH)));
+                pack.context.startActivity(Tuils.openFile(pack.context, new File(Tuils.getFolder(pack.context), NotificationManager.PATH)));
                 return null;
             }
         },

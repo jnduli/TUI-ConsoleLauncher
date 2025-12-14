@@ -313,7 +313,7 @@ public class HTMLExtractManager {
         jsons = new ArrayList<>();
         formats = new ArrayList<>();
 
-        File file = new File(Tuils.getFolder(), PATH);
+        File file = new File(Tuils.getFolder(context), PATH);
         if(!file.exists()) {
             resetFile(file, NAME);
         }
@@ -807,7 +807,7 @@ public class HTMLExtractManager {
                 }
             }
 
-            File file = new File(Tuils.getFolder(), PATH);
+            File file = new File(Tuils.getFolder(context), PATH);
             if(!file.exists()) {
                 resetFile(file, NAME);
             }
@@ -823,7 +823,7 @@ public class HTMLExtractManager {
         }
 
         public void remove(Context context) {
-            File file = new File(Tuils.getFolder(), PATH);
+            File file = new File(Tuils.getFolder(context), PATH);
             if(!file.exists()) {
                 resetFile(file, NAME);
             }
@@ -838,7 +838,7 @@ public class HTMLExtractManager {
         }
 
         public void edit(Context context, String newExpression) {
-            File file = new File(Tuils.getFolder(), PATH);
+            File file = new File(Tuils.getFolder(context), PATH);
             if(!file.exists()) {
                 resetFile(file, NAME);
             }

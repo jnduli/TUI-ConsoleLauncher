@@ -10,7 +10,7 @@ public class StoppableThread extends Thread {
     public StoppableThread() {
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
             Tuils.log(e);
-            Tuils.toFile(e);
+            // Tuils.toFile(e);
             System.exit(1);
         });
     }

@@ -96,8 +96,8 @@ public class RssManager implements XMLPrefsElement {
     }
 
     @Override
-    public void write(XMLPrefsSave save, String value) {
-        set(new File(Tuils.getFolder(), PATH), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
+    public void write(Context c, XMLPrefsSave save, String value) {
+        set(new File(Tuils.getFolder(c), PATH), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
     }
 
     @Override
@@ -134,8 +134,8 @@ public class RssManager implements XMLPrefsElement {
 
         connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
 
-        root = new File(Tuils.getFolder(), RSS_FOLDER);
-        rssIndexFile = new File(Tuils.getFolder(), PATH);
+        root = new File(Tuils.getFolder(context), RSS_FOLDER);
+        rssIndexFile = new File(Tuils.getFolder(context), PATH);
 
         this.client = client;
 
@@ -281,7 +281,7 @@ public class RssManager implements XMLPrefsElement {
                     }
                 } catch (Exception e) {
                     Tuils.log(e);
-                    Tuils.toFile(e);
+                    // Tuils.toFile(e);
                 }
 
                 click = XMLPrefsManager.getBoolean(ohi.andre.consolelauncher.managers.xml.options.Rss.click_rss);
@@ -430,7 +430,7 @@ public class RssManager implements XMLPrefsElement {
                     return null;
                 } catch (Exception e) {
                     Tuils.log(e);
-                    Tuils.toFile(e);
+                    // Tuils.toFile(e);
                     return e.toString();
                 }
             }
@@ -701,7 +701,7 @@ public class RssManager implements XMLPrefsElement {
 
                 } catch (Exception e) {
                     Tuils.log(e);
-                    Tuils.toFile(e);
+                    // Tuils.toFile(e);
                 }
             }
         }.start();

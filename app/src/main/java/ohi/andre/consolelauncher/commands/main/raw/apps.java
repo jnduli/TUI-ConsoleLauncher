@@ -132,7 +132,7 @@ public class apps extends ParamCommand {
 
                 try {
                     XMLPrefsSave save = Apps.valueOf("default_app_n" + index);
-                    save.parent().write(save, marker);
+                    save.parent().write(pack.context, save, marker);
                     return null;
                 } catch (Exception e) {
                     return pack.context.getString(R.string.invalid_integer);
@@ -182,7 +182,7 @@ public class apps extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.openFile(pack.context, new File(Tuils.getFolder(), AppsManager.PATH)));
+                pack.context.startActivity(Tuils.openFile(pack.context, new File(Tuils.getFolder(pack.context), AppsManager.PATH)));
                 return null;
             }
         },

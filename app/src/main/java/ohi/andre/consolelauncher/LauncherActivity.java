@@ -8,14 +8,17 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.KeyEvent;
 import android.view.MenuItem;
@@ -25,6 +28,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -59,6 +63,8 @@ import ohi.andre.consolelauncher.tuils.interfaces.Outputable;
 import ohi.andre.consolelauncher.tuils.interfaces.Reloadable;
 
 public class LauncherActivity extends AppCompatActivity implements Reloadable {
+
+    private static final String TAG = "LauncherActivity";
 
     public static final int COMMAND_REQUEST_PERMISSION = 10;
     public static final int STARTING_PERMISSION = 11;
@@ -191,28 +197,61 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
 
+        super.onCreate(savedInstanceState);
         overridePendingTransition(0,0);
 
         if (isFinishing()) {
             return;
         }
 
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED  &&
-                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED)) {
+        Log.i(TAG, "onCreate: ");
 
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, LauncherActivity.STARTING_PERMISSION);
-        } else {
-            canApplyTheme = true;
-            finishOnCreate();
+        String[] permissions_to_ask = new String[]{
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                // Manifest.permission.ACCESS_SHORTCUT,
+        };
+        Log.i(TAG, "checking for permissions: " + Arrays.toString(permissions_to_ask));
+
+
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            boolean hasAllpermissions = true;
+            for (String permission : permissions_to_ask) {
+                if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                    hasAllpermissions = false;
+                }
+            }
+
+            Log.i(TAG, "Has all permissions: " + hasAllpermissions);
+
+            if (!hasAllpermissions) {
+                Log.i(TAG, "Is asking for permission");
+                ActivityCompat.requestPermissions(this, permissions_to_ask, LauncherActivity.STARTING_PERMISSION);
+            }
+        }
+
+
+
+
+        finishOnCreate();
+
+    }
+
+    private void setOrientation() {
+        int requestedOrientation = XMLPrefsManager.getInt(Behavior.orientation);
+        if(requestedOrientation >= 0 && requestedOrientation != 2) {
+            int orientation = getResources().getConfiguration().orientation;
+            if(orientation != requestedOrientation) setRequestedOrientation(requestedOrientation);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
+            }
         }
     }
 
     private void finishOnCreate() {
 
         Thread.currentThread().setUncaughtExceptionHandler(new CustomExceptionHandler());
-
         XMLPrefsManager.loadCommons(this);
         new RegexManager(LauncherActivity.this);
         new TimeManager(this);
@@ -231,19 +270,10 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
 
         publicIOReceiver = new PublicIOReceiver();
         getApplicationContext().registerReceiver(publicIOReceiver, filter1);
-
-        int requestedOrientation = XMLPrefsManager.getInt(Behavior.orientation);
-        if(requestedOrientation >= 0 && requestedOrientation != 2) {
-            int orientation = getResources().getConfiguration().orientation;
-            if(orientation != requestedOrientation) setRequestedOrientation(requestedOrientation);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
-            }
-        }
+        setOrientation();
 
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && !XMLPrefsManager.getBoolean(Ui.ignore_bar_color)) {
             Window window = getWindow();
-
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
             window.setStatusBarColor(XMLPrefsManager.getColor(Theme.statusbar_color));
@@ -251,16 +281,11 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
         }
 
         backButtonEnabled = XMLPrefsManager.getBoolean(Behavior.back_button_enabled);
-
         boolean showNotification = XMLPrefsManager.getBoolean(Behavior.tui_notification);
-        Intent keeperIntent = new Intent(this, KeeperService.class);
         if (showNotification) {
+            Intent keeperIntent = new Intent(this, KeeperService.class);
             keeperIntent.putExtra(KeeperService.PATH_KEY, XMLPrefsManager.get(Behavior.home_path));
             startService(keeperIntent);
-        } else {
-            try {
-                stopService(keeperIntent);
-            } catch (Exception e) {}
         }
 
         boolean fullscreen = XMLPrefsManager.getBoolean(Ui.fullscreen);
@@ -332,10 +357,6 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
         main = new MainManager(this);
 
         ViewGroup mainView = (ViewGroup) findViewById(R.id.mainview);
-
-//        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !XMLPrefsManager.getBoolean(Ui.ignore_bar_color) && !XMLPrefsManager.getBoolean(Ui.statusbar_light_icons)) {
-//            mainView.setSystemUiVisibility(0);
-//        }
 
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !XMLPrefsManager.getBoolean(Ui.ignore_bar_color) && !XMLPrefsManager.getBoolean(Ui.statusbar_light_icons)) {
             mainView.setSystemUiVisibility(mainView.getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
@@ -415,7 +436,9 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
         if(ui != null) ui.dispose();
 
         XMLPrefsManager.dispose();
-        RegexManager.instance.dispose();
+        if (RegexManager.instance != null) {
+            RegexManager.instance.dispose();
+        }
         TimeManager.instance.dispose();
 
         disposed = true;
@@ -567,10 +590,6 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
                     }
                     break;
                 case LOCATION_REQUEST_PERMISSION:
-//                    Intent i = new Intent(UIManager.ACTION_WEATHER_GOT_PERMISSION);
-//                    i.putExtra(XMLPrefsManager.VALUE_ATTRIBUTE, grantResults[0]);
-//                    LocalBroadcastManager.getInstance(this.getApplicationContext()).sendBroadcast(i);
-
                     Intent i = new Intent(TuiLocationManager.ACTION_GOT_PERMISSION);
                     i.putExtra(XMLPrefsManager.VALUE_ATTRIBUTE, grantResults[0]);
                     LocalBroadcastManager.getInstance(this.getApplicationContext()).sendBroadcast(i);

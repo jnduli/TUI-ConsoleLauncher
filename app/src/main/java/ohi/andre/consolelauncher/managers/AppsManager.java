@@ -95,8 +95,8 @@ public class AppsManager implements XMLPrefsElement {
     }
 
     @Override
-    public void write(XMLPrefsSave save, String value) {
-        set(new File(Tuils.getFolder(), PATH), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
+    public void write(Context c, XMLPrefsSave save, String value) {
+        set(new File(Tuils.getFolder(c), PATH), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
     }
 
     @Override
@@ -142,7 +142,7 @@ public class AppsManager implements XMLPrefsElement {
             pl = null;
         }
 
-        File root = Tuils.getFolder();
+        File root = Tuils.getFolder(context);
         if(root == null) this.file = null;
         else this.file = new File(root, PATH);
 
@@ -176,17 +176,13 @@ public class AppsManager implements XMLPrefsElement {
     public void fill() {
         final List<LaunchInfo> allApps = createAppMap(context.getPackageManager());
         hiddenApps = new ArrayList<>();
-
         groups.clear();
-
         try {
             prefsList = new XMLPrefsList();
-
             if(file != null) {
                 if(!file.exists()) {
                     resetFile(file, NAME);
                 }
-
                 Object[] o;
                 try {
                     o = XMLPrefsManager.buildDocument(file, NAME);
@@ -201,16 +197,12 @@ public class AppsManager implements XMLPrefsElement {
                     Tuils.log(e);
                     return;
                 }
-
                 Document d = (Document) o[0];
                 Element root = (Element) o[1];
-
                 List<Apps> enums = new ArrayList<>(Arrays.asList(Apps.values()));
                 NodeList nodes = root.getElementsByTagName("*");
-
                 for (int count = 0; count < nodes.getLength(); count++) {
                     final Node node = nodes.item(count);
-
                     String nn = node.getNodeName();
                     int nodeIndex = Tuils.find(nn, (List) enums);
                     if (nodeIndex != -1) {
@@ -370,7 +362,8 @@ public class AppsManager implements XMLPrefsElement {
             }
 
         } catch (Exception e1) {
-            Tuils.toFile(e1);
+            Tuils.log(e1);
+            Tuils.toFile(this.context, e1);
         }
 
         appsHolder = new AppsHolder(allApps, prefsList);
@@ -383,16 +376,6 @@ public class AppsManager implements XMLPrefsElement {
 
     private List<LaunchInfo> createAppMap(PackageManager mgr) {
         List<LaunchInfo> infos = new ArrayList<>();
-
-//        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-//            LauncherApps launcherApps = (LauncherApps) context.getSystemService(Context.LAUNCHER_APPS_SERVICE);
-//
-//            List<PackageInfo> installedPackages = mgr.getInstalledPackages(0);
-//            List<LauncherActivityInfo> activityInfos = new ArrayList<>();
-//            for(PackageInfo info : installedPackages) {
-//                activityInfos.addAll(launcherApps.getActivityList(info.packageName, android.os.Process.myUserHandle()));
-//            }
-//        } else {
         Intent i = new Intent(Intent.ACTION_MAIN);
         i.addCategory(Intent.CATEGORY_LAUNCHER);
 
@@ -402,7 +385,6 @@ public class AppsManager implements XMLPrefsElement {
         } catch (Exception e) {
             return infos;
         }
-//        }
 
         // Note: For SIM TOolkit, the name 'SIM Toolkit' is defined as one of the shortcuts so not the actual app name found by
         // resovleinfo.loadLabel(mgr), so ensure T-UI is the default for this to work
@@ -410,7 +392,6 @@ public class AppsManager implements XMLPrefsElement {
             LauncherApps launcherApps = (LauncherApps) context.getSystemService(Context.LAUNCHER_APPS_SERVICE);
             for (ResolveInfo ri : main) {
                 LaunchInfo li = new LaunchInfo(ri.activityInfo.packageName, ri.activityInfo.name, ri.loadLabel(mgr).toString());
-
                 try {
                     LauncherApps.ShortcutQuery query = new LauncherApps.ShortcutQuery();
                     query.setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST | LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC);

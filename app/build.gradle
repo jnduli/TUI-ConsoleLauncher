@@ -1,6 +1,7 @@
 apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
 android {
-    compileSdkVersion 27
+    compileSdkVersion 29
 
     buildFeatures {
         buildConfig = true
@@ -40,6 +41,9 @@ android {
     namespace 'ohi.andre.consolelauncher'
     lint {
         checkReleaseBuilds false
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
     }
     android.applicationVariants.all { variant ->
         def formattedDate = new Date().format('hh.mm')

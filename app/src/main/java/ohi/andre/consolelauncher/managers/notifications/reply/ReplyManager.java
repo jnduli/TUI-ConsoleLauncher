@@ -67,7 +67,7 @@ public class ReplyManager implements XMLPrefsElement {
 
     private boolean enabled;
 
-    private Context context;
+    private static Context context;
 
     public static int nextUsableId;
 
@@ -144,7 +144,7 @@ public class ReplyManager implements XMLPrefsElement {
 
         List<Reply> enums = new ArrayList<>(Arrays.asList(Reply.values()));
 
-        File file = new File(Tuils.getFolder(), PATH);
+        File file = new File(Tuils.getFolder(context), PATH);
 
         Object[] o;
         try {
@@ -354,8 +354,8 @@ public class ReplyManager implements XMLPrefsElement {
     }
 
     @Override
-    public void write(XMLPrefsSave save, String value) {
-        set(new File(Tuils.getFolder(), PATH), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
+    public void write(Context c, XMLPrefsSave save, String value) {
+        set(new File(Tuils.getFolder(c), PATH), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
     }
 
     @Override
@@ -381,12 +381,12 @@ public class ReplyManager implements XMLPrefsElement {
         Tuils.sendOutput(context, wear.text);
     }
 
-    public static String bind(String pkg) {
-        return XMLPrefsManager.set(new File(Tuils.getFolder(), PATH), pkg, new String[] {ID_ATTRIBUTE}, new String[] {String.valueOf(nextUsableId)});
+    public static String bind(Context c, String pkg) {
+        return XMLPrefsManager.set(new File(Tuils.getFolder(c), PATH), pkg, new String[] {ID_ATTRIBUTE}, new String[] {String.valueOf(nextUsableId)});
     }
 
-    public static String unbind(String pkg) {
-        return XMLPrefsManager.removeNode(new File(Tuils.getFolder(), PATH), pkg);
+    public static String unbind(Context c, String pkg) {
+        return XMLPrefsManager.removeNode(new File(Tuils.getFolder(c), PATH), pkg);
     }
 
     private int nextUsableId() {

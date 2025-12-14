@@ -213,7 +213,8 @@ public class MusicManager2 implements MediaController.MediaPlayerControl {
                         if(file.exists() && file.isDirectory()) songs.addAll(Tuils.getSongsInFolder(file));
                     }
                 } catch (Exception e) {
-                    Tuils.toFile(e);
+                    Tuils.log(e);
+                    // Tuils.toFile(e);
                 }
 
                 synchronized (songs) {

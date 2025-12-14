@@ -47,7 +47,7 @@ public class config extends ParamCommand {
             public String exec(ExecutePack pack) {
                 XMLPrefsSave save = pack.getPrefsSave();
                 String value = pack.getString();
-                save.parent().write(save, value);
+                save.parent().write(pack.context, save, value);
 
                 ((Reloadable) pack.context).addMessage(save.parent().path(), save.label() + " -> " + value);
 
@@ -93,7 +93,7 @@ public class config extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                File file = new File(Tuils.getFolder(), pack.getString());
+                File file = new File(Tuils.getFolder(pack.context), pack.getString());
 
                 try {
                     pack.context.startActivity(Tuils.openFile(pack.context, file));
@@ -124,7 +124,7 @@ public class config extends ParamCommand {
                 XMLPrefsSave save = pack.getPrefsSave();
                 String value = XMLPrefsManager.get(save) + pack.getString();
 
-                save.parent().write(save, value);
+                save.parent().write(pack.context, save, value);
 
                 ((Reloadable) pack.context).addMessage(save.parent().path(), save.label() + " -> " + value);
 
@@ -146,7 +146,7 @@ public class config extends ParamCommand {
             @Override
             public String exec(ExecutePack pack) {
                 XMLPrefsSave save = pack.getPrefsSave();
-                save.parent().write(save, Tuils.EMPTYSTRING);
+                save.parent().write(pack.context, save, Tuils.EMPTYSTRING);
 
                 ((Reloadable) pack.context).addMessage(save.parent().path(), save.label() + " -> " + "\"\"");
 
@@ -175,7 +175,7 @@ public class config extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                File file = new File(Tuils.getFolder(), pack.getString());
+                File file = new File(Tuils.getFolder(pack.context), pack.getString());
                 String name = file.getName();
 
                 for(XMLPrefsManager.XMLPrefsRoot r : XMLPrefsManager.XMLPrefsRoot.values()) {
@@ -254,16 +254,16 @@ public class config extends ParamCommand {
 
                 int size = pack.getInt();
 
-                parent.write(Ui.device_size, String.valueOf(size));
-                parent.write(Ui.ram_size, String.valueOf(size));
-                parent.write(Ui.network_size, String.valueOf(size));
-                parent.write(Ui.storage_size, String.valueOf(size));
-                parent.write(Ui.battery_size, String.valueOf(size));
-                parent.write(Ui.notes_size, String.valueOf(size));
-                parent.write(Ui.time_size, String.valueOf(size));
-                parent.write(Ui.weather_size, String.valueOf(size));
-                parent.write(Ui.unlock_size, String.valueOf(size));
-                parent.write(Ui.input_output_size, String.valueOf(size));
+                parent.write(pack.context, Ui.device_size, String.valueOf(size));
+                parent.write(pack.context, Ui.ram_size, String.valueOf(size));
+                parent.write(pack.context, Ui.network_size, String.valueOf(size));
+                parent.write(pack.context, Ui.storage_size, String.valueOf(size));
+                parent.write(pack.context, Ui.battery_size, String.valueOf(size));
+                parent.write(pack.context, Ui.notes_size, String.valueOf(size));
+                parent.write(pack.context, Ui.time_size, String.valueOf(size));
+                parent.write(pack.context, Ui.weather_size, String.valueOf(size));
+                parent.write(pack.context, Ui.unlock_size, String.valueOf(size));
+                parent.write(pack.context, Ui.input_output_size, String.valueOf(size));
 
                 return null;
             }
@@ -277,7 +277,7 @@ public class config extends ParamCommand {
             @Override
             public String exec(ExecutePack pack) {
                 XMLPrefsSave save = pack.getPrefsSave();
-                save.parent().write(save, save.defaultValue());
+                save.parent().write(pack.context, save, save.defaultValue());
 
                 ((Reloadable) pack.context).addMessage(save.parent().path(), save.label() + " -> " + save.defaultValue());
 
@@ -300,18 +300,18 @@ public class config extends ParamCommand {
                         File font = new File(Tuils.fontPath);
                         if (font.exists()) {
                             File[] files = font.listFiles();
-                            if (files.length > 0) Tuils.insertOld(files[0]);
+                            if (files.length > 0) Tuils.insertOld(pack.context, files[0]);
                             Tuils.deleteContentOnly(font);
                         } else {
                             font.mkdir();
                         }
                     }
                 } else {
-                    File toPutInsideOld = new File(Tuils.getFolder(), file.getName());
-                    Tuils.insertOld(toPutInsideOld);
+                    File toPutInsideOld = new File(Tuils.getFolder(pack.context), file.getName());
+                    Tuils.insertOld(pack.context, toPutInsideOld);
                 }
 
-                File dest = new File(Tuils.getFolder(), file.getName());
+                File dest = new File(Tuils.getFolder(pack.context), file.getName());
                 file.renameTo(dest);
 
                 return "Path: " + dest.getAbsolutePath();

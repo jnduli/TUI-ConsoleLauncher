@@ -84,7 +84,7 @@ public class tui extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                File file = new File(Tuils.getFolder(), "cmd.xml");
+                File file = new File(Tuils.getFolder(pack.context), "cmd.xml");
                 return XMLPrefsManager.set(file, pack.get().getClass().getSimpleName() + CommandsPreferences.PRIORITY_SUFFIX, new String[] {XMLPrefsManager.VALUE_ATTRIBUTE}, new String[] {String.valueOf(pack.getInt())});
             }
 
@@ -129,7 +129,7 @@ public class tui extends ParamCommand {
         reset {
             @Override
             public String exec(ExecutePack pack) {
-                Tuils.deleteContentOnly(Tuils.getFolder());
+                Tuils.deleteContentOnly(Tuils.getFolder(pack.context));
 
                 ((LauncherActivity) pack.context).addMessage(pack.context.getString(R.string.tui_reset), null);
                 ((Reloadable) pack.context).reload();
@@ -140,14 +140,14 @@ public class tui extends ParamCommand {
             @Override
             public String exec(ExecutePack pack) {
 
-                Uri selectedUri = Uri.parse(Tuils.getFolder().getAbsolutePath());
+                Uri selectedUri = Uri.parse(Tuils.getFolder(pack.context).getAbsolutePath());
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setDataAndType(selectedUri, "resource/folder");
 
                 if (intent.resolveActivityInfo(pack.context.getPackageManager(), 0) != null) {
                     pack.context.startActivity(intent);
                 } else {
-                    return Tuils.getFolder().getAbsolutePath();
+                    return Tuils.getFolder(pack.context).getAbsolutePath();
                 }
 
                 return null;

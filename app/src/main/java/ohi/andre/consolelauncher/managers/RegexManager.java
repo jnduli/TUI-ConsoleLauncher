@@ -34,10 +34,13 @@ public class RegexManager {
     private List<Regex> regexes;
 
     public static RegexManager instance;
+    private Context context;
 
-    public RegexManager(final Context context) {
+    public RegexManager(Context context) {
         if(regexes != null) regexes.clear();
         else regexes = new ArrayList<>();
+
+        this.context = context;
 
         new StoppableThread() {
 
@@ -46,7 +49,7 @@ public class RegexManager {
                 super.run();
 
                 try {
-                    File root = Tuils.getFolder();
+                    File root = Tuils.getFolder(context);
                     if(root == null) {
                         Tuils.sendOutput(Color.RED, context, R.string.tuinotfound_rss);
                         return;
@@ -105,7 +108,7 @@ public class RegexManager {
                     }
                 } catch (Exception e) {
                     Tuils.log(e);
-                    Tuils.toFile(e);
+                    // Tuils.toFile(e);
                     return;
                 }
             }
@@ -141,7 +144,7 @@ public class RegexManager {
 
         regexes.add(new Regex(value, id));
 
-        File file = new File(Tuils.getFolder(), PATH);
+        File file = new File(Tuils.getFolder(this.context), PATH);
 
         return XMLPrefsManager.add(file, REGEX_LABEL, new String[] {ID_ATTRIBUTE, XMLPrefsManager.VALUE_ATTRIBUTE}, new String[] {String.valueOf(id), value});
     }
@@ -150,7 +153,7 @@ public class RegexManager {
 //    "": not found
     public String rm(int id) {
         try {
-            File file = new File(Tuils.getFolder(), PATH);
+            File file = new File(Tuils.getFolder(this.context), PATH);
 
             Object[] o = XMLPrefsManager.buildDocument(file, null);
             if(o == null) {

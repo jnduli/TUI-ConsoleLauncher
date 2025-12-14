@@ -164,7 +164,7 @@ public class Tuils {
             boolean systemFont = XMLPrefsManager.getBoolean(Ui.system_font);
             if(systemFont) globalTypeface = Typeface.DEFAULT;
             else {
-                File tui = Tuils.getFolder();
+                File tui = Tuils.getFolder(context);
                 if(tui == null) {
                     return Typeface.createFromAsset(context.getAssets(), "lucida_console.ttf");
                 }
@@ -702,12 +702,12 @@ public class Tuils {
         dir.delete();
     }
 
-    public static boolean insertOld(File oldFile) {
+    public static boolean insertOld(Context c, File oldFile) {
         if(oldFile == null || !oldFile.exists()) return false;
 
         String oldPath = oldFile.getAbsolutePath();
 
-        File oldFolder = new File(Tuils.getFolder(), "old");
+        File oldFolder = new File(Tuils.getFolder(c), "old");
         if(!oldFolder.exists()) oldFolder.mkdir();
 
         File dest = new File(oldFolder, oldFile.getName());
@@ -716,8 +716,8 @@ public class Tuils {
         return oldFile.renameTo(dest) && new File(oldPath).delete();
     }
 
-    public static File getOld(String name) {
-        File old = new File(Tuils.getFolder(), "old");
+    public static File getOld(Context c, String name) {
+        File old = new File(Tuils.getFolder(c), "old");
         File file = new File(old, name);
 
         if(file.exists()) return file;
@@ -1173,9 +1173,11 @@ public class Tuils {
         return (T) Array.get(Array.newInstance(clazz, 1), 0);
     }
 
-    public static void toFile(String s) {
+    public static void toFile(Exception e) {
+        Tuils.log(e);
+        /**
         try {
-            RandomAccessFile f = new RandomAccessFile(new File(Tuils.getFolder(), "crash.txt"), "rw");
+            RandomAccessFile f = new RandomAccessFile(new File(Tuils.getFolder(c), "crash.txt"), "rw");
             f.seek(0);
             f.write((new Date().toString() + Tuils.NEWLINE + Tuils.NEWLINE).getBytes());
             OutputStream is = Channels.newOutputStream(f.getChannel());
@@ -1185,23 +1187,13 @@ public class Tuils {
             is.close();
             f.close();
         } catch (Exception e1) {}
+         */
     }
 
-    public static void toFile(Object o) {
+    public static void toFile(Context c, Object o) {
         if(o == null) return;
-
-//            RandomAccessFile f = new RandomAccessFile(new File(Tuils.getFolder(), "crash.txt"), "rw");
-//            f.seek(0);
-//            f.write((new Date().toString() + Tuils.NEWLINE + Tuils.NEWLINE).getBytes());
-//            OutputStream is = Channels.newOutputStream(f.getChannel());
-//            e.printStackTrace(new PrintStream(is));
-//            f.write((Tuils.NEWLINE + Tuils.NEWLINE).getBytes());
-//
-//            is.close();
-//            f.close();
-
         try {
-            FileOutputStream stream = new FileOutputStream(new File(Tuils.getFolder(), "crash.txt"));
+            FileOutputStream stream = new FileOutputStream(new File(Tuils.getFolder(c), "crash.txt"));
             stream.write((Tuils.NEWLINE + Tuils.NEWLINE).getBytes());
 
             if(o instanceof Throwable) {
@@ -1381,9 +1373,11 @@ public class Tuils {
         return uri;
     }
 
-    private static File getTuiFolder() {
-        File internalDir = Environment.getExternalStorageDirectory();
-        return new File(internalDir, TUI_FOLDER);
+    private static File getTuiFolder(Context c) {
+        File internalDir = c.getExternalFilesDir(TUI_FOLDER);
+        return internalDir;
+        // File internalDir = Environment.getExternalStorageDirectory();
+        // return new File(internalDir, TUI_FOLDER);
     }
 
     public static double eval(final String str) {
@@ -1482,12 +1476,12 @@ public class Tuils {
 
     private static final int FILEUPDATE_DELAY = 100;
     private static File folder = null;
-    public static File getFolder() {
+    public static File getFolder(Context c) {
         if(folder != null) return folder;
 
         int elapsedTime = 0;
         while (elapsedTime < 1000) {
-            File tuiFolder = Tuils.getTuiFolder();
+            File tuiFolder = Tuils.getTuiFolder(c);
             if(tuiFolder != null && ((tuiFolder.exists() && tuiFolder.isDirectory()) || tuiFolder.mkdir())) {
                 folder = tuiFolder;
                 return folder;

@@ -50,7 +50,7 @@ public class alias extends ParamCommand {
         file {
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.openFile(pack.context, new File(Tuils.getFolder(), AliasManager.PATH)));
+                pack.context.startActivity(Tuils.openFile(pack.context, new File(Tuils.getFolder(pack.context), AliasManager.PATH)));
                 return null;
             }
 

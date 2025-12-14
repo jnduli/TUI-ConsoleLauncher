@@ -552,7 +552,7 @@ public class SuggestionsManager {
             lastSuggestionThread.start();
         } catch (InternalError e) {
             Tuils.log(e);
-            Tuils.toFile(e);
+            // Tuils.toFile(e);
         }
     }
 

@@ -172,7 +172,7 @@ public class AliasManager {
         if(aliases != null) aliases.clear();
         else aliases = new ArrayList<>();
 
-        File root = Tuils.getFolder();
+        File root = Tuils.getFolder(this.context);
         if(root == null) return;
 
         File file = new File(root, PATH);
@@ -227,7 +227,7 @@ public class AliasManager {
 
         FileOutputStream fos;
         try {
-            fos = new FileOutputStream(new File(Tuils.getFolder(), PATH), true);
+            fos = new FileOutputStream(new File(Tuils.getFolder(context), PATH), true);
             fos.write((Tuils.NEWLINE + name + "=" + value).getBytes());
             fos.close();
 
@@ -247,8 +247,8 @@ public class AliasManager {
         }
 
         try {
-            File inputFile = new File(Tuils.getFolder(), PATH);
-            File tempFile = new File(Tuils.getFolder(), PATH + "2");
+            File inputFile = new File(Tuils.getFolder(context), PATH);
+            File tempFile = new File(Tuils.getFolder(context), PATH + "2");
 
             BufferedReader reader = new BufferedReader(new FileReader(inputFile));
             BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile));
