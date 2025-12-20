@@ -143,36 +143,31 @@ class UIManager(
     // TODO: change this to a map to enable easier modification and access
     val mapLabelViews = loadTextViews(rootView)
 
-    private var labelViews: Array<TextView?> = arrayOfNulls<TextView>(Label.entries.size)
-
-    private val labelIndexes = FloatArray(labelViews.size)
-    private val labelSizes = IntArray(labelViews.size)
-    private val labelTexts = arrayOfNulls<CharSequence>(labelViews.size)
-    private val labelShow = BooleanArray(Label.entries.size)
-
     private fun getLabelView(l: Label): TextView? {
-        // val dataLabel = mapLabelViews.get(l)
-        // return dataLabel?.textView
-        return labelViews[labelIndexes[l.ordinal].toInt()]
+        val dataLabel = mapLabelViews.get(l)
+        return dataLabel?.textView
+    }
+
+    public fun getLabelSize(l: Label): Int {
+        val tv = getLabelView(l)
+        if (tv == null) {
+            return 0
+        }
+        return tv.text.length
     }
 
     private var notesMaxLines = 0
-    private val notesManager: NotesManager?
-    private var notesRunnable: NotesRunnable? = null
+    private var notesManager: NotesManager? = null
 
     private inner class NotesRunnable : Runnable {
         var updateTime: Int = 2000
 
         override fun run() {
             if (notesManager != null) {
-                if (notesManager.hasChanged) {
+                if (notesManager!!.hasChanged) {
                     this@UIManager.updateText(
                         Label.notes,
-                        Tuils.span(
-                            mContext,
-                            labelSizes[Label.notes.ordinal],
-                            notesManager.getNotes()
-                        )
+                        notesManager!!.getNotes()
                     )
                 }
 
@@ -260,7 +255,7 @@ class UIManager(
 
             this@UIManager.updateText(
                 Label.battery,
-                Tuils.span(mContext, cp, color, labelSizes[Label.battery.ordinal])
+                Tuils.span(cp, color)
             )
         }
 
@@ -277,11 +272,6 @@ class UIManager(
 
     private var storageRunnable: StorageRunnable? = null
 
-
-
-    public fun getLabelSize(label: Label): Int {
-        return labelSizes[label.ordinal]
-    }
 
     public var activityManager: ActivityManager? = null
 
@@ -302,55 +292,64 @@ class UIManager(
     private var weatherColor = 0
     var showWeatherUpdate: Boolean = false
 
-    data class LabelView(val textView: TextView, val size: Int, val color: Int)
+    data class LabelView(val textView: TextView, val size: Int, val color: Int, val show: Boolean)
 
     private fun loadTextViews(rootView: ViewGroup): Map<Label, LabelView?> {
        return  mapOf(
             Label.time to LabelView(
                 rootView.findViewById<View?>(R.id.tv0) as TextView,
                 XMLPrefsManager.getInt(Ui.time_size),
-                XMLPrefsManager.getColor(Theme.storage_color)
+                XMLPrefsManager.getColor(Theme.storage_color),
+                XMLPrefsManager.getBoolean(Ui.show_time),
             ),
            Label.ram to LabelView(
                rootView.findViewById<View?>(R.id.tv1) as TextView,
                XMLPrefsManager.getInt(Ui.ram_size),
-               XMLPrefsManager.getColor(Theme.ram_color)
+               XMLPrefsManager.getColor(Theme.ram_color),
+               XMLPrefsManager.getBoolean(Ui.show_ram),
            ),
            Label.battery to LabelView(
                    rootView.findViewById<View?>(R.id.tv2) as TextView,
                    XMLPrefsManager.getInt(Ui.battery_size),
                     // TODO: needs to be variable and set by the battery method
-                   XMLPrefsManager.getColor(Theme.battery_color_medium)
+                   XMLPrefsManager.getColor(Theme.battery_color_medium),
+                   XMLPrefsManager.getBoolean(Ui.show_battery),
            ),
            Label.storage to LabelView(
                rootView.findViewById<View?>(R.id.tv3) as TextView,
                XMLPrefsManager.getInt(Ui.storage_size),
-               XMLPrefsManager.getColor(Theme.storage_color)
+               XMLPrefsManager.getColor(Theme.storage_color),
+               XMLPrefsManager.getBoolean(Ui.show_storage_info),
            ),
            Label.network to LabelView(
                rootView.findViewById<View?>(R.id.tv4) as TextView,
                XMLPrefsManager.getInt(Ui.network_size),
-               XMLPrefsManager.getColor(Theme.network_info_color)
+               XMLPrefsManager.getColor(Theme.network_info_color),
+               XMLPrefsManager.getBoolean(Ui.show_network_info),
            ),
            Label.notes to LabelView(
                rootView.findViewById<View?>(R.id.tv5) as TextView,
                XMLPrefsManager.getInt(Ui.notes_size),
-               XMLPrefsManager.getColor(Theme.notes_color)
+               XMLPrefsManager.getColor(Theme.notes_color),
+                   XMLPrefsManager.getBoolean(Ui.show_notes),
            ),
            Label.device to LabelView(
                rootView.findViewById<View?>(R.id.tv6) as TextView,
                XMLPrefsManager.getInt(Ui.device_size),
-               XMLPrefsManager.getColor(Theme.device_color)
+               XMLPrefsManager.getColor(Theme.device_color),
+               XMLPrefsManager.getBoolean(Ui.show_device_name),
            ),
            Label.weather to LabelView(
                rootView.findViewById<View?>(R.id.tv7) as TextView,
                XMLPrefsManager.getInt(Ui.weather_size),
-               XMLPrefsManager.getColor(Theme.weather_color)
+               XMLPrefsManager.getColor(Theme.weather_color),
+               XMLPrefsManager.getBoolean(Ui.show_weather),
            ),
            Label.unlock to LabelView(
                rootView.findViewById<View?>(R.id.tv8) as TextView,
                XMLPrefsManager.getInt(Ui.unlock_size),
-               XMLPrefsManager.getColor(Theme.unlock_counter_color)
+               XMLPrefsManager.getColor(Theme.unlock_counter_color),
+               XMLPrefsManager.getBoolean(Ui.show_unlock_counter),
            ),
         )
     }
@@ -421,51 +420,14 @@ class UIManager(
 
     public fun updateText(l: Label, s: CharSequence) {
         val dataLabel = mapLabelViews.get(l)
-        if (s.length <= 0) {
+        if (dataLabel?.show == false ||  s.length <= 0) {
             dataLabel?.textView?.setVisibility(View.GONE)
             return
         }
-        var color = dataLabel?.color?: Color.RED
+        val color = dataLabel?.color?: Color.RED
         val coloredSpan = Tuils.span(s, color)
         dataLabel?.textView?.setVisibility(View.VISIBLE)
         dataLabel?.textView?.setText(coloredSpan)
-    }
-
-    //    you need to use labelIndexes[i]
-    public fun oldUpdateText(l: Label, s: CharSequence?) {
-        Log.i(TAG, "Calling updateText for label : "  + l.toString() + "; with content"+ s.toString())
-        labelTexts[l.ordinal] = s
-
-        val base = labelIndexes[l.ordinal].toInt()
-
-        val indexs: MutableList<Float> = ArrayList<Float>()
-        for (count in Label.entries.toTypedArray().indices) {
-            if (labelIndexes[count].toInt() == base && labelTexts[count] != null) indexs.add(
-                labelIndexes[count]
-            )
-        }
-        //        now I'm sorting the labels on the same line for decimals (2.1, 2.0, ...)
-        Collections.sort<Float>(indexs)
-
-        var sequence: CharSequence = Tuils.EMPTYSTRING
-
-        for (c in indexs.indices) {
-            val i: Float = indexs.get(c)!!
-
-            for (a in Label.entries.toTypedArray().indices) {
-                if (i == labelIndexes[a] && labelTexts[a] != null) sequence =
-                    TextUtils.concat(sequence, labelTexts[a])
-            }
-        }
-
-        if (sequence.length == 0) labelViews[base]?.setVisibility(View.GONE)
-        else {
-            labelViews[base]?.setVisibility(View.VISIBLE)
-            labelViews[base]?.setText(sequence)
-        }
-        Log.i(TAG, "Label indices: " + labelIndexes.contentToString())
-        Log.i(TAG, "Label texts: " + labelTexts.contentToString())
-        Log.i(TAG, "Label show: " + labelShow.contentToString())
     }
 
     private var suggestionsManager: SuggestionsManager? = null
@@ -763,9 +725,7 @@ class UIManager(
                     var s = intent.getCharSequenceExtra(XMLPrefsManager.VALUE_ATTRIBUTE)
                     if (s == null) s = intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE)
                     if (s == null) return
-
-                    s = Tuils.span(context, s, weatherColor, labelSizes[Label.weather.ordinal])
-
+                    s = Tuils.span(s, weatherColor)
                     updateText(Label.weather, s)
 
                     if (showWeatherUpdate) {
@@ -786,10 +746,8 @@ class UIManager(
                         weatherRunnable = null
 
                         val s: CharSequence = Tuils.span(
-                            context,
                             context.getString(R.string.location_error),
                             weatherColor,
-                            labelSizes[Label.weather.ordinal]
                         )
 
                         updateText(Label.weather, s)
@@ -951,57 +909,6 @@ class UIManager(
             Tuils.mmToPx(metrics, displayMargins[3])
         )
 
-        labelSizes[Label.time.ordinal] = XMLPrefsManager.getInt(Ui.time_size)
-        labelSizes[Label.ram.ordinal] = XMLPrefsManager.getInt(Ui.ram_size)
-        labelSizes[Label.battery.ordinal] = XMLPrefsManager.getInt(Ui.battery_size)
-        labelSizes[Label.storage.ordinal] = XMLPrefsManager.getInt(Ui.storage_size)
-        labelSizes[Label.network.ordinal] = XMLPrefsManager.getInt(Ui.network_size)
-        labelSizes[Label.notes.ordinal] = XMLPrefsManager.getInt(Ui.notes_size)
-        labelSizes[Label.device.ordinal] = XMLPrefsManager.getInt(Ui.device_size)
-        labelSizes[Label.weather.ordinal] = XMLPrefsManager.getInt(Ui.weather_size)
-        labelSizes[Label.unlock.ordinal] = XMLPrefsManager.getInt(Ui.unlock_size)
-
-        labelViews = arrayOf<TextView>(
-            (rootView.findViewById<View?>(R.id.tv0) as TextView?)!!,
-            (rootView.findViewById<View?>(R.id.tv1) as TextView?)!!,
-            (rootView.findViewById<View?>(R.id.tv2) as TextView?)!!,
-            (rootView.findViewById<View?>(R.id.tv3) as TextView?)!!,
-            (rootView.findViewById<View?>(R.id.tv4) as TextView?)!!,
-            (rootView.findViewById<View?>(R.id.tv5) as TextView?)!!,
-            (rootView.findViewById<View?>(R.id.tv6) as TextView?)!!,
-            (rootView.findViewById<View?>(R.id.tv7) as TextView?)!!,
-            (rootView.findViewById<View?>(R.id.tv8) as TextView?)!!,
-        ) as Array<TextView?>
-
-        labelShow[Label.notes.ordinal] = XMLPrefsManager.getBoolean(Ui.show_notes)
-        labelShow[Label.ram.ordinal] = XMLPrefsManager.getBoolean(Ui.show_ram)
-        labelShow[Label.device.ordinal] = XMLPrefsManager.getBoolean(Ui.show_device_name)
-        labelShow[Label.time.ordinal] = XMLPrefsManager.getBoolean(Ui.show_time)
-        labelShow[Label.battery.ordinal] = XMLPrefsManager.getBoolean(Ui.show_battery)
-        labelShow[Label.network.ordinal] = XMLPrefsManager.getBoolean(Ui.show_network_info)
-        labelShow[Label.storage.ordinal] = XMLPrefsManager.getBoolean(Ui.show_storage_info)
-        labelShow[Label.weather.ordinal] = XMLPrefsManager.getBoolean(Ui.show_weather)
-        labelShow[Label.unlock.ordinal] = XMLPrefsManager.getBoolean(Ui.show_unlock_counter)
-
-        val indexes = FloatArray(Label.entries.size)
-        indexes[Label.notes.ordinal] =
-            if (labelShow[Label.notes.ordinal]) XMLPrefsManager.getFloat(Ui.notes_index) else Int.Companion.MAX_VALUE.toFloat()
-        indexes[Label.ram.ordinal] =
-            if (labelShow[Label.ram.ordinal]) XMLPrefsManager.getFloat(Ui.ram_index) else Int.Companion.MAX_VALUE.toFloat()
-        indexes[Label.device.ordinal] =
-            if (labelShow[Label.device.ordinal]) XMLPrefsManager.getFloat(Ui.device_index) else Int.Companion.MAX_VALUE.toFloat()
-        indexes[Label.time.ordinal] =
-            if (labelShow[Label.time.ordinal]) XMLPrefsManager.getFloat(Ui.time_index) else Int.Companion.MAX_VALUE.toFloat()
-        indexes[Label.battery.ordinal] =
-            if (labelShow[Label.battery.ordinal]) XMLPrefsManager.getFloat(Ui.battery_index) else Int.Companion.MAX_VALUE.toFloat()
-        indexes[Label.network.ordinal] =
-            if (labelShow[Label.network.ordinal]) XMLPrefsManager.getFloat(Ui.network_index) else Int.Companion.MAX_VALUE.toFloat()
-        indexes[Label.storage.ordinal] =
-            if (labelShow[Label.storage.ordinal]) XMLPrefsManager.getFloat(Ui.storage_index) else Int.Companion.MAX_VALUE.toFloat()
-        indexes[Label.weather.ordinal] =
-            if (labelShow[Label.weather.ordinal]) XMLPrefsManager.getFloat(Ui.weather_index) else Int.Companion.MAX_VALUE.toFloat()
-        indexes[Label.unlock.ordinal] =
-            if (labelShow[Label.unlock.ordinal]) XMLPrefsManager.getFloat(Ui.unlock_index) else Int.Companion.MAX_VALUE.toFloat()
 
         val statusLineAlignments: IntArray =
             getListOfIntValues(XMLPrefsManager.get(Ui.status_lines_alignment), 9, -1)
@@ -1068,12 +975,10 @@ class UIManager(
         val SUGGESTIONS_BGCOLOR_INDEX = 11
         val TOOLBAR_BGCOLOR_INDEX = 12
 
-        val strokeWidth: Int
-        val cornerRadius: Int
         val rectParams: Array<kotlin.String?> =
             getListOfStringValues(XMLPrefsManager.get(Ui.bgrect_params), 2, "0")
-        strokeWidth = rectParams[0]?.toInt() ?: 0
-        cornerRadius = rectParams[1]?.toInt() ?: 0
+        val strokeWidth = rectParams[0]?.toInt() ?: 0
+        val cornerRadius = rectParams[1]?.toInt() ?: 0
 
         val OUTPUT_MARGINS_INDEX = 1
         val INPUTAREA_MARGINS_INDEX = 2
@@ -1089,210 +994,136 @@ class UIManager(
         margins[4] = getListOfIntValues(XMLPrefsManager.get(Ui.toolbar_margins), 4, 0)
         margins[5] = getListOfIntValues(XMLPrefsManager.get(Ui.suggestions_area_margin), 4, 0)
 
-        val sequence = AllowEqualsSequence(indexes, Label.entries.toTypedArray())
 
-        val lViewsParent = labelViews[0]?.getParent() as LinearLayout
+
+        for ((label, view) in  mapLabelViews) {
+            val tv = view?.textView
+            if (tv == null) {
+                continue
+            }
+            tv.setOnTouchListener(this)
+            tv.setTypeface(Tuils.getTypeface(context))
+            if (view?.show == false) {
+                val viewParent = tv.parent as LinearLayout
+                viewParent.removeView(tv)
+            }
+            if (label != Label.notes) {
+                tv.setVerticalScrollBarEnabled(false)
+            }
+            val strokeColor = XMLPrefsManager.get(Theme.output_bgrectcolor).toString()
+            val bgColor = XMLPrefsManager.get(Theme.output_bg).toString()
+            val spaces = getListOfIntValues(XMLPrefsManager.get(Ui.output_field_margins), 4, 0)
+            Companion.applyBgRect(tv, strokeColor, bgColor, spaces, strokeWidth, cornerRadius )
+            val outlineColor = XMLPrefsManager.get(Theme.output_shadow_color).toString()
+            Companion.applyShadow(tv, outlineColor, shadowXOffset, shadowYOffset, shadowRadius)
+
+            // val p = statusLineAlignments[ec]
+            // if (p >= 0) labelViews[count]?.setGravity(if (p == 0) Gravity.CENTER_HORIZONTAL else Gravity.RIGHT)
+
+            when (label) {
+                Label.ram -> {
+                    ramRunnable = RamRunnable(this, handler)
+                    activityManager = context.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
+                    handler.post(ramRunnable)
+                }
+                Label.device -> {
+                    val username = XMLPrefsManager.get(Ui.username)
+                    var deviceName = XMLPrefsManager.get(Ui.deviceName)?: Build.DEVICE
+                    val content = "$username: $deviceName"
+                    val span = Tuils.span(content, XMLPrefsManager.getColor(Theme.device_color))
+                    updateText(label, span)
+                }
+                Label.time -> {
+                    var timeRunnable = TimeRunnable(this, handler)
+                    handler.post(timeRunnable)
+                }
+                Label.battery -> {
+                    batteryUpdate = BatteryUpdate()
+
+                    mediumPercentage = XMLPrefsManager.getInt(Behavior.battery_medium)
+                    lowPercentage = XMLPrefsManager.getInt(Behavior.battery_low)
+
+                    Tuils.registerBatteryReceiver(context, batteryUpdate)
+                }
+                Label.storage -> {
+                    storageRunnable = StorageRunnable(this, handler)
+                    handler.post(storageRunnable)
+                }
+                Label.network -> {
+                    networkRunnable = NetworkRunnable(this, handler)
+                    handler.post(networkRunnable)
+                }
+                Label.notes -> {
+                    notesManager = NotesManager(context, tv)
+                    val notesRunnable = NotesRunnable()
+                    handler.post(notesRunnable)
+                    tv.setMovementMethod(LinkMovementMethod())
+                    notesMaxLines = XMLPrefsManager.getInt(Ui.notes_max_lines)
+                    if (notesMaxLines > 0) {
+                        tv.setMaxLines(notesMaxLines)
+                        tv.setEllipsize(TextUtils.TruncateAt.MARQUEE)
+                        if (XMLPrefsManager.getBoolean( Ui.show_scroll_notes_message ) ) {
+                            tv.getViewTreeObserver()
+                                ?.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
+                                    var linesBefore: Int = Int.Companion.MIN_VALUE
+                                    override fun onGlobalLayout() {
+                                        if (tv.getLineCount() > notesMaxLines && linesBefore <= notesMaxLines) {
+                                            Tuils.sendOutput(Color.RED, context, R.string.note_max_reached)
+                                        }
+                                        linesBefore = tv.getLineCount()
+                                    }
+                                })
+                        }
+                    }
+
+                }
+                Label.weather -> {
+                    weatherRunnable = WeatherRunnable()
+                    weatherColor = XMLPrefsManager.getColor(Theme.weather_color)
+                    val where = XMLPrefsManager.get(Behavior.weather_location)
+                    if (where.contains(",") || Tuils.isNumber(where)) handler.post(weatherRunnable)
+                    showWeatherUpdate = XMLPrefsManager.getBoolean(Behavior.show_weather_updates)
+                }
+                Label.unlock -> {
+                    unlockTimes = preferences.getInt(UNLOCK_KEY, 0)
+                    unlockColor = XMLPrefsManager.getColor(Theme.unlock_counter_color)
+                    unlockFormat = XMLPrefsManager.get(Behavior.unlock_counter_format) as String?
+                    notAvailableText = XMLPrefsManager.get(Behavior.not_available_text) as String?
+                    unlockTimeDivider = XMLPrefsManager.get(Behavior.unlock_time_divider) as String?
+                    unlockTimeDivider =
+                        Tuils.patternNewline.matcher(unlockTimeDivider).replaceAll(Tuils.NEWLINE) as String?
+                    val start = XMLPrefsManager.get(Behavior.unlock_counter_cycle_start)
+                    val p = Pattern.compile("(\\d{1,2}).(\\d{1,2})")
+                    var m = p.matcher(start)
+                    if (!m.find()) {
+                        m = p.matcher(Behavior.unlock_counter_cycle_start.defaultValue())
+                        m.find()
+                    }
+                    unlockHour = m.group(1).toInt()
+                    unlockMinute = m.group(2).toInt()
+                    unlockTimeOrder = XMLPrefsManager.getInt(Behavior.unlock_time_order)
+                    nextUnlockCycleRestart = preferences.getLong(NEXT_UNLOCK_CYCLE_RESTART, 0)
+                    m = timePattern.matcher(unlockFormat)
+                    if (m.find()) {
+                        var s = m.group(3)
+                        if (s == null || s.length == 0) s = "1"
+                        lastUnlocks = LongArray(s.toInt())
+                        lastUnlocks?.let {
+                            for (c in it.indices) {
+                                lastUnlocks!![c] = -1
+                            }
+                        }
+                        registerLockReceiver()
+                        handler.post(unlockTimeRunnable)
+                    } else {
+                        lastUnlocks = null
+                    }
+
+                }
+            }
+        }
 
         var effectiveCount = 0
-        for (count in labelViews.indices) {
-            labelViews[count]?.setOnTouchListener(this)
-
-            val os = sequence.get(count)
-
-            //            views on the same line
-            for (j in os.indices) {
-//                i is the object gave to the constructor
-                val i = (os[j] as Label).ordinal
-                //                v is the adjusted index (2.0, 2.1, 2.2, ...)
-                val v: Float = count.toFloat() + (j.toFloat() * 0.1f)
-
-                labelIndexes[i] = v
-            }
-
-            if (count >= sequence.getMinKey() && count <= sequence.getMaxKey() && os.size > 0) {
-                labelViews[count]?.setTypeface(Tuils.getTypeface(context))
-
-                val ec = effectiveCount++
-
-                //                -1 = left     0 = center     1 = right
-                val p = statusLineAlignments[ec]
-                if (p >= 0) labelViews[count]?.setGravity(if (p == 0) Gravity.CENTER_HORIZONTAL else Gravity.RIGHT)
-
-                if (count.toFloat() != labelIndexes[Label.notes.ordinal]) {
-                    labelViews[count]?.setVerticalScrollBarEnabled(false)
-                }
-
-                Companion.applyBgRect(
-                    labelViews[count]!!,
-                    bgRectColors[count]!!.toString(),
-                    bgColors[count].toString(),
-                    margins[0]!!,
-                    strokeWidth,
-                    cornerRadius
-                )
-                Companion.applyShadow(
-                    labelViews[count]!!,
-                    outlineColors[count]!!.toString(),
-                    shadowXOffset,
-                    shadowYOffset,
-                    shadowRadius
-                )
-            } else {
-                lViewsParent.removeView(labelViews[count])
-                labelViews[count] = null
-            }
-        }
-
-        if (labelShow[Label.ram.ordinal]) {
-            ramRunnable = RamRunnable(this, handler)
-            activityManager = context.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
-            handler.post(ramRunnable)
-        }
-
-        if (labelShow[Label.storage.ordinal]) {
-            storageRunnable = StorageRunnable(this, handler)
-            handler.post(storageRunnable)
-        }
-
-        if (labelShow[Label.device.ordinal]) {
-            val USERNAME = Pattern.compile("%u", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-            val DV = Pattern.compile("%d", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-
-            var deviceFormat = XMLPrefsManager.get(Behavior.device_format)
-
-            val username = XMLPrefsManager.get(Ui.username)
-            var deviceName = XMLPrefsManager.get(Ui.deviceName)
-            if (deviceName == null || deviceName.length == 0) {
-                deviceName = Build.DEVICE
-            }
-
-            deviceFormat = USERNAME.matcher(deviceFormat)
-                .replaceAll(Matcher.quoteReplacement(if (username != null) username else "null"))
-            deviceFormat = DV.matcher(deviceFormat).replaceAll(Matcher.quoteReplacement(deviceName))
-            deviceFormat = Tuils.patternNewline.matcher(deviceFormat)
-                .replaceAll(Matcher.quoteReplacement(Tuils.NEWLINE))
-
-            updateText(
-                Label.device, Tuils.span(
-                    mContext, deviceFormat, XMLPrefsManager.getColor(
-                        Theme.device_color
-                    ), labelSizes[Label.device.ordinal]
-                )
-            )
-        }
-
-        if (labelShow[Label.time.ordinal]) {
-            var timeRunnable = TimeRunnable(this, handler)
-            handler.post(timeRunnable)
-        }
-
-        if (labelShow[Label.battery.ordinal]) {
-            batteryUpdate = BatteryUpdate()
-
-            mediumPercentage = XMLPrefsManager.getInt(Behavior.battery_medium)
-            lowPercentage = XMLPrefsManager.getInt(Behavior.battery_low)
-
-            Tuils.registerBatteryReceiver(context, batteryUpdate)
-        } else {
-            batteryUpdate = null
-        }
-
-        if (labelShow[Label.network.ordinal]) {
-            networkRunnable = NetworkRunnable(this, handler)
-            handler.post(networkRunnable)
-        }
-
-        val notesView = getLabelView(Label.notes)
-        notesManager = NotesManager(context, notesView)
-        if (labelShow[Label.notes.ordinal]) {
-            notesRunnable = NotesRunnable()
-            handler.post(notesRunnable)
-
-            notesView?.setMovementMethod(LinkMovementMethod())
-
-            notesMaxLines = XMLPrefsManager.getInt(Ui.notes_max_lines)
-            if (notesMaxLines > 0) {
-                notesView?.setMaxLines(notesMaxLines)
-                notesView?.setEllipsize(TextUtils.TruncateAt.MARQUEE)
-
-                //                notesView.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
-//                notesView.setVerticalScrollBarEnabled(true);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB && XMLPrefsManager.getBoolean(
-                        Ui.show_scroll_notes_message
-                    )
-                ) {
-                    notesView?.getViewTreeObserver()
-                        ?.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
-                            var linesBefore: Int = Int.Companion.MIN_VALUE
-
-                            override fun onGlobalLayout() {
-                                if (notesView.getLineCount() > notesMaxLines && linesBefore <= notesMaxLines) {
-                                    Tuils.sendOutput(Color.RED, context, R.string.note_max_reached)
-                                }
-
-                                linesBefore = notesView.getLineCount()
-                            }
-                        })
-                }
-            }
-        }
-
-        if (labelShow[Label.weather.ordinal]) {
-            weatherRunnable = WeatherRunnable()
-
-            weatherColor = XMLPrefsManager.getColor(Theme.weather_color)
-
-            val where = XMLPrefsManager.get(Behavior.weather_location)
-            if (where.contains(",") || Tuils.isNumber(where)) handler.post(weatherRunnable)
-
-            showWeatherUpdate = XMLPrefsManager.getBoolean(Behavior.show_weather_updates)
-        }
-
-        if (labelShow[Label.unlock.ordinal]) {
-            unlockTimes = preferences.getInt(UNLOCK_KEY, 0)
-
-            unlockColor = XMLPrefsManager.getColor(Theme.unlock_counter_color)
-            unlockFormat = XMLPrefsManager.get(Behavior.unlock_counter_format) as String?
-            notAvailableText = XMLPrefsManager.get(Behavior.not_available_text) as String?
-            unlockTimeDivider = XMLPrefsManager.get(Behavior.unlock_time_divider) as String?
-            unlockTimeDivider =
-                Tuils.patternNewline.matcher(unlockTimeDivider).replaceAll(Tuils.NEWLINE) as String?
-
-            val start = XMLPrefsManager.get(Behavior.unlock_counter_cycle_start)
-            val p = Pattern.compile("(\\d{1,2}).(\\d{1,2})")
-            var m = p.matcher(start)
-            if (!m.find()) {
-                m = p.matcher(Behavior.unlock_counter_cycle_start.defaultValue())
-                m.find()
-            }
-
-            unlockHour = m.group(1).toInt()
-            unlockMinute = m.group(2).toInt()
-
-            unlockTimeOrder = XMLPrefsManager.getInt(Behavior.unlock_time_order)
-
-            nextUnlockCycleRestart = preferences.getLong(NEXT_UNLOCK_CYCLE_RESTART, 0)
-
-            //            Tuils.log("set", nextUnlockCycleRestart);
-            m = timePattern.matcher(unlockFormat)
-            if (m.find()) {
-                var s = m.group(3)
-                if (s == null || s.length == 0) s = "1"
-
-                lastUnlocks = LongArray(s.toInt())
-
-                lastUnlocks?.let {
-                    for (c in it.indices) {
-                        lastUnlocks!![c] = -1
-                    }
-                }
-
-                registerLockReceiver()
-                handler.post(unlockTimeRunnable)
-            } else {
-                lastUnlocks = null
-            }
-        }
 
         val inputBottom = XMLPrefsManager.getBoolean(Ui.input_bottom)
         val layoutId = if (inputBottom) R.layout.input_down_layout else R.layout.input_up_layout
@@ -1460,7 +1291,7 @@ class UIManager(
         }
 
         var s: CharSequence? =
-            Tuils.span(mContext, cp, unlockColor, labelSizes[Label.unlock.ordinal])
+            Tuils.span(cp, unlockColor)
 
         val timeMatcher = timePattern.matcher(cp)
         if (timeMatcher.find()) {
