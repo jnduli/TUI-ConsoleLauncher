@@ -1,6 +1,7 @@
 package ohi.andre.consolelauncher
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
 import android.content.IntentFilter
@@ -8,9 +9,11 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Color
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.provider.Settings
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v4.content.LocalBroadcastManager
@@ -68,6 +71,12 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
     private var canApplyTheme = false
     private var backButtonEnabled = false
 
+    // Permissions we need to request
+    private val REQUIRED_STORAGE_PERMISSIONS = arrayOf(
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+    )
+
     private var categories: MutableSet<ReloadMessageCategory>? = null
     private val stopActivity = Runnable {
         dispose()
@@ -86,11 +95,11 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
     private val `in`: Inputable = object : Inputable {
         override fun `in`(s: String?) {
-            if (ui != null) ui!!.setInput(s)
+            if (ui != null) ui!!.setInput(s as java.lang.String?)
         }
 
         override fun changeHint(s: String?) {
-            runOnUiThread(Runnable { ui!!.setHint(s) })
+            runOnUiThread(Runnable { ui!!.setHint(s as java.lang.String?) })
         }
 
         override fun resetHint() {
@@ -185,35 +194,8 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         if (isFinishing()) {
             return
         }
-
         Log.i(TAG, "onCreate: ")
-
-        val permissions_to_ask = arrayOf<String>(
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            Manifest.permission.READ_EXTERNAL_STORAGE,  // Manifest.permission.ACCESS_SHORTCUT,
-        )
-        Log.i(TAG, "checking for permissions: " + permissions_to_ask.contentToString())
-
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            var hasAllpermissions = true
-            for (permission in permissions_to_ask) {
-                if (ContextCompat.checkSelfPermission(
-                        this,
-                        permission
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    hasAllpermissions = false
-                }
-            }
-
-            Log.i(TAG, "Has all permissions: " + hasAllpermissions)
-
-            if (!hasAllpermissions) {
-                Log.i(TAG, "Is asking for permission")
-                ActivityCompat.requestPermissions(this, permissions_to_ask, STARTING_PERMISSION)
-            }
-        }
+        checkAndRequestStoragePermissions()
         finishOnCreate()
     }
 
@@ -455,7 +437,6 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
     override fun onDestroy() {
         super.onDestroy()
-
         dispose()
     }
 
@@ -541,9 +522,10 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         }
     }
 
+    /**
     override fun onRequestPermissionsResult(
         requestCode: Int,
-        permissions: Array<String>?,
+        permissions: Array<String>,
         grantResults: IntArray
     ) {
         if (permissions!!.size > 0 && permissions[0] == Manifest.permission.READ_CONTACTS && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -553,58 +535,159 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
         try {
             when (requestCode) {
-                COMMAND_REQUEST_PERMISSION -> if (grantResults.size > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    val info = main!!.getMainPack()
-                    main!!.onCommand(info.lastCommand, null as String?, false)
-                } else {
-                    ui!!.setOutput(
-                        getString(R.string.output_nopermissions),
-                        TerminalManager.CATEGORY_OUTPUT
-                    )
-                    main!!.sendPermissionNotGrantedWarning()
-                }
 
-                STARTING_PERMISSION -> {
-                    val count = 0
-                    while (count < permissions.size && count < grantResults.size) {
-                        if (grantResults[count] == PackageManager.PERMISSION_DENIED) {
-                            Toast.makeText(this, R.string.permissions_toast, Toast.LENGTH_LONG)
-                                .show()
-                            object : Thread() {
-                                override fun run() {
-                                    super.run()
-
-                                    try {
-                                        sleep(2000)
-                                    } catch (e: InterruptedException) {
-                                    }
-
-                                    runOnUiThread(stopActivity)
-                                }
-                            }.start()
-                            return
-                        }
-                        count++
-                    }
-                    canApplyTheme = false
-                    finishOnCreate()
-                }
-
-                COMMAND_SUGGESTION_REQUEST_PERMISSION -> if (grantResults.size == 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                    ui!!.setOutput(
-                        getString(R.string.output_nopermissions),
-                        TerminalManager.CATEGORY_OUTPUT
-                    )
-                }
-
-                LOCATION_REQUEST_PERMISSION -> {
-                    val i = Intent(TuiLocationManager.ACTION_GOT_PERMISSION)
-                    i.putExtra(XMLPrefsManager.VALUE_ATTRIBUTE, grantResults[0])
-                    LocalBroadcastManager.getInstance(this.getApplicationContext()).sendBroadcast(i)
-                }
             }
         } catch (e: Exception) {
         }
+    }
+    */
+
+    private fun checkAndRequestStoragePermissions() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            // Permissions are granted at install time for API < 23
+            Log.d(TAG, "Running on API < 23. Permissions granted at install time.")
+            return
+        }
+        val allPermissionsGranted = REQUIRED_STORAGE_PERMISSIONS.all {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
+        if (allPermissionsGranted) {
+            Log.d(TAG, "Running on API >= 23. Permissions already granted.")
+        } else {
+            Log.d(TAG, "Running on API >= 23. Requesting permissions.")
+            ActivityCompat.requestPermissions(
+                this,
+                REQUIRED_STORAGE_PERMISSIONS,
+                STORAGE_PERMISSION
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+            // All requested permissions have been granted
+            val message = "Permissions ${permissions.contentToString()} granted by user."
+            Log.d(TAG, message)
+            onPermissionGranted(requestCode)
+        } else {
+            // At least one permission was denied
+            val message = "Permissions ${permissions.contentToString()} denied by user."
+            Log.d(TAG, message)
+            handlePermissionDenied(requestCode)
+        }
+    }
+
+    private fun onPermissionGranted(requestCode: Int) {
+        when (requestCode) {
+            LOCATION_REQUEST_PERMISSION -> {
+                val i = Intent(TuiLocationManager.ACTION_GOT_PERMISSION)
+                i.putExtra(XMLPrefsManager.VALUE_ATTRIBUTE, PackageManager.PERMISSION_GRANTED)
+                LocalBroadcastManager.getInstance(this.getApplicationContext()).sendBroadcast(i)
+            }
+            STORAGE_PERMISSION -> {
+                Log.d(TAG, "Storage permission granted, nothing more to do")
+            }
+            COMMAND_REQUEST_PERMISSION -> {
+                val info = main!!.getMainPack()
+                main!!.onCommand(info.lastCommand, null as String?, false)
+
+            }
+            COMMAND_SUGGESTION_REQUEST_PERMISSION -> {
+                ui!!.setOutput(
+                    getString(R.string.output_nopermissions),
+                    TerminalManager.CATEGORY_OUTPUT
+                )
+            }
+        }
+    }
+
+    private fun handlePermissionDenied(requestCode: Int) {
+        when (requestCode) {
+            STORAGE_PERMISSION -> {
+                // Check if the user has permanently denied the permission (i.e., checked "Don't ask again")
+                // shouldShowRequestPermissionRationale returns false if the user has permanently denied or it's the first time asking
+                if (ActivityCompat.shouldShowRequestPermissionRationale(
+                        this,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    )
+                ) {
+                    val permission_rationale = "This app needs storage permission to save and load files. Please grant it."
+                    showPermissionRationaleDialog(permission_rationale, REQUIRED_STORAGE_PERMISSIONS, STORAGE_PERMISSION)
+                } else {
+                    val msg = "Storage permission was permanently denied. You need to go to app settings to grant it manually for this feature to work."
+                    val limited_fn_msg = "Storage permission denied. Functionality limited."
+                    showSettingsDialog(msg, limited_fn_msg)
+                }
+            }
+            LOCATION_REQUEST_PERMISSION -> {
+                // TODO: jnduli
+                if (ActivityCompat.shouldShowRequestPermissionRationale(
+                        this,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    )
+                ) {
+                    val permission_rationale = "This app needs location permission to display location info in the UI. Please grant it."
+                    showPermissionRationaleDialog(permission_rationale, REQUIRED_STORAGE_PERMISSIONS, STORAGE_PERMISSION)
+                } else {
+                    val msg = "Location permission was permanently denied. You need to go to app settings to grant it manually for this feature to work."
+                    val limited_fn_msg = "Location permission denied. Functionality limited."
+                    showSettingsDialog(msg, limited_fn_msg)
+                }
+
+            }
+            COMMAND_REQUEST_PERMISSION -> {
+                ui!!.setOutput(
+                    getString(R.string.output_nopermissions),
+                    TerminalManager.CATEGORY_OUTPUT
+                )
+                main!!.sendPermissionNotGrantedWarning()
+            }
+        }
+    }
+
+    private fun showPermissionRationaleDialog(permission_rationale: String, permissions: Array<out String>, requestCode: Int) {
+        AlertDialog.Builder(this)
+            .setTitle("Permission Needed")
+            .setMessage(permission_rationale)
+            .setPositiveButton("Grant") { dialog, _ ->
+                dialog.dismiss()
+                // Request permissions again
+                ActivityCompat.requestPermissions(
+                    this,
+                    permissions,
+                    requestCode,
+                )
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+                Toast.makeText(this, "Storage permission denied. Functionality limited.", Toast.LENGTH_LONG).show()
+            }
+            .create()
+            .show()
+    }
+
+    private fun showSettingsDialog(rationale_msg: String, limited_fn_msg: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Permission Permanently Denied")
+            .setMessage(rationale_msg)
+            .setPositiveButton("Go to Settings") { dialog, _ ->
+                dialog.dismiss()
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                val uri = Uri.fromParts("package", packageName, null)
+                intent.data = uri
+                startActivity(intent)
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+                Toast.makeText(this, limited_fn_msg, Toast.LENGTH_LONG).show()
+            }
+            .create()
+            .show()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -628,7 +711,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         private const val TAG = "LauncherActivity"
 
         const val COMMAND_REQUEST_PERMISSION: Int = 10
-        const val STARTING_PERMISSION: Int = 11
+        const val STORAGE_PERMISSION: Int = 11
         const val COMMAND_SUGGESTION_REQUEST_PERMISSION: Int = 12
         const val LOCATION_REQUEST_PERMISSION: Int = 13
 
