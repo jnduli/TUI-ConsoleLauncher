@@ -427,46 +427,6 @@ public class Tuils {
         return new Intent(Intent.ACTION_VIEW, Uri.parse(url));
     }
 
-    public static double getAvailableInternalMemorySize(int unit) {
-        return getAvailableSpace(Environment.getDataDirectory(), unit);
-    }
-
-    public static double getTotalInternalMemorySize(int unit) {
-        return getTotaleSpace(Environment.getDataDirectory(), unit);
-    }
-
-    public static double getAvailableExternalMemorySize(int unit) {
-        try {
-            return getAvailableSpace(XMLPrefsManager.get(File.class, Behavior.external_storage_path), unit);
-        } catch (Exception e) {
-            return -1;
-        }
-    }
-
-    public static double getTotalExternalMemorySize(int unit) {
-        try {
-            return getTotaleSpace(XMLPrefsManager.get(File.class, Behavior.external_storage_path), unit);
-        } catch (Exception e) {
-            return -1;
-        }
-    }
-
-    public static double getAvailableSpace(File dir, int unit) {
-        if(dir == null) return -1;
-
-        StatFs statFs = new StatFs(dir.getAbsolutePath());
-        long blocks = statFs.getAvailableBlocks();
-        return formatSize(blocks * statFs.getBlockSize(), unit);
-    }
-
-    public static double getTotaleSpace(File dir, int unit) {
-        if(dir == null) return -1;
-
-        StatFs statFs = new StatFs(dir.getAbsolutePath());
-        long blocks = statFs.getBlockCount();
-        return formatSize(blocks * statFs.getBlockSize(), unit);
-    }
-
     public static double percentage(double part, double total) {
         return round(part * 100 / total, 2);
     }

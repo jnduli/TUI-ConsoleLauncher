@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId "ohi.andre.consolelauncher"
 
-        minSdkVersion 14
+        minSdkVersion 16
         targetSdkVersion 33
         flavorDimensions "default"
 

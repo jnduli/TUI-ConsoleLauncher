@@ -20,8 +20,10 @@ import android.os.Build
 import android.os.Handler
 import android.support.v4.content.LocalBroadcastManager
 import android.support.v4.view.GestureDetectorCompat
+import android.text.SpannableString
 import android.text.TextUtils
 import android.text.method.LinkMovementMethod
+import android.util.Log
 import android.view.GestureDetector
 import android.view.GestureDetector.OnDoubleTapListener
 import android.view.Gravity
@@ -119,7 +121,7 @@ class UIManager(
 
     public lateinit var mContext: Context
 
-    private var handler: Handler?
+    private var handler = Handler()
 
     private var policy: DevicePolicyManager?
     private var component: ComponentName?
@@ -138,14 +140,20 @@ class UIManager(
     var toolbarView: View? = null
 
     //    never access this directly, use getLabelView
+    // TODO: change this to a map to enable easier modification and access
+    val mapLabelViews = loadTextViews(rootView)
+
     private var labelViews: Array<TextView?> = arrayOfNulls<TextView>(Label.entries.size)
 
     private val labelIndexes = FloatArray(labelViews.size)
     private val labelSizes = IntArray(labelViews.size)
     private val labelTexts = arrayOfNulls<CharSequence>(labelViews.size)
+    private val labelShow = BooleanArray(Label.entries.size)
 
-    private fun getLabelView(l: Label): TextView {
-        return labelViews[labelIndexes[l.ordinal].toInt()]!!
+    private fun getLabelView(l: Label): TextView? {
+        // val dataLabel = mapLabelViews.get(l)
+        // return dataLabel?.textView
+        return labelViews[labelIndexes[l.ordinal].toInt()]
     }
 
     private var notesMaxLines = 0
@@ -168,7 +176,7 @@ class UIManager(
                     )
                 }
 
-                handler!!.postDelayed(this, updateTime.toLong())
+                handler.postDelayed(this, updateTime.toLong())
             }
         }
     }
@@ -237,12 +245,14 @@ class UIManager(
 
             var cp: String? = batteryFormat
 
-            val m = optionalCharging!!.matcher(cp)
-            while (m.find()) {
-                cp = cp?.replace(
-                    m.group(0),
-                    if (m.groupCount() == 2) m.group(if (charging) 1 else 2) else Tuils.EMPTYSTRING
-                ) as String?
+            val m = optionalCharging?.matcher(cp)
+            if (m != null) {
+                while (m.find()) {
+                    cp = cp?.replace(
+                        m.group(0),
+                        if (m.groupCount() == 2) m.group(if (charging) 1 else 2) else Tuils.EMPTYSTRING
+                    ) as String?
+                }
             }
 
             cp = value.matcher(cp).replaceAll(percentage.toString()) as String?
@@ -267,337 +277,6 @@ class UIManager(
 
     private var storageRunnable: StorageRunnable? = null
 
-    private inner class StorageRunnable : Runnable {
-        private val INT_AV = "%iav"
-        private val INT_TOT = "%itot"
-        private val EXT_AV = "%eav"
-        private val EXT_TOT = "%etot"
-
-        private var storagePatterns: MutableList<Pattern?>? = null
-        private var storageFormat: String? = null
-
-        var color: Int = 0
-
-        override fun run() {
-            if (storageFormat == null) {
-                storageFormat = XMLPrefsManager.get(Behavior.storage_format) as String?
-                color = XMLPrefsManager.getColor(Theme.storage_color)
-            }
-
-            if (storagePatterns == null) {
-                storagePatterns = ArrayList<Pattern?>()
-
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_AV + "tb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_AV + "gb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_AV + "mb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_AV + "kb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_AV + "b",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_AV + "%",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_TOT + "tb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_TOT + "gb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_TOT + "mb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_TOT + "kb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_TOT + "b",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_AV + "tb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_AV + "gb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_AV + "mb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_AV + "kb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_AV + "b",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_AV + "%",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_TOT + "tb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_TOT + "gb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_TOT + "mb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_TOT + "kb",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_TOT + "b",
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-
-                storagePatterns!!.add(Tuils.patternNewline)
-
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_AV,
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        INT_TOT,
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_AV,
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-                storagePatterns!!.add(
-                    Pattern.compile(
-                        EXT_TOT,
-                        Pattern.CASE_INSENSITIVE or Pattern.LITERAL
-                    )
-                )
-            }
-
-            val iav = Tuils.getAvailableInternalMemorySize(Tuils.BYTE)
-            val itot = Tuils.getTotalInternalMemorySize(Tuils.BYTE)
-            val eav = Tuils.getAvailableExternalMemorySize(Tuils.BYTE)
-            val etot = Tuils.getTotalExternalMemorySize(Tuils.BYTE)
-
-            var copy = storageFormat
-
-            copy = storagePatterns!!.get(0)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(iav.toLong(), Tuils.TERA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(1)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(iav.toLong(), Tuils.GIGA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(2)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(iav.toLong(), Tuils.MEGA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(3)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(iav.toLong(), Tuils.KILO).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(4)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(iav.toLong(), Tuils.BYTE).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(5)!!.matcher(copy)
-                .replaceAll(Matcher.quoteReplacement(Tuils.percentage(iav, itot).toString())) as String?
-
-            copy = storagePatterns!!.get(6)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(itot.toLong(), Tuils.TERA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(7)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(itot.toLong(), Tuils.GIGA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(8)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(itot.toLong(), Tuils.MEGA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(9)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(itot.toLong(), Tuils.KILO).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(10)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(itot.toLong(), Tuils.BYTE).toString()
-                )
-            ) as String?
-
-            copy = storagePatterns!!.get(11)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(eav.toLong(), Tuils.TERA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(12)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(eav.toLong(), Tuils.GIGA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(13)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(eav.toLong(), Tuils.MEGA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(14)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(eav.toLong(), Tuils.KILO).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(15)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(eav.toLong(), Tuils.BYTE).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(16)!!.matcher(copy)
-                .replaceAll(Matcher.quoteReplacement(Tuils.percentage(eav, etot).toString())) as String?
-
-            copy = storagePatterns!!.get(17)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(etot.toLong(), Tuils.TERA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(18)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(etot.toLong(), Tuils.GIGA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(19)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(etot.toLong(), Tuils.MEGA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(20)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(etot.toLong(), Tuils.KILO).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(21)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(etot.toLong(), Tuils.BYTE).toString()
-                )
-            ) as String?
-
-            copy = storagePatterns!!.get(22)!!.matcher(copy)
-                .replaceAll(Matcher.quoteReplacement(Tuils.NEWLINE)) as String?
-
-            copy = storagePatterns!!.get(23)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(iav.toLong(), Tuils.GIGA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(24)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(itot.toLong(), Tuils.GIGA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(25)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(eav.toLong(), Tuils.GIGA).toString()
-                )
-            ) as String?
-            copy = storagePatterns!!.get(26)!!.matcher(copy).replaceAll(
-                Matcher.quoteReplacement(
-                    Tuils.formatSize(etot.toLong(), Tuils.GIGA).toString()
-                )
-            ) as String?
-
-            updateText(
-                Label.storage,
-                Tuils.span(mContext, copy, color, labelSizes[Label.storage.ordinal])
-            )
-
-            handler!!.postDelayed(this, STORAGE_DELAY.toLong())
-        }
-    }
 
 
     public fun getLabelSize(label: Label): Int {
@@ -610,246 +289,6 @@ class UIManager(
 
     private var networkRunnable: NetworkRunnable? = null
 
-    private inner class NetworkRunnable : Runnable {
-        //        %() -> wifi
-        //        %[] -> data
-        //        %{} -> bluetooth
-        val zero: kotlin.String = "0"
-        val one: kotlin.String = "1"
-        val on: kotlin.String = "on"
-        val off: kotlin.String = "off"
-        val ON: kotlin.String = on.uppercase(Locale.getDefault())
-        val OFF: kotlin.String = off.uppercase(Locale.getDefault())
-        val _true: kotlin.String = "true"
-        val _false: kotlin.String = "false"
-        val TRUE: kotlin.String = _true.uppercase(Locale.getDefault())
-        val FALSE: kotlin.String = _false.uppercase(Locale.getDefault())
-
-        val w0: Pattern = Pattern.compile("%w0", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val w1: Pattern = Pattern.compile("%w1", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val w2: Pattern = Pattern.compile("%w2", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val w3: Pattern = Pattern.compile("%w3", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val w4: Pattern = Pattern.compile("%w4", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val wn: Pattern = Pattern.compile("%wn", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val d0: Pattern = Pattern.compile("%d0", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val d1: Pattern = Pattern.compile("%d1", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val d2: Pattern = Pattern.compile("%d2", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val d3: Pattern = Pattern.compile("%d3", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val d4: Pattern = Pattern.compile("%d4", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val b0: Pattern = Pattern.compile("%b0", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val b1: Pattern = Pattern.compile("%b1", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val b2: Pattern = Pattern.compile("%b2", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val b3: Pattern = Pattern.compile("%b3", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val b4: Pattern = Pattern.compile("%b4", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val ip4: Pattern = Pattern.compile("%ip4", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val ip6: Pattern = Pattern.compile("%ip6", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-        val dt: Pattern = Pattern.compile("%dt", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-
-        //        final Pattern optionalWifi = Pattern.compile("%\\(([^/]*)/([^)]*)\\)", Pattern.CASE_INSENSITIVE);
-        //        final Pattern optionalData = Pattern.compile("%\\[([^/]*)/([^\\]]*)\\]", Pattern.CASE_INSENSITIVE);
-        //        final Pattern optionalBluetooth = Pattern.compile("%\\{([^/]*)/([^}]*)\\}", Pattern.CASE_INSENSITIVE);
-        var optionalWifi: Pattern? = null
-        var optionalData: Pattern? = null
-        var optionalBluetooth: Pattern? = null
-
-        var format: String? = null
-        var optionalValueSeparator: String? = null
-        var color: Int = 0
-
-        var wifiManager: WifiManager? = null
-        var mBluetoothAdapter: BluetoothAdapter? = null
-
-        var connectivityManager: ConnectivityManager? = null
-
-        var cmClass: Class<*>? = null
-        var method: Method? = null
-
-        var maxDepth: Int = 0
-        var updateTime: Int = 0
-
-        override fun run() {
-            if (format == null) {
-                format = XMLPrefsManager.get(Behavior.network_info_format) as String?
-                color = XMLPrefsManager.getColor(Theme.network_info_color)
-                maxDepth = XMLPrefsManager.getInt(Behavior.max_optional_depth)
-
-                updateTime = XMLPrefsManager.getInt(Behavior.network_info_update_ms)
-                if (updateTime < 1000) updateTime =
-                    Behavior.network_info_update_ms.defaultValue().toInt()
-
-                connectivityManager =
-                    mContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager?
-                wifiManager = mContext.getApplicationContext()
-                    .getSystemService(Context.WIFI_SERVICE) as WifiManager
-                mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-
-                optionalValueSeparator =
-                    ( "\\" + XMLPrefsManager.get(Behavior.optional_values_separator)) as String?
-
-                val wifiRegex =
-                    "%\\(([^" + optionalValueSeparator + "]*)" + optionalValueSeparator + "([^)]*)\\)"
-                val dataRegex =
-                    "%\\[([^" + optionalValueSeparator + "]*)" + optionalValueSeparator + "([^\\]]*)\\]"
-                val bluetoothRegex =
-                    "%\\{([^$optionalValueSeparator]*)$optionalValueSeparator([^}]*)\\}"
-
-                optionalWifi = Pattern.compile(wifiRegex, Pattern.CASE_INSENSITIVE)
-                optionalBluetooth = Pattern.compile(bluetoothRegex, Pattern.CASE_INSENSITIVE)
-                optionalData = Pattern.compile(dataRegex, Pattern.CASE_INSENSITIVE)
-
-                try {
-                    cmClass = Class.forName(connectivityManager!!.javaClass.getName())
-                    method = cmClass!!.getDeclaredMethod("getMobileDataEnabled")
-                    method!!.setAccessible(true)
-                } catch (e: Exception) {
-                    cmClass = null
-                    method = null
-                }
-            }
-
-            //            wifi
-            val wifiOn =
-                connectivityManager!!.getNetworkInfo(ConnectivityManager.TYPE_WIFI).isConnected()
-            var wifiName: String? = null
-            if (wifiOn) {
-                val connectionInfo = wifiManager!!.getConnectionInfo()
-                if (connectionInfo != null) {
-                    wifiName = connectionInfo.getSSID() as String?
-                }
-            }
-
-            //            mobile data
-            var mobileOn = false
-            try {
-                mobileOn = method != null && connectivityManager != null && (method!!.invoke(
-                    connectivityManager
-                ) as Boolean?)!!
-            } catch (e: Exception) {
-            }
-
-            var mobileType: String? = null
-            if (mobileOn) {
-                mobileType = Tuils.getNetworkType(mContext) as String?
-            } else {
-                mobileType = "unknown" as String?
-            }
-
-            //            bluetooth
-            val bluetoothOn = mBluetoothAdapter != null && mBluetoothAdapter!!.isEnabled()
-
-            var copy = format
-
-            if (maxDepth > 0) {
-                copy = apply(
-                    1,
-                    copy!!,
-                    booleanArrayOf(wifiOn, mobileOn, bluetoothOn),
-                    optionalWifi,
-                    optionalData,
-                    optionalBluetooth
-                )
-                copy = apply(
-                    1,
-                    copy,
-                    booleanArrayOf(mobileOn, wifiOn, bluetoothOn),
-                    optionalData,
-                    optionalWifi,
-                    optionalBluetooth
-                )
-                copy = apply(
-                    1,
-                    copy,
-                    booleanArrayOf(bluetoothOn, wifiOn, mobileOn),
-                    optionalBluetooth,
-                    optionalWifi,
-                    optionalData
-                )
-            }
-
-            copy = w0.matcher(copy).replaceAll(if (wifiOn) one else zero) as String?
-            copy = w1.matcher(copy).replaceAll(if (wifiOn) on else off) as String?
-            copy = w2.matcher(copy).replaceAll(if (wifiOn) ON else OFF) as String?
-            copy = w3.matcher(copy).replaceAll(if (wifiOn) _true else _false) as String?
-            copy = w4.matcher(copy).replaceAll(if (wifiOn) TRUE else FALSE) as String?
-            copy = wn.matcher(copy).replaceAll(
-                if (wifiName != null) wifiName.replace(
-                    "\"".toRegex(),
-                    Tuils.EMPTYSTRING
-                ) else "null"
-            ) as String?
-            copy = d0.matcher(copy).replaceAll(if (mobileOn) one else zero) as String?
-            copy = d1.matcher(copy).replaceAll(if (mobileOn) on else off) as String?
-            copy = d2.matcher(copy).replaceAll(if (mobileOn) ON else OFF) as String?
-            copy = d3.matcher(copy).replaceAll(if (mobileOn) _true else _false) as String?
-            copy = d4.matcher(copy).replaceAll(if (mobileOn) TRUE else FALSE) as String?
-            copy = b0.matcher(copy).replaceAll(if (bluetoothOn) one else zero) as String?
-            copy = b1.matcher(copy).replaceAll(if (bluetoothOn) on else off) as String?
-            copy = b2.matcher(copy).replaceAll(if (bluetoothOn) ON else OFF) as String?
-            copy = b3.matcher(copy).replaceAll(if (bluetoothOn) _true else _false) as String?
-            copy = b4.matcher(copy).replaceAll(if (bluetoothOn) TRUE else FALSE) as String?
-            copy = ip4.matcher(copy).replaceAll(NetworkUtils.getIPAddress(true)) as String?
-            copy = ip6.matcher(copy).replaceAll(NetworkUtils.getIPAddress(false)) as String?
-            copy = dt.matcher(copy).replaceAll(mobileType as kotlin.String) as String?
-            copy = Tuils.patternNewline.matcher(copy).replaceAll(Tuils.NEWLINE) as String?
-
-            updateText(
-                Label.network,
-                Tuils.span(mContext, copy, color, labelSizes[Label.network.ordinal])
-            )
-            handler!!.postDelayed(this, updateTime.toLong())
-        }
-
-        fun apply(depth: Int, s: String, on: BooleanArray, vararg ps: Pattern?): String {
-            var s = s
-            if (ps.size == 0) return s
-
-            val m = ps[0]!!.matcher(s)
-            while (m.find()) {
-                if (m.groupCount() < 2) {
-                    // TODO: jnduli fix
-                    // s = s.replace(m.group(0) as String?, Tuils.EMPTYSTRING)
-                    continue
-                }
-
-                var g1 = m.group(1)
-                var g2 = m.group(2)
-
-                if (depth < maxDepth) {
-                    for (c in 0..<ps.size - 1) {
-                        val subOn = BooleanArray(on.size - 1)
-                        subOn[0] = on[c + 1]
-
-                        val subPs = arrayOfNulls<Pattern>(ps.size - 1)
-                        subPs[0] = ps[c + 1]
-
-                        var j = 1
-                        var k = 1
-                        while (j < subOn.size) {
-                            if (k == c + 1) {
-                                j--
-                                j++
-                                k++
-                                continue
-                            }
-
-                            subOn[j] = on[k]
-                            subPs[j] = ps[k]
-                            j++
-                            k++
-                        }
-
-                        g1 = apply(depth + 1, (g1 as String?)!!, subOn, *subPs) as kotlin.String?
-                        g2 = apply(depth + 1, (g2 as String?)!!, subOn, *subPs) as kotlin.String?
-                    }
-                }
-
-                // TODO: jnduli fix
-                // s = s.replace(m.group(0), if (on[0]) g1 else g2)
-            }
-
-            return s
-        }
-    }
 
     private var weatherDelay = 0
 
@@ -862,6 +301,59 @@ class UIManager(
     private var weatherRunnable: WeatherRunnable? = null
     private var weatherColor = 0
     var showWeatherUpdate: Boolean = false
+
+    data class LabelView(val textView: TextView, val size: Int, val color: Int)
+
+    private fun loadTextViews(rootView: ViewGroup): Map<Label, LabelView?> {
+       return  mapOf(
+            Label.time to LabelView(
+                rootView.findViewById<View?>(R.id.tv0) as TextView,
+                XMLPrefsManager.getInt(Ui.time_size),
+                XMLPrefsManager.getColor(Theme.storage_color)
+            ),
+           Label.ram to LabelView(
+               rootView.findViewById<View?>(R.id.tv1) as TextView,
+               XMLPrefsManager.getInt(Ui.ram_size),
+               XMLPrefsManager.getColor(Theme.ram_color)
+           ),
+           Label.battery to LabelView(
+                   rootView.findViewById<View?>(R.id.tv2) as TextView,
+                   XMLPrefsManager.getInt(Ui.battery_size),
+                    // TODO: needs to be variable and set by the battery method
+                   XMLPrefsManager.getColor(Theme.battery_color_medium)
+           ),
+           Label.storage to LabelView(
+               rootView.findViewById<View?>(R.id.tv3) as TextView,
+               XMLPrefsManager.getInt(Ui.storage_size),
+               XMLPrefsManager.getColor(Theme.storage_color)
+           ),
+           Label.network to LabelView(
+               rootView.findViewById<View?>(R.id.tv4) as TextView,
+               XMLPrefsManager.getInt(Ui.network_size),
+               XMLPrefsManager.getColor(Theme.network_info_color)
+           ),
+           Label.notes to LabelView(
+               rootView.findViewById<View?>(R.id.tv5) as TextView,
+               XMLPrefsManager.getInt(Ui.notes_size),
+               XMLPrefsManager.getColor(Theme.notes_color)
+           ),
+           Label.device to LabelView(
+               rootView.findViewById<View?>(R.id.tv6) as TextView,
+               XMLPrefsManager.getInt(Ui.device_size),
+               XMLPrefsManager.getColor(Theme.device_color)
+           ),
+           Label.weather to LabelView(
+               rootView.findViewById<View?>(R.id.tv7) as TextView,
+               XMLPrefsManager.getInt(Ui.weather_size),
+               XMLPrefsManager.getColor(Theme.weather_color)
+           ),
+           Label.unlock to LabelView(
+               rootView.findViewById<View?>(R.id.tv8) as TextView,
+               XMLPrefsManager.getInt(Ui.unlock_size),
+               XMLPrefsManager.getColor(Theme.unlock_counter_color)
+           ),
+        )
+    }
 
     private inner class WeatherRunnable : Runnable {
         var key: String? = null
@@ -899,10 +391,8 @@ class UIManager(
         override fun run() {
             weatherPerformedStartupRun = true
             if (!fixedLocation) setUrlWithLatLon(lastLatitude, lastLongitude)
-
             send()
-
-            if (handler != null) handler!!.postDelayed(this, weatherDelay.toLong())
+            handler.postDelayed(this, weatherDelay.toLong())
         }
 
         fun send() {
@@ -929,8 +419,21 @@ class UIManager(
         }
     }
 
+    public fun updateText(l: Label, s: CharSequence) {
+        val dataLabel = mapLabelViews.get(l)
+        if (s.length <= 0) {
+            dataLabel?.textView?.setVisibility(View.GONE)
+            return
+        }
+        var color = dataLabel?.color?: Color.RED
+        val coloredSpan = Tuils.span(s, color)
+        dataLabel?.textView?.setVisibility(View.VISIBLE)
+        dataLabel?.textView?.setText(coloredSpan)
+    }
+
     //    you need to use labelIndexes[i]
-    public fun updateText(l: Label, s: CharSequence?) {
+    public fun oldUpdateText(l: Label, s: CharSequence?) {
+        Log.i(TAG, "Calling updateText for label : "  + l.toString() + "; with content"+ s.toString())
         labelTexts[l.ordinal] = s
 
         val base = labelIndexes[l.ordinal].toInt()
@@ -960,6 +463,9 @@ class UIManager(
             labelViews[base]?.setVisibility(View.VISIBLE)
             labelViews[base]?.setText(sequence)
         }
+        Log.i(TAG, "Label indices: " + labelIndexes.contentToString())
+        Log.i(TAG, "Label texts: " + labelTexts.contentToString())
+        Log.i(TAG, "Label show: " + labelShow.contentToString())
     }
 
     private var suggestionsManager: SuggestionsManager? = null
@@ -974,16 +480,13 @@ class UIManager(
     @kotlin.jvm.JvmField
     var pack: MainPack? = null
 
-    private val clearOnLock: Boolean
+    private val clearOnLock = XMLPrefsManager.getBoolean(Behavior.clear_on_lock)
 
     fun dispose() {
-        if (handler != null) {
-            handler!!.removeCallbacksAndMessages(null)
-            handler = null
-        }
+        handler.removeCallbacksAndMessages(null)
+        suggestionsManager?.dispose()
+        notesManager?.dispose(mContext)
 
-        if (suggestionsManager != null) suggestionsManager!!.dispose()
-        if (notesManager != null) notesManager.dispose(mContext)
         LocalBroadcastManager.getInstance(mContext.getApplicationContext())
             .unregisterReceiver(receiver)
         Tuils.unregisterBatteryReceiver(mContext)
@@ -994,13 +497,13 @@ class UIManager(
     }
 
     fun openKeyboard() {
-        mTerminalAdapter!!.requestInputFocus()
-        imm.showSoftInput(mTerminalAdapter!!.getInputView(), InputMethodManager.SHOW_IMPLICIT)
+        mTerminalAdapter?.requestInputFocus()
+        imm.showSoftInput(mTerminalAdapter?.getInputView(), InputMethodManager.SHOW_IMPLICIT)
         //        mTerminalAdapter.scrollToEnd();
     }
 
     fun closeKeyboard() {
-        imm.hideSoftInputFromWindow(mTerminalAdapter!!.getInputWindowToken(), 0)
+        imm.hideSoftInputFromWindow(mTerminalAdapter?.getInputWindowToken(), 0)
     }
 
     fun onStart(openKeyboardOnStart: Boolean) {
@@ -1010,40 +513,40 @@ class UIManager(
     fun setInput(s: String?) {
         if (s == null) return
 
-        mTerminalAdapter!!.setInput(s as kotlin.String?)
-        mTerminalAdapter!!.focusInputEnd()
+        mTerminalAdapter?.setInput(s as kotlin.String?)
+        mTerminalAdapter?.focusInputEnd()
     }
 
     fun setHint(hint: String?) {
-        mTerminalAdapter!!.setHint(hint as kotlin.String?)
+        mTerminalAdapter?.setHint(hint as kotlin.String?)
     }
 
     fun resetHint() {
-        mTerminalAdapter!!.setDefaultHint()
+        mTerminalAdapter?.setDefaultHint()
     }
 
     fun setOutput(s: CharSequence?, category: Int) {
-        mTerminalAdapter!!.setOutput(s, category)
+        mTerminalAdapter?.setOutput(s, category)
     }
 
     fun setOutput(color: Int, output: CharSequence?) {
-        mTerminalAdapter!!.setOutput(color, output)
+        mTerminalAdapter?.setOutput(color, output)
     }
 
     fun disableSuggestions() {
-        if (suggestionsManager != null) suggestionsManager!!.disable()
+        suggestionsManager?.disable()
     }
 
     fun enableSuggestions() {
-        if (suggestionsManager != null) suggestionsManager!!.enable()
+        suggestionsManager?.enable()
     }
 
     fun onBackPressed() {
-        mTerminalAdapter!!.onBackPressed()
+        mTerminalAdapter?.onBackPressed()
     }
 
     fun focusTerminal() {
-        mTerminalAdapter!!.requestInputFocus()
+        mTerminalAdapter?.requestInputFocus()
     }
 
     fun pause() {
@@ -1051,7 +554,7 @@ class UIManager(
     }
 
     override fun onTouch(v: View, event: MotionEvent?): Boolean {
-        gestureDetector!!.onTouchEvent(event)
+        gestureDetector?.onTouchEvent(event)
         return v.onTouchEvent(event)
     }
 
@@ -1059,14 +562,14 @@ class UIManager(
         return object : OnRedirectionListener {
             override fun onRedirectionRequest(cmd: RedirectCommand) {
                 (mContext as Activity).runOnUiThread(Runnable {
-                    mTerminalAdapter!!.setHint(mContext.getString(cmd.getHint()))
+                    mTerminalAdapter?.setHint(mContext.getString(cmd.getHint()))
                     disableSuggestions()
                 })
             }
 
             override fun onRedirectionEnd(cmd: RedirectCommand?) {
                 (mContext as Activity).runOnUiThread(Runnable {
-                    mTerminalAdapter!!.setDefaultHint()
+                    mTerminalAdapter?.setDefaultHint()
                     enableSuggestions()
                 })
             }
@@ -1102,7 +605,7 @@ class UIManager(
 
     private fun onLock() {
         if (clearOnLock) {
-            mTerminalAdapter!!.clear()
+            mTerminalAdapter?.clear()
         }
     }
 
@@ -1194,7 +697,7 @@ class UIManager(
 
             delay = min(delay, UNLOCK_RUNNABLE_DELAY.toLong())
             //            Tuils.log("with delay", delay);
-            handler!!.postDelayed(this, delay)
+            handler.postDelayed(this, delay)
         }
     }
 
@@ -1225,13 +728,13 @@ class UIManager(
                 val action = intent.getAction()
 
                 if (action == ACTION_UPDATE_SUGGESTIONS) {
-                    if (suggestionsManager != null) suggestionsManager!!.requestSuggestion(Tuils.EMPTYSTRING)
+                    suggestionsManager?.requestSuggestion(Tuils.EMPTYSTRING)
                 } else if (action == ACTION_UPDATE_HINT) {
-                    mTerminalAdapter!!.setDefaultHint()
+                    mTerminalAdapter?.setDefaultHint()
                 } else if (action == ACTION_ROOT) {
-                    mTerminalAdapter!!.onRoot()
+                    mTerminalAdapter?.onRoot()
                 } else if (action == ACTION_NOROOT) {
-                    mTerminalAdapter!!.onStandard()
+                    mTerminalAdapter?.onStandard()
                     //                } else if(action.equals(ACTION_CLEAR_SUGGESTIONS)) {
 //                    if(suggestionsManager != null) suggestionsManager.clear();
                 } else if (action == ACTION_LOGTOFILE) {
@@ -1245,15 +748,15 @@ class UIManager(
                         file.createNewFile()
 
                         val fos = FileOutputStream(file)
-                        fos.write(mTerminalAdapter!!.getTerminalText().toByteArray())
+                        fos.write(mTerminalAdapter?.getTerminalText()?.toByteArray())
 
                         Tuils.sendOutput(context, "Logged to " + file.getAbsolutePath())
                     } catch (e: Exception) {
                         Tuils.sendOutput(Color.RED, context, e.toString())
                     }
                 } else if (action == ACTION_CLEAR) {
-                    mTerminalAdapter!!.clear()
-                    if (suggestionsManager != null) suggestionsManager!!.requestSuggestion(Tuils.EMPTYSTRING)
+                    mTerminalAdapter?.clear()
+                    suggestionsManager?.requestSuggestion(Tuils.EMPTYSTRING)
                 } else if (action == ACTION_WEATHER) {
                     val c = Calendar.getInstance()
 
@@ -1279,7 +782,7 @@ class UIManager(
 //                    } else handler.post(weatherRunnable);
 
                     if (intent.getBooleanExtra(TuiLocationManager.FAIL, false)) {
-                        handler!!.removeCallbacks(weatherRunnable)
+                        handler.removeCallbacks(weatherRunnable)
                         weatherRunnable = null
 
                         val s: CharSequence = Tuils.span(
@@ -1301,8 +804,8 @@ class UIManager(
                                 false
                             )
                         ) {
-                            handler!!.removeCallbacks(weatherRunnable)
-                            handler!!.post(weatherRunnable)
+                            handler.removeCallbacks(weatherRunnable)
+                            handler.post(weatherRunnable)
                         }
                     }
                 } else if (action == ACTION_WEATHER_DELAY) {
@@ -1317,11 +820,11 @@ class UIManager(
                         Tuils.sendOutput(context, message, TerminalManager.CATEGORY_OUTPUT)
                     }
 
-                    handler!!.removeCallbacks(weatherRunnable)
-                    handler!!.postDelayed(weatherRunnable, (1000 * 60).toLong())
+                    handler.removeCallbacks(weatherRunnable)
+                    handler.postDelayed(weatherRunnable, (1000 * 60).toLong())
                 } else if (action == ACTION_WEATHER_MANUAL_UPDATE) {
-                    handler!!.removeCallbacks(weatherRunnable)
-                    handler!!.post(weatherRunnable)
+                    handler.removeCallbacks(weatherRunnable)
+                    handler.post(weatherRunnable)
                 }
             }
         }
@@ -1336,7 +839,6 @@ class UIManager(
 
         preferences = mContext.getSharedPreferences(PREFS_NAME, 0)
 
-        handler = Handler()
 
         imm = mContext.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
@@ -1355,12 +857,11 @@ class UIManager(
                         200
                     )
                 ) { // if more than 200 dp, it's probably a keyboard...
-                    if (mTerminalAdapter != null) mTerminalAdapter!!.scrollToEnd()
+                    mTerminalAdapter?.scrollToEnd()
                 }
             })
         }
 
-        clearOnLock = XMLPrefsManager.getBoolean(Behavior.clear_on_lock)
 
         lockOnDbTap = XMLPrefsManager.getBoolean(Behavior.double_tap_lock)
         doubleTapCmd = XMLPrefsManager.get(Behavior.double_tap_cmd) as String?
@@ -1402,7 +903,7 @@ class UIManager(
                     }
                 })
 
-            gestureDetector!!.setOnDoubleTapListener(object : OnDoubleTapListener {
+            gestureDetector?.setOnDoubleTapListener(object : OnDoubleTapListener {
                 override fun onSingleTapConfirmed(e: MotionEvent?): Boolean {
                     return false
                 }
@@ -1413,23 +914,25 @@ class UIManager(
 
                 override fun onDoubleTap(e: MotionEvent?): Boolean {
                     if (doubleTapCmd != null && doubleTapCmd!!.length > 0) {
-                        val input = mTerminalAdapter!!.getInput()
-                        mTerminalAdapter!!.setInput(doubleTapCmd as kotlin.String?)
-                        mTerminalAdapter!!.simulateEnter()
-                        mTerminalAdapter!!.setInput(input)
+                        val input = mTerminalAdapter?.getInput()
+                        mTerminalAdapter?.setInput(doubleTapCmd as kotlin.String?)
+                        mTerminalAdapter?.simulateEnter()
+                        mTerminalAdapter?.setInput(input)
                     }
 
                     if (lockOnDbTap) {
-                        val admin = policy!!.isAdminActive(component!!)
+                        val admin = policy?.isAdminActive(component!!)
 
-                        if (!admin) {
-                            val i = Tuils.requestAdmin(
-                                component,
-                                mContext.getString(R.string.admin_permission)
-                            )
-                            mContext.startActivity(i)
-                        } else {
-                            policy!!.lockNow()
+                        admin?.let {
+                            if (!it) {
+                                val i = Tuils.requestAdmin(
+                                    component,
+                                    mContext.getString(R.string.admin_permission)
+                                )
+                                mContext.startActivity(i)
+                            } else {
+                                policy!!.lockNow()
+                            }
                         }
                     }
 
@@ -1470,36 +973,35 @@ class UIManager(
             (rootView.findViewById<View?>(R.id.tv8) as TextView?)!!,
         ) as Array<TextView?>
 
-        val show = BooleanArray(Label.entries.size)
-        show[Label.notes.ordinal] = XMLPrefsManager.getBoolean(Ui.show_notes)
-        show[Label.ram.ordinal] = XMLPrefsManager.getBoolean(Ui.show_ram)
-        show[Label.device.ordinal] = XMLPrefsManager.getBoolean(Ui.show_device_name)
-        show[Label.time.ordinal] = XMLPrefsManager.getBoolean(Ui.show_time)
-        show[Label.battery.ordinal] = XMLPrefsManager.getBoolean(Ui.show_battery)
-        show[Label.network.ordinal] = XMLPrefsManager.getBoolean(Ui.show_network_info)
-        show[Label.storage.ordinal] = XMLPrefsManager.getBoolean(Ui.show_storage_info)
-        show[Label.weather.ordinal] = XMLPrefsManager.getBoolean(Ui.show_weather)
-        show[Label.unlock.ordinal] = XMLPrefsManager.getBoolean(Ui.show_unlock_counter)
+        labelShow[Label.notes.ordinal] = XMLPrefsManager.getBoolean(Ui.show_notes)
+        labelShow[Label.ram.ordinal] = XMLPrefsManager.getBoolean(Ui.show_ram)
+        labelShow[Label.device.ordinal] = XMLPrefsManager.getBoolean(Ui.show_device_name)
+        labelShow[Label.time.ordinal] = XMLPrefsManager.getBoolean(Ui.show_time)
+        labelShow[Label.battery.ordinal] = XMLPrefsManager.getBoolean(Ui.show_battery)
+        labelShow[Label.network.ordinal] = XMLPrefsManager.getBoolean(Ui.show_network_info)
+        labelShow[Label.storage.ordinal] = XMLPrefsManager.getBoolean(Ui.show_storage_info)
+        labelShow[Label.weather.ordinal] = XMLPrefsManager.getBoolean(Ui.show_weather)
+        labelShow[Label.unlock.ordinal] = XMLPrefsManager.getBoolean(Ui.show_unlock_counter)
 
         val indexes = FloatArray(Label.entries.size)
         indexes[Label.notes.ordinal] =
-            if (show[Label.notes.ordinal]) XMLPrefsManager.getFloat(Ui.notes_index) else Int.Companion.MAX_VALUE.toFloat()
+            if (labelShow[Label.notes.ordinal]) XMLPrefsManager.getFloat(Ui.notes_index) else Int.Companion.MAX_VALUE.toFloat()
         indexes[Label.ram.ordinal] =
-            if (show[Label.ram.ordinal]) XMLPrefsManager.getFloat(Ui.ram_index) else Int.Companion.MAX_VALUE.toFloat()
+            if (labelShow[Label.ram.ordinal]) XMLPrefsManager.getFloat(Ui.ram_index) else Int.Companion.MAX_VALUE.toFloat()
         indexes[Label.device.ordinal] =
-            if (show[Label.device.ordinal]) XMLPrefsManager.getFloat(Ui.device_index) else Int.Companion.MAX_VALUE.toFloat()
+            if (labelShow[Label.device.ordinal]) XMLPrefsManager.getFloat(Ui.device_index) else Int.Companion.MAX_VALUE.toFloat()
         indexes[Label.time.ordinal] =
-            if (show[Label.time.ordinal]) XMLPrefsManager.getFloat(Ui.time_index) else Int.Companion.MAX_VALUE.toFloat()
+            if (labelShow[Label.time.ordinal]) XMLPrefsManager.getFloat(Ui.time_index) else Int.Companion.MAX_VALUE.toFloat()
         indexes[Label.battery.ordinal] =
-            if (show[Label.battery.ordinal]) XMLPrefsManager.getFloat(Ui.battery_index) else Int.Companion.MAX_VALUE.toFloat()
+            if (labelShow[Label.battery.ordinal]) XMLPrefsManager.getFloat(Ui.battery_index) else Int.Companion.MAX_VALUE.toFloat()
         indexes[Label.network.ordinal] =
-            if (show[Label.network.ordinal]) XMLPrefsManager.getFloat(Ui.network_index) else Int.Companion.MAX_VALUE.toFloat()
+            if (labelShow[Label.network.ordinal]) XMLPrefsManager.getFloat(Ui.network_index) else Int.Companion.MAX_VALUE.toFloat()
         indexes[Label.storage.ordinal] =
-            if (show[Label.storage.ordinal]) XMLPrefsManager.getFloat(Ui.storage_index) else Int.Companion.MAX_VALUE.toFloat()
+            if (labelShow[Label.storage.ordinal]) XMLPrefsManager.getFloat(Ui.storage_index) else Int.Companion.MAX_VALUE.toFloat()
         indexes[Label.weather.ordinal] =
-            if (show[Label.weather.ordinal]) XMLPrefsManager.getFloat(Ui.weather_index) else Int.Companion.MAX_VALUE.toFloat()
+            if (labelShow[Label.weather.ordinal]) XMLPrefsManager.getFloat(Ui.weather_index) else Int.Companion.MAX_VALUE.toFloat()
         indexes[Label.unlock.ordinal] =
-            if (show[Label.unlock.ordinal]) XMLPrefsManager.getFloat(Ui.unlock_index) else Int.Companion.MAX_VALUE.toFloat()
+            if (labelShow[Label.unlock.ordinal]) XMLPrefsManager.getFloat(Ui.unlock_index) else Int.Companion.MAX_VALUE.toFloat()
 
         val statusLineAlignments: IntArray =
             getListOfIntValues(XMLPrefsManager.get(Ui.status_lines_alignment), 9, -1)
@@ -1641,18 +1143,18 @@ class UIManager(
             }
         }
 
-        if (show[Label.ram.ordinal]) {
-            ramRunnable = RamRunnable(this, handler!!)
+        if (labelShow[Label.ram.ordinal]) {
+            ramRunnable = RamRunnable(this, handler)
             activityManager = context.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
-            handler!!.post(ramRunnable)
+            handler.post(ramRunnable)
         }
 
-        if (show[Label.storage.ordinal]) {
-            storageRunnable = StorageRunnable()
-            handler!!.post(storageRunnable)
+        if (labelShow[Label.storage.ordinal]) {
+            storageRunnable = StorageRunnable(this, handler)
+            handler.post(storageRunnable)
         }
 
-        if (show[Label.device.ordinal]) {
+        if (labelShow[Label.device.ordinal]) {
             val USERNAME = Pattern.compile("%u", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
             val DV = Pattern.compile("%d", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
 
@@ -1679,12 +1181,12 @@ class UIManager(
             )
         }
 
-        if (show[Label.time.ordinal] && handler != null) {
-            var timeRunnable = TimeRunnable(this, handler!!)
-            handler!!.post(timeRunnable)
+        if (labelShow[Label.time.ordinal]) {
+            var timeRunnable = TimeRunnable(this, handler)
+            handler.post(timeRunnable)
         }
 
-        if (show[Label.battery.ordinal]) {
+        if (labelShow[Label.battery.ordinal]) {
             batteryUpdate = BatteryUpdate()
 
             mediumPercentage = XMLPrefsManager.getInt(Behavior.battery_medium)
@@ -1695,23 +1197,23 @@ class UIManager(
             batteryUpdate = null
         }
 
-        if (show[Label.network.ordinal]) {
-            networkRunnable = NetworkRunnable()
-            handler!!.post(networkRunnable)
+        if (labelShow[Label.network.ordinal]) {
+            networkRunnable = NetworkRunnable(this, handler)
+            handler.post(networkRunnable)
         }
 
         val notesView = getLabelView(Label.notes)
         notesManager = NotesManager(context, notesView)
-        if (show[Label.notes.ordinal]) {
+        if (labelShow[Label.notes.ordinal]) {
             notesRunnable = NotesRunnable()
-            handler!!.post(notesRunnable)
+            handler.post(notesRunnable)
 
-            notesView.setMovementMethod(LinkMovementMethod())
+            notesView?.setMovementMethod(LinkMovementMethod())
 
             notesMaxLines = XMLPrefsManager.getInt(Ui.notes_max_lines)
             if (notesMaxLines > 0) {
-                notesView.setMaxLines(notesMaxLines)
-                notesView.setEllipsize(TextUtils.TruncateAt.MARQUEE)
+                notesView?.setMaxLines(notesMaxLines)
+                notesView?.setEllipsize(TextUtils.TruncateAt.MARQUEE)
 
                 //                notesView.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
 //                notesView.setVerticalScrollBarEnabled(true);
@@ -1719,8 +1221,8 @@ class UIManager(
                         Ui.show_scroll_notes_message
                     )
                 ) {
-                    notesView.getViewTreeObserver()
-                        .addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
+                    notesView?.getViewTreeObserver()
+                        ?.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
                             var linesBefore: Int = Int.Companion.MIN_VALUE
 
                             override fun onGlobalLayout() {
@@ -1735,18 +1237,18 @@ class UIManager(
             }
         }
 
-        if (show[Label.weather.ordinal]) {
+        if (labelShow[Label.weather.ordinal]) {
             weatherRunnable = WeatherRunnable()
 
             weatherColor = XMLPrefsManager.getColor(Theme.weather_color)
 
             val where = XMLPrefsManager.get(Behavior.weather_location)
-            if (where.contains(",") || Tuils.isNumber(where)) handler!!.post(weatherRunnable)
+            if (where.contains(",") || Tuils.isNumber(where)) handler.post(weatherRunnable)
 
             showWeatherUpdate = XMLPrefsManager.getBoolean(Behavior.show_weather_updates)
         }
 
-        if (show[Label.unlock.ordinal]) {
+        if (labelShow[Label.unlock.ordinal]) {
             unlockTimes = preferences.getInt(UNLOCK_KEY, 0)
 
             unlockColor = XMLPrefsManager.getColor(Theme.unlock_counter_color)
@@ -1786,7 +1288,7 @@ class UIManager(
                 }
 
                 registerLockReceiver()
-                handler!!.post(unlockTimeRunnable)
+                handler.post(unlockTimeRunnable)
             } else {
                 lastUnlocks = null
             }
@@ -2013,11 +1515,15 @@ class UIManager(
                 arrayOf<CharSequence?>(cs)
             )
         }
+        if (s != null) {
+            updateText(Label.unlock, s)
+        }
 
-        updateText(Label.unlock, s)
     }
 
     companion object {
+
+        private const val TAG = "UIManager"
         @kotlin.jvm.JvmField
         var ACTION_UPDATE_SUGGESTIONS: kotlin.String =
             BuildConfig.APPLICATION_ID + ".ui_update_suggestions"
