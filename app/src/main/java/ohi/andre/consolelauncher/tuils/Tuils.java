@@ -108,6 +108,8 @@ import ohi.andre.consolelauncher.tuils.stuff.FakeLauncherActivity;
 
 public class Tuils {
 
+    public static final String TAG = "Tuils";
+
     public static final String SPACE = " ";
     public static final String DOUBLE_SPACE = "  ";
     public static final String NEWLINE = "\n";
@@ -1122,9 +1124,10 @@ public class Tuils {
 
     public static boolean hasInternetAccess() {
         try {
-            HttpURLConnection urlc = (HttpURLConnection) (new URL("http://clients3.google.com/generate_204").openConnection());
+            HttpURLConnection urlc = (HttpURLConnection) (new URL("https://clients3.google.com/generate_204").openConnection());
             return (urlc.getResponseCode() == 204 && urlc.getContentLength() == 0);
         } catch (IOException e) {
+            Log.e(TAG, e.toString());
             return false;
         }
     }

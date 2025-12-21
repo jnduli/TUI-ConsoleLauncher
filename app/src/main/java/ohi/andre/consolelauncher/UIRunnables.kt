@@ -1,9 +1,11 @@
 package ohi.andre.consolelauncher
 
 import android.Manifest
+import android.app.Activity
 import android.app.ActivityManager
 import android.bluetooth.BluetoothAdapter
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.wifi.WifiManager
@@ -12,9 +14,12 @@ import android.os.Environment
 import android.os.Handler
 import android.os.StatFs
 import android.support.v4.app.ActivityCompat
+import android.support.v4.content.LocalBroadcastManager
 import android.telephony.TelephonyManager
 import ohi.andre.consolelauncher.UIManager.Label
+import ohi.andre.consolelauncher.managers.HTMLExtractManager
 import ohi.andre.consolelauncher.managers.TimeManager
+import ohi.andre.consolelauncher.managers.TuiLocationManager
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Theme
@@ -91,7 +96,7 @@ object ByteFormatter {
 class RamRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.ram, rerunDelayMillis = 3000) {
 
     override fun text(): CharSequence {
-        val activityManager = uiManager.activityManager
+        val activityManager = uiManager.mContext.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
         val memory = ActivityManager.MemoryInfo()
         activityManager?.getMemoryInfo(memory)
         val available = memory.availMem
@@ -192,5 +197,43 @@ class NetworkRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiMana
         //            bluetooth
         // val bluetoothOn = mBluetoothAdapter != null && mBluetoothAdapter?.isEnabled() == true
 
+    }
+}
+
+class WeatherRunnables(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.weather, rerunDelayMillis = 60 * 1000) {
+    val key = XMLPrefsManager.get(Behavior.weather_key)
+    var isActive = true
+    var weather_details: CharSequence = ""
+
+    init {
+        val location = TuiLocationManager.instance(uiManager.mContext)
+        location.add(UIManager.ACTION_WEATHER_GOT_LOCATION)
+    }
+
+    public fun disable() {
+        isActive = false
+    }
+
+    public fun set_weather(weather: CharSequence) {
+        weather_details = weather
+    }
+
+    fun send(url: CharSequence) {
+        val intent = Intent(HTMLExtractManager.ACTION_WEATHER)
+        intent.putExtra(XMLPrefsManager.VALUE_ATTRIBUTE, url )
+        intent.putExtra(HTMLExtractManager.BROADCAST_COUNT, HTMLExtractManager.broadcastCount)
+        LocalBroadcastManager.getInstance(uiManager.mContext.applicationContext).sendBroadcast(intent)
+    }
+
+    fun getWeatherUrl(latitude: Double, longitude: Double): String {
+        return "https://api.openweathermap.org/data/2.5/weather?" + "lat=" + latitude + "&lon=" + longitude + "&appid=" + key + "&units=" + XMLPrefsManager.get( Behavior.weather_temperature_measure )
+    }
+
+    override fun text(): CharSequence {
+        val url = getWeatherUrl(uiManager.lastLatitude, uiManager.lastLongitude)
+        if (isActive == true) {
+            send(url)
+        }
+        return weather_details
     }
 }

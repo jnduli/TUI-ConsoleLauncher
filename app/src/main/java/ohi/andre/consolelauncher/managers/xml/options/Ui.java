@@ -719,7 +719,7 @@ public enum Ui implements XMLPrefsSave {
     show_weather {
         @Override
         public String defaultValue() {
-            return "false";
+            return "true";
         }
 
         @Override

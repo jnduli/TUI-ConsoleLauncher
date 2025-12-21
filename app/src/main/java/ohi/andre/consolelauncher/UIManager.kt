@@ -270,26 +270,18 @@ class UIManager(
         }
     }
 
-    private var storageRunnable: StorageRunnable? = null
 
 
-    public var activityManager: ActivityManager? = null
-
-    private var ramRunnable: RamRunnable? = null
-
-    private var networkRunnable: NetworkRunnable? = null
+    public var lastLatitude = 0.0
+    public var lastLongitude = 0.0
+    public var lastWeather = "unavailable"
 
 
-    private var weatherDelay = 0
-
-    private var lastLatitude = 0.0
-    private var lastLongitude = 0.0
     private var location: String? = null
     private var fixedLocation = false
 
     private var weatherPerformedStartupRun = false
-    private var weatherRunnable: WeatherRunnable? = null
-    private var weatherColor = 0
+    private var weatherRunnable: WeatherRunnables? = null
     var showWeatherUpdate: Boolean = false
 
     data class LabelView(val textView: TextView, val size: Int, val color: Int, val show: Boolean)
@@ -343,7 +335,9 @@ class UIManager(
                rootView.findViewById<View?>(R.id.tv7) as TextView,
                XMLPrefsManager.getInt(Ui.weather_size),
                XMLPrefsManager.getColor(Theme.weather_color),
-               XMLPrefsManager.getBoolean(Ui.show_weather),
+               true,
+                 // TODO: jnduli figure out why this is False
+                // XMLPrefsManager.getBoolean(Ui.show_weather),
            ),
            Label.unlock to LabelView(
                rootView.findViewById<View?>(R.id.tv8) as TextView,
@@ -354,69 +348,7 @@ class UIManager(
         )
     }
 
-    private inner class WeatherRunnable : Runnable {
-        var key: String? = null
-        var url: String? = null
 
-        init {
-            if (XMLPrefsManager.wasChanged(Behavior.weather_key, false)) {
-                weatherDelay = XMLPrefsManager.getInt(Behavior.weather_update_time)
-                key = XMLPrefsManager.get(Behavior.weather_key) as String?
-            } else {
-                key = Behavior.weather_key.defaultValue() as String?
-                weatherDelay = 60 * 60
-            }
-            weatherDelay *= 1000
-
-            var where: String? = XMLPrefsManager.get(Behavior.weather_location) as String?
-            if (where == null || where.length == 0 || (!Tuils.isNumber(where as kotlin.String?) && !where.contains(","))) {
-                val l = TuiLocationManager.instance(mContext)
-                l.add(ACTION_WEATHER_GOT_LOCATION)
-            } else {
-                fixedLocation = true
-
-                if (where.contains(",")) {
-                    val split: Array<kotlin.String> =
-                        where.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-                    where = ("lat=" + split[0] + "&lon=" + split[1]) as String?
-                } else {
-                    where = ("id=" + where) as String?
-                }
-
-                setUrlWithWhere(where)
-            }
-        }
-
-        override fun run() {
-            weatherPerformedStartupRun = true
-            if (!fixedLocation) setUrlWithLatLon(lastLatitude, lastLongitude)
-            send()
-            handler.postDelayed(this, weatherDelay.toLong())
-        }
-
-        fun send() {
-            if (url == null) return
-
-            val i = Intent(HTMLExtractManager.ACTION_WEATHER)
-            i.putExtra(XMLPrefsManager.VALUE_ATTRIBUTE, url as CharSequence?)
-            i.putExtra(HTMLExtractManager.BROADCAST_COUNT, HTMLExtractManager.broadcastCount)
-            LocalBroadcastManager.getInstance(mContext.getApplicationContext()).sendBroadcast(i)
-        }
-
-        fun setUrlWithWhere(where: String?) {
-            url = (
-                "http://api.openweathermap.org/data/2.5/weather?" + where + "&appid=" + key + "&units=" + XMLPrefsManager.get(
-                    Behavior.weather_temperature_measure
-                )) as String?
-        }
-
-        fun setUrlWithLatLon(latitude: Double, longitude: Double) {
-            url = (
-                "http://api.openweathermap.org/data/2.5/weather?" + "lat=" + latitude + "&lon=" + longitude + "&appid=" + key + "&units=" + XMLPrefsManager.get(
-                    Behavior.weather_temperature_measure
-                )) as String?
-        }
-    }
 
     public fun updateText(l: Label, s: CharSequence) {
         val dataLabel = mapLabelViews.get(l)
@@ -708,12 +640,11 @@ class UIManager(
 
                     try {
                         file.createNewFile()
-
                         val fos = FileOutputStream(file)
                         fos.write(mTerminalAdapter?.getTerminalText()?.toByteArray())
-
                         Tuils.sendOutput(context, "Logged to " + file.getAbsolutePath())
                     } catch (e: Exception) {
+                        Log.e(TAG, e.toString())
                         Tuils.sendOutput(Color.RED, context, e.toString())
                     }
                 } else if (action == ACTION_CLEAR) {
@@ -725,14 +656,13 @@ class UIManager(
                     var s = intent.getCharSequenceExtra(XMLPrefsManager.VALUE_ATTRIBUTE)
                     if (s == null) s = intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE)
                     if (s == null) return
-                    s = Tuils.span(s, weatherColor)
-                    updateText(Label.weather, s)
+                    weatherRunnable?.set_weather(s)
 
                     if (showWeatherUpdate) {
                         val message =
                             context.getString(R.string.weather_updated) + Tuils.SPACE + c.get(
                                 Calendar.HOUR_OF_DAY
-                            ) + "." + c.get(Calendar.MINUTE) + Tuils.SPACE + "(" + lastLatitude + ", " + lastLongitude + ")"
+                            ) + "." + c.get(Calendar.MINUTE) + Tuils.SPACE + "(" + lastLatitude + ", " + lastLongitude + ")" + " to: " + s
                         Tuils.sendOutput(context, message, TerminalManager.CATEGORY_OUTPUT)
                     }
                 } else if (action == ACTION_WEATHER_GOT_LOCATION) {
@@ -742,19 +672,11 @@ class UIManager(
 //                    } else handler.post(weatherRunnable);
 
                     if (intent.getBooleanExtra(TuiLocationManager.FAIL, false)) {
-                        handler.removeCallbacks(weatherRunnable)
-                        weatherRunnable = null
-
-                        val s: CharSequence = Tuils.span(
-                            context.getString(R.string.location_error),
-                            weatherColor,
-                        )
-
-                        updateText(Label.weather, s)
+                        weatherRunnable?.disable()
+                        weatherRunnable?.set_weather(context.getString(R.string.location_error))
                     } else {
                         lastLatitude = intent.getDoubleExtra(TuiLocationManager.LATITUDE, 0.0)
                         lastLongitude = intent.getDoubleExtra(TuiLocationManager.LONGITUDE, 0.0)
-
                         location = Tuils.locationName(context, lastLatitude, lastLongitude) as String?
 
                         if (!weatherPerformedStartupRun || XMLPrefsManager.wasChanged(
@@ -1022,8 +944,7 @@ class UIManager(
 
             when (label) {
                 Label.ram -> {
-                    ramRunnable = RamRunnable(this, handler)
-                    activityManager = context.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
+                    val ramRunnable = RamRunnable(this, handler)
                     handler.post(ramRunnable)
                 }
                 Label.device -> {
@@ -1039,18 +960,16 @@ class UIManager(
                 }
                 Label.battery -> {
                     batteryUpdate = BatteryUpdate()
-
                     mediumPercentage = XMLPrefsManager.getInt(Behavior.battery_medium)
                     lowPercentage = XMLPrefsManager.getInt(Behavior.battery_low)
-
                     Tuils.registerBatteryReceiver(context, batteryUpdate)
                 }
                 Label.storage -> {
-                    storageRunnable = StorageRunnable(this, handler)
+                    val storageRunnable = StorageRunnable(this, handler)
                     handler.post(storageRunnable)
                 }
                 Label.network -> {
-                    networkRunnable = NetworkRunnable(this, handler)
+                    val networkRunnable = NetworkRunnable(this, handler)
                     handler.post(networkRunnable)
                 }
                 Label.notes -> {
@@ -1078,10 +997,10 @@ class UIManager(
 
                 }
                 Label.weather -> {
-                    weatherRunnable = WeatherRunnable()
-                    weatherColor = XMLPrefsManager.getColor(Theme.weather_color)
-                    val where = XMLPrefsManager.get(Behavior.weather_location)
-                    if (where.contains(",") || Tuils.isNumber(where)) handler.post(weatherRunnable)
+                    weatherRunnable = WeatherRunnables(this, handler)
+                    weatherRunnable?.set_weather(lastWeather)
+                    handler.post(weatherRunnable)
+                    // TODO: move showWeatherUpdate functionality to the weatherRunnable
                     showWeatherUpdate = XMLPrefsManager.getBoolean(Behavior.show_weather_updates)
                 }
                 Label.unlock -> {
@@ -1395,6 +1314,7 @@ class UIManager(
                 try {
                     `is`[c] = split[c]?.toInt()!!
                 } catch (e: Exception) {
+                    Log.e(TAG, e.toString())
                     `is`[c] = defaultValue
                 }
                 c++
@@ -1452,8 +1372,8 @@ class UIManager(
                 d.setColor(Color.parseColor(bgColor))
                 v.setBackgroundDrawable(d)
             } catch (e: Exception) {
+                Log.e(TAG, e.toString())
                 Tuils.toFile(v.getContext(), e)
-                Tuils.log(e)
             }
         }
 
