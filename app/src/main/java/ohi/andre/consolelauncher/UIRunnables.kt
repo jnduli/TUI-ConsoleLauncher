@@ -31,6 +31,11 @@ import java.text.DecimalFormat
 import java.util.Locale
 import java.util.regex.Pattern
 
+const val TIME_RUNNABLE_DELAY_MS: Long = 1 * 1000 // 1 second
+const val RAM_RUNNABLE_DELAY_MS: Long = 5 * 1000 // 5 seconds
+const val STORAGE_RUNNABLE_DELAY_MS: Long =  60 * 1000 // 1 minute
+const val NETWORK_RUNNABLE_DELAY_MS: Long = 10 * 1000 // 10 seconds
+const val WEATHER_RUNNABLE_DELAY_MS: Long =  120 * 1000 // 1 minute
 
 abstract class UIRunnable(val uiManager: UIManager, val handler: Handler, val label: UIManager.Label, val rerunDelayMillis: Long) : Runnable{
 
@@ -42,7 +47,7 @@ abstract class UIRunnable(val uiManager: UIManager, val handler: Handler, val la
     }
 }
 
-class TimeRunnable(uiManager: UIManager, handler: Handler) : UIRunnable(uiManager, handler, label=Label.time, rerunDelayMillis = 1000) {
+class TimeRunnable(uiManager: UIManager, handler: Handler) : UIRunnable(uiManager, handler, label=Label.time, rerunDelayMillis = TIME_RUNNABLE_DELAY_MS) {
 
     override fun text(): CharSequence {
         return TimeManager.instance.getCharSequence(
@@ -93,7 +98,7 @@ object ByteFormatter {
 }
 
 
-class RamRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.ram, rerunDelayMillis = 3000) {
+class RamRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.ram, rerunDelayMillis = RAM_RUNNABLE_DELAY_MS) {
 
     override fun text(): CharSequence {
         val activityManager = uiManager.mContext.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
@@ -105,7 +110,7 @@ class RamRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiManager,
     }
 }
 
-class StorageRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.storage, rerunDelayMillis = 60 * 1000) {
+class StorageRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.storage, rerunDelayMillis = STORAGE_RUNNABLE_DELAY_MS) {
     override fun text(): CharSequence {
         val internalStorageSize = getSpaceInBytes(Environment.getDataDirectory())
         // TODO(jnduli): handle externalStorageSize
@@ -126,7 +131,7 @@ class StorageRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiMana
     }
 }
 
-class NetworkRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.network, rerunDelayMillis = 1000) {
+class NetworkRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.network, rerunDelayMillis = NETWORK_RUNNABLE_DELAY_MS) {
     val connectivityManager: ConnectivityManager = uiManager.mContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     val wifiManager: WifiManager = uiManager.mContext.getApplicationContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
     val mBluetoothAdapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
@@ -200,7 +205,7 @@ class NetworkRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiMana
     }
 }
 
-class WeatherRunnables(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.weather, rerunDelayMillis = 60 * 1000) {
+class WeatherRunnables(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.weather, rerunDelayMillis = WEATHER_RUNNABLE_DELAY_MS) {
     val key = XMLPrefsManager.get(Behavior.weather_key)
     var isActive = true
     var weather_details: CharSequence = ""
