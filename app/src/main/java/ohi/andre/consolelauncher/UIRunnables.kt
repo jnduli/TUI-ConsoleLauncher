@@ -16,6 +16,7 @@ import android.os.StatFs
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.LocalBroadcastManager
 import android.telephony.TelephonyManager
+import android.util.Log
 import ohi.andre.consolelauncher.UIManager.Label
 import ohi.andre.consolelauncher.managers.HTMLExtractManager
 import ohi.andre.consolelauncher.managers.TimeManager
@@ -36,6 +37,7 @@ const val RAM_RUNNABLE_DELAY_MS: Long = 5 * 1000 // 5 seconds
 const val STORAGE_RUNNABLE_DELAY_MS: Long =  60 * 1000 // 1 minute
 const val NETWORK_RUNNABLE_DELAY_MS: Long = 10 * 1000 // 10 seconds
 const val WEATHER_RUNNABLE_DELAY_MS: Long =  120 * 1000 // 1 minute
+const val TAG = "UIRunnables"
 
 abstract class UIRunnable(val uiManager: UIManager, val handler: Handler, val label: UIManager.Label, val rerunDelayMillis: Long) : Runnable{
 
@@ -136,6 +138,11 @@ class NetworkRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiMana
     val wifiManager: WifiManager = uiManager.mContext.getApplicationContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
     val mBluetoothAdapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
     val telephonyManager: TelephonyManager = uiManager.mContext.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+    init {
+        ActivityCompat.requestPermissions(
+            uiManager.mContext as Activity, LauncherActivity.REQUIRED_CONNECTIVITY_PERMISSIONS,
+            LauncherActivity.CONNECTIVITY_PERMISSION)
+    }
 
     override fun text(): CharSequence {
         // return "%(WiFi - %wn/%[Mobile Data: %d3/No Internet access])";
@@ -149,7 +156,19 @@ class NetworkRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiMana
     }
 
     fun mobile(): CharSequence {
-        return "N/A"
+        try {
+            val networkType = telephonyManager.networkType
+            when (networkType) {
+                TelephonyManager.NETWORK_TYPE_GPRS, TelephonyManager.NETWORK_TYPE_EDGE, TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT, TelephonyManager.NETWORK_TYPE_IDEN -> return "2g"
+                TelephonyManager.NETWORK_TYPE_UMTS, TelephonyManager.NETWORK_TYPE_EVDO_0, TelephonyManager.NETWORK_TYPE_EVDO_A, TelephonyManager.NETWORK_TYPE_HSDPA, TelephonyManager.NETWORK_TYPE_HSUPA, TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_EVDO_B, TelephonyManager.NETWORK_TYPE_EHRPD, TelephonyManager.NETWORK_TYPE_HSPAP -> return "3g"
+                TelephonyManager.NETWORK_TYPE_LTE -> return "4g"
+                else -> return "n/a"
+            }
+        } catch(e: SecurityException) {
+            Log.e(TAG, e.toString())
+        }
+        return "n/a"
+
         // I want: true/No Internet Access
         /**
         val mTelephonyManager =
@@ -168,40 +187,15 @@ class NetworkRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiMana
             // for ActivityCompat#requestPermissions for more details.
             return "unknown"
         }
-        val networkType = 0
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            checkNotNull(mTelephonyManager)
-            networkType = mTelephonyManager.getDataNetworkType()
-        }
-        when (networkType) {
-            TelephonyManager.NETWORK_TYPE_GPRS, TelephonyManager.NETWORK_TYPE_EDGE, TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT, TelephonyManager.NETWORK_TYPE_IDEN -> return "2g"
-            TelephonyManager.NETWORK_TYPE_UMTS, TelephonyManager.NETWORK_TYPE_EVDO_0, TelephonyManager.NETWORK_TYPE_EVDO_A, TelephonyManager.NETWORK_TYPE_HSDPA, TelephonyManager.NETWORK_TYPE_HSUPA, TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_EVDO_B, TelephonyManager.NETWORK_TYPE_EHRPD, TelephonyManager.NETWORK_TYPE_HSPAP -> return "3g"
-            TelephonyManager.NETWORK_TYPE_LTE -> return "4g"
-            else -> return "unknown"
-        }
-        var mobileOn = false
-        try {
-            if (method != null && connectivityManager != null ) {
-                mobileOn = method!!.invoke(connectivityManager) as Boolean
-            }
-        } catch (e: Exception) {
-        }
-
-        var mobileType: java.lang.String? = null
-        if (mobileOn) {
-            mobileType = Tuils.getNetworkType(mContext) as java.lang.String?
-        } else {
-            mobileType = "unknown" as java.lang.String?
-        }
         */
 
     }
 
     fun bluetooth(): CharSequence {
-        return "N/A"
-        //            bluetooth
-        // val bluetoothOn = mBluetoothAdapter != null && mBluetoothAdapter?.isEnabled() == true
-
+        if (mBluetoothAdapter.isEnabled == true) {
+            return "on"
+        }
+        return "off"
     }
 }
 

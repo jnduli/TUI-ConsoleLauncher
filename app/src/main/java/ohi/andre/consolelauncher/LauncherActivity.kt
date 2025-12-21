@@ -1,6 +1,7 @@
 package ohi.andre.consolelauncher
 
 import android.Manifest
+import android.app.ActivityManager
 import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
@@ -76,6 +77,8 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         Manifest.permission.READ_EXTERNAL_STORAGE,
         Manifest.permission.WRITE_EXTERNAL_STORAGE,
     )
+
+
 
     private var categories: MutableSet<ReloadMessageCategory>? = null
     private val stopActivity = Runnable {
@@ -563,6 +566,24 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         }
     }
 
+    public fun checkAndRequestConnectivityPermissions() {
+        val allPermissionsGranted = REQUIRED_CONNECTIVITY_PERMISSIONS.all {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
+        if (allPermissionsGranted) {
+            Log.d(TAG, "All connectivity permissions granted.")
+        } else {
+            Log.d(TAG, "Requesting permissions.")
+            ActivityCompat.requestPermissions(
+                this,
+                REQUIRED_CONNECTIVITY_PERMISSIONS,
+                CONNECTIVITY_PERMISSION
+            )
+        }
+
+
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -592,10 +613,12 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
             STORAGE_PERMISSION -> {
                 Log.d(TAG, "Storage permission granted, nothing more to do")
             }
+            CONNECTIVITY_PERMISSION -> {
+                Log.d(TAG, "Connectivity permissions granted, nothing more to do")
+            }
             COMMAND_REQUEST_PERMISSION -> {
                 val info = main!!.getMainPack()
                 main!!.onCommand(info.lastCommand, null as String?, false)
-
             }
             COMMAND_SUGGESTION_REQUEST_PERMISSION -> {
                 ui!!.setOutput(
@@ -626,6 +649,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
             }
             LOCATION_REQUEST_PERMISSION -> {
                 // TODO: jnduli
+
                 if (ActivityCompat.shouldShowRequestPermissionRationale(
                         this,
                         Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -638,7 +662,20 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
                     val limited_fn_msg = "Location permission denied. Functionality limited."
                     showSettingsDialog(msg, limited_fn_msg)
                 }
+            }
+            CONNECTIVITY_PERMISSION -> {
 
+                val should_show_rationale = REQUIRED_CONNECTIVITY_PERMISSIONS.any {
+                    ActivityCompat.shouldShowRequestPermissionRationale(this, it)
+                }
+                if (should_show_rationale == true) {
+                    val permission_rationale = "This app needs connectivity permission to display this info in the UI. Please grant it."
+                    showPermissionRationaleDialog(permission_rationale, REQUIRED_CONNECTIVITY_PERMISSIONS, CONNECTIVITY_PERMISSION)
+                } else {
+                    val msg = "Connectivity  permission was permanently denied. You need to go to app settings to grant it manually for this feature to work."
+                    val limited_fn_msg = "Connectivity permission denied. Functionality limited."
+                    showSettingsDialog(msg, limited_fn_msg)
+                }
             }
             COMMAND_REQUEST_PERMISSION -> {
                 ui!!.setOutput(
@@ -714,7 +751,14 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         const val STORAGE_PERMISSION: Int = 11
         const val COMMAND_SUGGESTION_REQUEST_PERMISSION: Int = 12
         const val LOCATION_REQUEST_PERMISSION: Int = 13
+        const val CONNECTIVITY_PERMISSION: Int = 14
 
         const val TUIXT_REQUEST: Int = 10
+
+        val REQUIRED_CONNECTIVITY_PERMISSIONS = arrayOf(
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.ACCESS_WIFI_STATE,
+        )
+
     }
 }
