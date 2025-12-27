@@ -18,6 +18,7 @@ import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.Process;
+import android.util.Log;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -398,7 +399,10 @@ public class AppsManager implements XMLPrefsElement {
                     query.setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST | LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC);
                     query.setPackage(li.componentName.getPackageName());
                     li.setShortcuts(launcherApps.getShortcuts(query, Process.myUserHandle()));
-                } catch (Throwable e) {
+                } catch (SecurityException e) {
+                    Log.e("RANDOM", e.toString());
+                }
+                catch (Throwable e) {
 //                    t-ui is not the default launcher
                     Tuils.log(e);
                 }

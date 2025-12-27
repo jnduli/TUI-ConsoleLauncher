@@ -1,10 +1,8 @@
 package ohi.andre.consolelauncher
 
 import android.app.Activity
-import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.app.admin.DevicePolicyManager
-import android.bluetooth.BluetoothAdapter
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -13,20 +11,14 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
-import android.net.ConnectivityManager
-import android.net.wifi.WifiManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
-import android.support.v4.content.LocalBroadcastManager
-import android.support.v4.view.GestureDetectorCompat
-import android.text.SpannableString
 import android.text.TextUtils
 import android.text.method.LinkMovementMethod
 import android.util.Log
 import android.view.GestureDetector
 import android.view.GestureDetector.OnDoubleTapListener
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -42,9 +34,16 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
+import androidx.core.view.GestureDetectorCompat
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import ohi.andre.consolelauncher.commands.main.MainPack
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
-import ohi.andre.consolelauncher.managers.HTMLExtractManager
 import ohi.andre.consolelauncher.managers.NotesManager
 import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.TimeManager
@@ -57,8 +56,6 @@ import ohi.andre.consolelauncher.managers.xml.options.Suggestions
 import ohi.andre.consolelauncher.managers.xml.options.Theme
 import ohi.andre.consolelauncher.managers.xml.options.Toolbar
 import ohi.andre.consolelauncher.managers.xml.options.Ui
-import ohi.andre.consolelauncher.tuils.AllowEqualsSequence
-import ohi.andre.consolelauncher.tuils.NetworkUtils
 import ohi.andre.consolelauncher.tuils.OutlineTextView
 import ohi.andre.consolelauncher.tuils.Tuils
 import ohi.andre.consolelauncher.tuils.interfaces.CommandExecuter
@@ -69,39 +66,46 @@ import ohi.andre.consolelauncher.tuils.stuff.PolicyReceiver
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.String
-import java.lang.reflect.Method
 import java.util.Calendar
-import java.util.Collections
-import java.util.Locale
-import java.util.regex.Matcher
 import java.util.regex.Pattern
 import kotlin.Array
 import kotlin.Boolean
-import kotlin.BooleanArray
 import kotlin.CharSequence
-import kotlin.Double
 import kotlin.Exception
 import kotlin.Float
-import kotlin.FloatArray
 import kotlin.Int
 import kotlin.IntArray
 import kotlin.Long
 import kotlin.LongArray
 import kotlin.arrayOf
 import kotlin.arrayOfNulls
-import kotlin.booleanArrayOf
-import kotlin.collections.ArrayList
-import kotlin.collections.MutableList
 import kotlin.math.min
-import kotlin.plus
 import kotlin.toString
+
+
+class TextUpdateManager(private val textView: TextView, private val dataFlow: StateFlow<CharSequence>) : DefaultLifecycleObserver {
+    private var job: Job? = null
+    override fun onStart(owner: LifecycleOwner) {
+        job = owner.lifecycleScope.launch {
+            dataFlow.collect {value ->
+                textView.text = value
+            }
+        }
+        super.onStart(owner)
+    }
+    override fun onStop(owner: LifecycleOwner) {
+        job?.cancel()
+    }
+}
+
+
 
 class UIManager(
     context: Context,
     rootView: ViewGroup,
     mainPack: MainPack?,
     canApplyTheme: Boolean,
-    executer: CommandExecuter?
+    executer: CommandExecuter?,
 ) : OnTouchListener {
     public enum class Label {
         ram,
@@ -114,10 +118,6 @@ class UIManager(
         weather,
         unlock
     }
-
-    private val RAM_DELAY = 3000
-    private val TIME_DELAY = 1000
-    private val STORAGE_DELAY = 60 * 1000
 
     public lateinit var mContext: Context
 
@@ -176,101 +176,6 @@ class UIManager(
         }
     }
 
-    private var batteryUpdate: BatteryUpdate? = null
-
-    private inner class BatteryUpdate : OnBatteryUpdate {
-        //        %(charging:not charging)
-        //        final Pattern optionalCharging = Pattern.compile("%\\(([^\\/]*)\\/([^)]*)\\)", Pattern.CASE_INSENSITIVE);
-        var optionalCharging: Pattern? = null
-        val value: Pattern = Pattern.compile("%v", Pattern.LITERAL or Pattern.CASE_INSENSITIVE)
-
-        var manyStatus: Boolean = false
-        var loaded: Boolean = false
-        var colorHigh: Int = 0
-        var colorMedium: Int = 0
-        var colorLow: Int = 0
-
-        var charging: Boolean = false
-        var last: Float = -1f
-
-        override fun update(p: Float) {
-            var p = p
-            if (batteryFormat == null) {
-                batteryFormat = XMLPrefsManager.get(Behavior.battery_format) as String?
-
-                val intent =
-                    mContext.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-                if (intent == null) charging = false
-                else {
-                    val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1)
-                    charging =
-                        plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB
-                }
-
-                val optionalSeparator =
-                    "\\" + XMLPrefsManager.get(Behavior.optional_values_separator)
-                val optional =
-                    "%\\(([^" + optionalSeparator + "]*)" + optionalSeparator + "([^)]*)\\)"
-                optionalCharging = Pattern.compile(optional, Pattern.CASE_INSENSITIVE)
-            }
-
-            if (p == -1f) p = last
-            last = p
-
-            if (!loaded) {
-                loaded = true
-
-                manyStatus = XMLPrefsManager.getBoolean(Ui.enable_battery_status)
-                colorHigh = XMLPrefsManager.getColor(Theme.battery_color_high)
-                colorMedium = XMLPrefsManager.getColor(Theme.battery_color_medium)
-                colorLow = XMLPrefsManager.getColor(Theme.battery_color_low)
-            }
-
-            val percentage = p.toInt()
-
-            val color: Int
-
-            if (manyStatus) {
-                if (percentage > mediumPercentage) color = colorHigh
-                else if (percentage > lowPercentage) color = colorMedium
-                else color = colorLow
-            } else {
-                color = colorHigh
-            }
-
-            var cp: String? = batteryFormat
-
-            val m = optionalCharging?.matcher(cp)
-            if (m != null) {
-                while (m.find()) {
-                    cp = cp?.replace(
-                        m.group(0),
-                        if (m.groupCount() == 2) m.group(if (charging) 1 else 2) else Tuils.EMPTYSTRING
-                    ) as String?
-                }
-            }
-
-            cp = value.matcher(cp).replaceAll(percentage.toString()) as String?
-            cp = Tuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE) as String?
-
-            this@UIManager.updateText(
-                Label.battery,
-                Tuils.span(cp, color)
-            )
-        }
-
-        override fun onCharging() {
-            charging = true
-            update(-1f)
-        }
-
-        override fun onNotCharging() {
-            charging = false
-            update(-1f)
-        }
-    }
-
-
 
     public var lastLatitude = 0.0
     public var lastLongitude = 0.0
@@ -288,37 +193,6 @@ class UIManager(
 
     private fun loadTextViews(rootView: ViewGroup): Map<Label, LabelView?> {
        return  mapOf(
-            Label.time to LabelView(
-                rootView.findViewById<View?>(R.id.tv0) as TextView,
-                XMLPrefsManager.getInt(Ui.time_size),
-                XMLPrefsManager.getColor(Theme.storage_color),
-                XMLPrefsManager.getBoolean(Ui.show_time),
-            ),
-           Label.ram to LabelView(
-               rootView.findViewById<View?>(R.id.tv1) as TextView,
-               XMLPrefsManager.getInt(Ui.ram_size),
-               XMLPrefsManager.getColor(Theme.ram_color),
-               XMLPrefsManager.getBoolean(Ui.show_ram),
-           ),
-           Label.battery to LabelView(
-                   rootView.findViewById<View?>(R.id.tv2) as TextView,
-                   XMLPrefsManager.getInt(Ui.battery_size),
-                    // TODO: needs to be variable and set by the battery method
-                   XMLPrefsManager.getColor(Theme.battery_color_medium),
-                   XMLPrefsManager.getBoolean(Ui.show_battery),
-           ),
-           Label.storage to LabelView(
-               rootView.findViewById<View?>(R.id.tv3) as TextView,
-               XMLPrefsManager.getInt(Ui.storage_size),
-               XMLPrefsManager.getColor(Theme.storage_color),
-               XMLPrefsManager.getBoolean(Ui.show_storage_info),
-           ),
-           Label.network to LabelView(
-               rootView.findViewById<View?>(R.id.tv4) as TextView,
-               XMLPrefsManager.getInt(Ui.network_size),
-               XMLPrefsManager.getColor(Theme.network_info_color),
-               XMLPrefsManager.getBoolean(Ui.show_network_info),
-           ),
            Label.notes to LabelView(
                rootView.findViewById<View?>(R.id.tv5) as TextView,
                XMLPrefsManager.getInt(Ui.notes_size),
@@ -448,7 +322,9 @@ class UIManager(
     }
 
     override fun onTouch(v: View, event: MotionEvent?): Boolean {
-        gestureDetector?.onTouchEvent(event)
+        if (event != null) {
+            gestureDetector?.onTouchEvent(event)
+        }
         return v.onTouchEvent(event)
     }
 
@@ -679,8 +555,10 @@ class UIManager(
                                 false
                             )
                         ) {
-                            handler.removeCallbacks(weatherRunnable)
-                            handler.post(weatherRunnable)
+                            if (weatherRunnable != null) {
+                                handler.removeCallbacks(weatherRunnable!!)
+                                handler.post(weatherRunnable!!)
+                            }
                         }
                     }
                 } else if (action == ACTION_WEATHER_DELAY) {
@@ -695,11 +573,13 @@ class UIManager(
                         Tuils.sendOutput(context, message, TerminalManager.CATEGORY_OUTPUT)
                     }
 
-                    handler.removeCallbacks(weatherRunnable)
-                    handler.postDelayed(weatherRunnable, (1000 * 60).toLong())
+                    if (weatherRunnable != null) {
+                        handler.removeCallbacks(weatherRunnable!!)
+                        handler.postDelayed(weatherRunnable!!, (1000 * 60).toLong())
+                    }
                 } else if (action == ACTION_WEATHER_MANUAL_UPDATE) {
-                    handler.removeCallbacks(weatherRunnable)
-                    handler.post(weatherRunnable)
+                    handler.removeCallbacks(weatherRunnable!!)
+                    handler.post(weatherRunnable!!)
                 }
             }
         }
@@ -747,47 +627,47 @@ class UIManager(
         } else {
             gestureDetector =
                 GestureDetectorCompat(mContext, object : GestureDetector.OnGestureListener {
-                    override fun onDown(e: MotionEvent?): Boolean {
+                    override fun onDown(p0: MotionEvent): Boolean {
                         return false
                     }
 
-                    override fun onShowPress(e: MotionEvent?) {}
+                    override fun onShowPress(p0: MotionEvent) {}
 
-                    override fun onSingleTapUp(e: MotionEvent?): Boolean {
+                    override fun onSingleTapUp(p0: MotionEvent): Boolean {
                         return false
                     }
 
                     override fun onScroll(
-                        e1: MotionEvent?,
-                        e2: MotionEvent?,
-                        distanceX: Float,
-                        distanceY: Float
+                        p0: MotionEvent,
+                        p1: MotionEvent,
+                        distanceY: Float,
+                        p3: Float
                     ): Boolean {
                         return false
                     }
 
-                    override fun onLongPress(e: MotionEvent?) {}
+                    override fun onLongPress(p0: MotionEvent) {}
 
                     override fun onFling(
-                        e1: MotionEvent?,
-                        e2: MotionEvent?,
-                        velocityX: Float,
-                        velocityY: Float
+                        p0: MotionEvent,
+                        p1: MotionEvent,
+                        velocityY: Float,
+                        p3: Float
                     ): Boolean {
                         return false
                     }
                 })
 
             gestureDetector?.setOnDoubleTapListener(object : OnDoubleTapListener {
-                override fun onSingleTapConfirmed(e: MotionEvent?): Boolean {
+                override fun onSingleTapConfirmed(p0: MotionEvent): Boolean {
                     return false
                 }
 
-                override fun onDoubleTapEvent(e: MotionEvent?): Boolean {
+                override fun onDoubleTapEvent(p0: MotionEvent): Boolean {
                     return true
                 }
 
-                override fun onDoubleTap(e: MotionEvent?): Boolean {
+                override fun onDoubleTap(p0: MotionEvent): Boolean {
                     if (doubleTapCmd != null && doubleTapCmd!!.length > 0) {
                         val input = mTerminalAdapter?.getInput()
                         mTerminalAdapter?.setInput(doubleTapCmd as kotlin.String?)
@@ -938,10 +818,6 @@ class UIManager(
             // if (p >= 0) labelViews[count]?.setGravity(if (p == 0) Gravity.CENTER_HORIZONTAL else Gravity.RIGHT)
 
             when (label) {
-                Label.ram -> {
-                    val ramRunnable = RamRunnable(this, handler)
-                    handler.post(ramRunnable)
-                }
                 Label.device -> {
                     val username = XMLPrefsManager.get(Ui.username)
                     var deviceName = XMLPrefsManager.get(Ui.deviceName)?: Build.DEVICE
@@ -949,24 +825,8 @@ class UIManager(
                     val span = Tuils.span(content, XMLPrefsManager.getColor(Theme.device_color))
                     updateText(label, span)
                 }
-                Label.time -> {
-                    var timeRunnable = TimeRunnable(this, handler)
-                    handler.post(timeRunnable)
-                }
-                Label.battery -> {
-                    batteryUpdate = BatteryUpdate()
-                    mediumPercentage = XMLPrefsManager.getInt(Behavior.battery_medium)
-                    lowPercentage = XMLPrefsManager.getInt(Behavior.battery_low)
-                    Tuils.registerBatteryReceiver(context, batteryUpdate)
-                }
-                Label.storage -> {
-                    val storageRunnable = StorageRunnable(this, handler)
-                    handler.post(storageRunnable)
-                }
-                Label.network -> {
-                    val networkRunnable = NetworkRunnable(this, handler)
-                    handler.post(networkRunnable)
-                }
+                Label.battery -> TODO()
+                Label.network -> TODO()
                 Label.notes -> {
                     notesManager = NotesManager(context, tv)
                     val notesRunnable = NotesRunnable()
@@ -994,7 +854,9 @@ class UIManager(
                 Label.weather -> {
                     weatherRunnable = WeatherRunnables(this, handler)
                     weatherRunnable?.set_weather(lastWeather)
-                    handler.post(weatherRunnable)
+                    if (weatherRunnable != null) {
+                        handler.post(weatherRunnable!!)
+                    }
                     // TODO: move showWeatherUpdate functionality to the weatherRunnable
                     showWeatherUpdate = XMLPrefsManager.getBoolean(Behavior.show_weather_updates)
                 }
@@ -1034,6 +896,9 @@ class UIManager(
                     }
 
                 }
+                Label.ram -> TODO()
+                Label.time -> TODO()
+                Label.storage -> TODO()
             }
         }
 
@@ -1070,7 +935,7 @@ class UIManager(
         val prefixView = inputOutputView.findViewById<View?>(R.id.prefix_view) as TextView
 
         Companion.applyBgRect(
-            inputOutputView.findViewById<View?>(R.id.input_group),
+            inputOutputView.findViewById<View?>(R.id.input_group)!!,
             bgRectColors[INPUT_BGCOLOR_INDEX]!!.toString(),
             bgColors[INPUT_BGCOLOR_INDEX].toString(),
             margins[INPUTAREA_MARGINS_INDEX]!!,
@@ -1109,7 +974,7 @@ class UIManager(
         var pasteView: ImageButton? = null
 
         if (!showToolbar) {
-            inputOutputView.findViewById<View?>(R.id.tools_view).setVisibility(View.GONE)
+            inputOutputView.findViewById<View?>(R.id.tools_view)?.setVisibility(View.GONE)
             toolbarView = null
         } else {
             backView = inputOutputView.findViewById<View?>(R.id.back_view) as ImageButton?
@@ -1177,7 +1042,7 @@ class UIManager(
                     })
             )
         } else {
-            rootView.findViewById<View?>(R.id.suggestions_group).setVisibility(View.GONE)
+            rootView.findViewById<View?>(R.id.suggestions_group)?.setVisibility(View.GONE)
         }
 
         var drawTimes = XMLPrefsManager.getInt(Ui.text_redraw_times)

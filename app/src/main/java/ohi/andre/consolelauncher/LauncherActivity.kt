@@ -1,7 +1,6 @@
 package ohi.andre.consolelauncher
 
 import android.Manifest
-import android.app.ActivityManager
 import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
@@ -12,13 +11,10 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import androidx.activity.viewModels
 import android.os.Bundle
 import android.os.Handler
 import android.provider.Settings
-import android.support.v4.app.ActivityCompat
-import android.support.v4.content.ContextCompat
-import android.support.v4.content.LocalBroadcastManager
-import android.support.v7.app.AppCompatActivity
 import android.text.TextUtils
 import android.util.Log
 import android.view.ContextMenu
@@ -29,9 +25,20 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
+import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.WhileSubscribed
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import ohi.andre.consolelauncher.commands.main.raw.bluetooth
+import ohi.andre.consolelauncher.commands.main.raw.wifi
 import ohi.andre.consolelauncher.commands.tuixt.TuixtActivity
-import ohi.andre.consolelauncher.managers.ContactManager
 import ohi.andre.consolelauncher.managers.ContactManager.Contact
 import ohi.andre.consolelauncher.managers.RegexManager
 import ohi.andre.consolelauncher.managers.TerminalManager
@@ -156,7 +163,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
                 if (!charged) {
                     charged = true
-                    handler!!.postDelayed(r, DELAY.toLong())
+                    handler?.postDelayed(r!!, DELAY.toLong())
                 }
             }
         }
@@ -168,7 +175,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
                 if (!charged) {
                     charged = true
-                    handler!!.postDelayed(r, DELAY.toLong())
+                    handler!!.postDelayed(r!!, DELAY.toLong())
                 }
             }
         }
@@ -180,7 +187,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
                 if (!charged) {
                     charged = true
-                    handler!!.postDelayed(r, DELAY.toLong())
+                    handler!!.postDelayed(r!!, DELAY.toLong())
                 }
             }
         }
@@ -190,6 +197,15 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         }
     }
 
+    private val timeViewModel by viewModels<TimeViewModel>()
+    private val memoryViewModel by viewModels<MemoryViewModel>()
+    private val storageViewModel by viewModels<StorageViewModel>()
+    private val networkViewModel by viewModels<NetworkViewModel>()
+    private val wifiViewModel by viewModels<WifiViewModel>()
+    private val mobileViewModel by viewModels<MobileViewModel>()
+    private val bluetoothViewModel by viewModels<BlueToothViewModel>()
+    private val batteryViewModel by viewModels<BatteryViewModel>()
+
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         overridePendingTransition(0, 0)
@@ -197,9 +213,27 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         if (isFinishing()) {
             return
         }
-        Log.i(TAG, "onCreate: ")
-        checkAndRequestStoragePermissions()
+        // checkAndRequestStoragePermissions()
         finishOnCreate()
+
+        val mainView = findViewById<View?>(R.id.mainview) as ViewGroup
+        val timeTextView = mainView.findViewById<TextView>(R.id.tv0)
+        val memoryTextView = mainView.findViewById<TextView>(R.id.tv1)
+        val storageTextView = mainView.findViewById<TextView>(R.id.tv3)
+        val networkTextView = mainView.findViewById<TextView>(R.id.tv4)
+        val batteryTextView = mainView.findViewById<TextView>(R.id.tv2)
+
+        lifecycle.addObserver(TextUpdateManager(timeTextView, timeViewModel.currentText))
+        lifecycle.addObserver(TextUpdateManager(memoryTextView, memoryViewModel.currentText))
+        lifecycle.addObserver(TextUpdateManager(storageTextView, storageViewModel.currentText))
+
+        val combinedNetworkFlow = combine(networkViewModel.connectionStatus, wifiViewModel.ssid, mobileViewModel.status,
+            bluetoothViewModel.status, ) { ntwk, wifi, mobile, bth -> colorString("$ntwk | Wifi: $wifi | Mob: $mobile | Bth: $bth",
+            XMLPrefsManager.getColor(Theme.network_info_color))}.stateIn(lifecycleScope,
+            SharingStarted.WhileSubscribed(5000), "Loading...")
+        lifecycle.addObserver(TextUpdateManager(networkTextView, combinedNetworkFlow))
+        lifecycle.addObserver(TextUpdateManager(batteryTextView, batteryViewModel.batteryStatus))
+
     }
 
     private fun setOrientation() {
@@ -513,14 +547,14 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         return false
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent) {
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
         if (requestCode == TUIXT_REQUEST && resultCode != 0) {
             if (resultCode == TuixtActivity.BACK_PRESSED) {
                 Tuils.sendOutput(this, R.string.tuixt_back_pressed)
             } else {
-                Tuils.sendOutput(this, data.getStringExtra(TuixtActivity.ERROR_KEY))
+                Tuils.sendOutput(this, data?.getStringExtra(TuixtActivity.ERROR_KEY))
             }
         }
     }
@@ -740,7 +774,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         }
     }
 
-    override fun onConfigurationChanged(newConfig: Configuration?) {
+    override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
     }
 

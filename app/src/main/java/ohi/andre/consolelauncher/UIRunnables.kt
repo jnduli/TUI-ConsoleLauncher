@@ -1,47 +1,53 @@
 package ohi.andre.consolelauncher
 
-import android.Manifest
-import android.app.Activity
 import android.app.ActivityManager
+import android.app.Application
 import android.bluetooth.BluetoothAdapter
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.content.IntentFilter
+import android.graphics.Color
 import android.net.ConnectivityManager
+import android.net.ConnectivityManager.NetworkCallback
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.wifi.WifiManager
-import android.os.Build
+import android.os.BatteryManager
 import android.os.Environment
 import android.os.Handler
 import android.os.StatFs
 import android.telephony.TelephonyManager
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
 import android.util.Log
-import androidx.core.app.ActivityCompat
-import androidx.lifecycle.ViewModel
+import android.util.TypedValue
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ohi.andre.consolelauncher.UIManager.Label
-import ohi.andre.consolelauncher.managers.HTMLExtractManager
-import ohi.andre.consolelauncher.managers.TimeManager
 import ohi.andre.consolelauncher.managers.TuiLocationManager
 import ohi.andre.consolelauncher.managers.WeatherRepository
-import ohi.andre.consolelauncher.managers.WeatherResponse
 import ohi.andre.consolelauncher.managers.weatherURL
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Theme
-import ohi.andre.consolelauncher.tuils.NetworkUtils
-import ohi.andre.consolelauncher.tuils.Tuils
 import java.io.File
-import java.lang.reflect.Method
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.regex.Pattern
 
 const val TIME_RUNNABLE_DELAY_MS: Long = 1 * 1000 // 1 second
 const val RAM_RUNNABLE_DELAY_MS: Long = 5 * 1000 // 5 seconds
@@ -60,9 +66,18 @@ abstract class UIRunnable(val uiManager: UIManager, val handler: Handler, val la
     }
 }
 
-class TimeViewModel: ViewModel() {
-    private val _currentTime = MutableStateFlow(getCurrentTime())
-    val currentTime: StateFlow<String> = _currentTime.asStateFlow()
+
+fun colorString(content: CharSequence, fg: Int): SpannableString {
+    val spannableString = SpannableString(content)
+    spannableString.setSpan(ForegroundColorSpan(fg), 0, content.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    return spannableString
+}
+
+abstract class PollViewModel(application: Application, val delayMillis: Long, val fg_color: Int): AndroidViewModel(application) {
+
+    private val _currentText = MutableStateFlow(colorString(getText(), fg_color))
+
+    val currentText: StateFlow<CharSequence> = _currentText.asStateFlow()
 
     init {
         poll()
@@ -71,28 +86,186 @@ class TimeViewModel: ViewModel() {
     private fun poll() {
         viewModelScope.launch {
             while (true) {
-                _currentTime.value = getCurrentTime()
-                delay(1000)
+                _currentText.value = colorString(getText(), fg_color)
+                delay(delayMillis)
             }
         }
-
     }
-    private fun getCurrentTime(): String {
+
+    abstract fun getText(): CharSequence
+
+}
+
+class TimeViewModel(application: Application) : PollViewModel(application, TIME_RUNNABLE_DELAY_MS, XMLPrefsManager.getColor(Theme.time_color)) {
+    override fun getText(): CharSequence {
         val current = SimpleDateFormat("dd MMM yyyy HH:mm:ss", Locale.getDefault())
         return current.format(Date())
+    }
+}
+
+class MemoryViewModel(application: Application) : PollViewModel(application, RAM_RUNNABLE_DELAY_MS, XMLPrefsManager.getColor(Theme.ram_color) ) {
+    private val am = application.getSystemService((Context.ACTIVITY_SERVICE)) as ActivityManager
+    override fun getText(): CharSequence {
+        val memoryInfo = ActivityManager.MemoryInfo()
+        if (am == null) {
+            return "n/a"
+        }
+        am.getMemoryInfo(memoryInfo)
+        return ByteFormatter.toHumanReadableSize(memoryInfo.availMem) + " / " + ByteFormatter.toHumanReadableSize(memoryInfo.totalMem)
+    }
+}
+
+class StorageViewModel(application: Application): PollViewModel(application,STORAGE_RUNNABLE_DELAY_MS, XMLPrefsManager.getColor(Theme.storage_color)) {
+
+    override fun getText(): CharSequence {
+        val internalStorageSize = getSpaceInBytes(Environment.getDataDirectory())
+        // TODO(jnduli): handle externalStorageSize
+        val externalStorageSize = getSpaceInBytes(Environment.getExternalStorageDirectory())
+        return "Internal Strg: " + ByteFormatter.toHumanReadableSize(internalStorageSize.getOrElse(StorageType.Available, { 0 })) + " / " + ByteFormatter.toHumanReadableSize(internalStorageSize.getOrElse(StorageType.Total,
+            { 0 }))
+    }
+
+    private enum class StorageType {
+        Available,
+        Total,
+    }
+
+    private fun getSpaceInBytes(dir: File): Map<StorageType, Long> {
+        val statFs = StatFs(dir.getAbsolutePath())
+        val blockSize = statFs.getBlockSize().toLong()
+        return mapOf(StorageType.Available to statFs.getAvailableBlocks().toLong() * blockSize, StorageType.Total to statFs.getBlockCount().toLong() * blockSize)
+    }
+}
+
+class NetworkViewModel(application: Application) : AndroidViewModel(application) {
+    private val cm = application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    val connectionStatus: StateFlow<String> = callbackFlow {
+        val callback = object: NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                trySend("Online")
+            }
+
+            override fun onLost(network: Network) {
+                trySend("Offline")
+            }
+        }
+        val request = NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).addTransportType(
+            NetworkCapabilities.TRANSPORT_CELLULAR).addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build()
+
+        cm.registerNetworkCallback(request, callback)
+        awaitClose { cm.unregisterNetworkCallback(callback)}
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(NETWORK_RUNNABLE_DELAY_MS), "Checking...")
+}
+
+class WifiViewModel(application: Application) : AndroidViewModel(application) {
+    private val wifi_manager = application.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    private val _ssid = MutableStateFlow("n/a")
+    val ssid = _ssid.asStateFlow()
+
+    fun updateSsid() {
+        val info = wifi_manager.connectionInfo.ssid
+        val ssid = info.removeSurrounding("\"")
+        _ssid.value = ssid
+    }
+}
+
+class BlueToothViewModel(application: Application) : AndroidViewModel(application) {
+    private val mBluetoothAdapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+    private val _status = MutableStateFlow("n/a")
+    val status = _status.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            while (true) {
+                _status.value = colorString(bluetooth(), Color.RED).toString()
+                delay(NETWORK_RUNNABLE_DELAY_MS)
+            }
+        }
+    }
+
+    fun bluetooth(): CharSequence {
+        if (mBluetoothAdapter.isEnabled == true) {
+            return "on"
+        }
+        return "off"
+    }
+}
+
+class MobileViewModel(application: Application) : AndroidViewModel(application) {
+    private val telephonyManager = application.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+    private val _status = MutableStateFlow("n/a")
+    val status = _status.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            while (true) {
+                _status.value = colorString(mobile(), Color.RED).toString()
+                delay(NETWORK_RUNNABLE_DELAY_MS)
+            }
+        }
+    }
+
+    fun mobile(): CharSequence {
+        try {
+            val networkType = telephonyManager.networkType
+            when (networkType) {
+                TelephonyManager.NETWORK_TYPE_GPRS, TelephonyManager.NETWORK_TYPE_EDGE, TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT, TelephonyManager.NETWORK_TYPE_IDEN -> return "2g"
+                TelephonyManager.NETWORK_TYPE_UMTS, TelephonyManager.NETWORK_TYPE_EVDO_0, TelephonyManager.NETWORK_TYPE_EVDO_A, TelephonyManager.NETWORK_TYPE_HSDPA, TelephonyManager.NETWORK_TYPE_HSUPA, TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_EVDO_B, TelephonyManager.NETWORK_TYPE_EHRPD, TelephonyManager.NETWORK_TYPE_HSPAP -> return "3g"
+                TelephonyManager.NETWORK_TYPE_LTE -> return "4g"
+                else -> return "n/a"
+            }
+        } catch(e: SecurityException) {
+            Log.e(TAG, e.toString())
+        }
+        return "n/a"
     }
 
 }
 
-class TimeRunnable(uiManager: UIManager, handler: Handler) : UIRunnable(uiManager, handler, label=Label.time, rerunDelayMillis = TIME_RUNNABLE_DELAY_MS) {
 
-    override fun text(): CharSequence {
-        return TimeManager.instance.getCharSequence(
-            uiManager.mContext,
-            uiManager.getLabelSize(label),
-            "%t0"
-        )
+class BatteryViewModel(application: Application) : AndroidViewModel(application) {
+
+    private fun getColor(level: Int): Int {
+        if (level > XMLPrefsManager.getInt(Behavior.battery_medium)) {
+            return XMLPrefsManager.getColor(Theme.battery_color_high)
+        }
+        if (level > XMLPrefsManager.getInt(Behavior.battery_low)) {
+            return XMLPrefsManager.getColor(Theme.battery_color_medium)
+        }
+        return XMLPrefsManager.getColor(Theme.battery_color_low)
     }
+
+    val batteryStatus: StateFlow<CharSequence> = callbackFlow {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                intent?.let {
+                    val level = it.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                    val scale = it.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                    val batteryPct = (level * 100 / scale.toFloat()).toInt()
+
+                    val status = it.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+                    val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                            status == BatteryManager.BATTERY_STATUS_FULL
+
+                    val chargingLabel = if (isCharging) " (Charging)" else ""
+                    trySend(colorString("$batteryPct%$chargingLabel", getColor(level)))
+                }
+            }
+        }
+
+        // Register the receiver
+        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        application.registerReceiver(receiver, filter)
+
+        // Cleanup when the flow is cancelled
+        awaitClose {
+            application.unregisterReceiver(receiver)
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = "Reading..."
+    )
 }
 
 /**
@@ -135,104 +308,7 @@ object ByteFormatter {
 }
 
 
-class RamRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.ram, rerunDelayMillis = RAM_RUNNABLE_DELAY_MS) {
 
-    override fun text(): CharSequence {
-        val activityManager = uiManager.mContext.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
-        val memory = ActivityManager.MemoryInfo()
-        activityManager?.getMemoryInfo(memory)
-        val available = memory.availMem
-        val totalMem = memory.totalMem
-        return ByteFormatter.toHumanReadableSize(available) + " / " + ByteFormatter.toHumanReadableSize(totalMem)
-    }
-}
-
-class StorageRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.storage, rerunDelayMillis = STORAGE_RUNNABLE_DELAY_MS) {
-    override fun text(): CharSequence {
-        val internalStorageSize = getSpaceInBytes(Environment.getDataDirectory())
-        // TODO(jnduli): handle externalStorageSize
-        val externalStorageSize = getSpaceInBytes(Environment.getExternalStorageDirectory())
-        return "Internal Strg: " + ByteFormatter.toHumanReadableSize(internalStorageSize.getOrElse(StorageType.Available, { 0 })) + " / " + ByteFormatter.toHumanReadableSize(internalStorageSize.getOrElse(StorageType.Total,
-            { 0 }))
-    }
-
-    private enum class StorageType {
-        Available,
-        Total,
-    }
-
-    private fun getSpaceInBytes(dir: File): Map<StorageType, Long> {
-        val statFs = StatFs(dir.getAbsolutePath())
-        val blockSize = statFs.getBlockSize().toLong()
-        return mapOf(StorageType.Available to statFs.getAvailableBlocks().toLong() * blockSize, StorageType.Total to statFs.getBlockCount().toLong() * blockSize)
-    }
-}
-
-class NetworkRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.network, rerunDelayMillis = NETWORK_RUNNABLE_DELAY_MS) {
-    val connectivityManager: ConnectivityManager = uiManager.mContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    val wifiManager: WifiManager = uiManager.mContext.getApplicationContext().getSystemService(Context.WIFI_SERVICE) as WifiManager
-    val mBluetoothAdapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-    val telephonyManager: TelephonyManager = uiManager.mContext.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-    init {
-        ActivityCompat.requestPermissions(
-            uiManager.mContext as Activity, LauncherActivity.REQUIRED_CONNECTIVITY_PERMISSIONS,
-            LauncherActivity.CONNECTIVITY_PERMISSION)
-    }
-
-    override fun text(): CharSequence {
-        // return "%(WiFi - %wn/%[Mobile Data: %d3/No Internet access])";
-        return "Wifi: " + wifi() + " Mobile: " + mobile() + " Blueth: " + bluetooth()
-    }
-
-    fun wifi(): CharSequence {
-        val wifiConnectionInfo = wifiManager.connectionInfo
-        val wifiName = wifiConnectionInfo.ssid
-        return wifiName
-    }
-
-    fun mobile(): CharSequence {
-        try {
-            val networkType = telephonyManager.networkType
-            when (networkType) {
-                TelephonyManager.NETWORK_TYPE_GPRS, TelephonyManager.NETWORK_TYPE_EDGE, TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT, TelephonyManager.NETWORK_TYPE_IDEN -> return "2g"
-                TelephonyManager.NETWORK_TYPE_UMTS, TelephonyManager.NETWORK_TYPE_EVDO_0, TelephonyManager.NETWORK_TYPE_EVDO_A, TelephonyManager.NETWORK_TYPE_HSDPA, TelephonyManager.NETWORK_TYPE_HSUPA, TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_EVDO_B, TelephonyManager.NETWORK_TYPE_EHRPD, TelephonyManager.NETWORK_TYPE_HSPAP -> return "3g"
-                TelephonyManager.NETWORK_TYPE_LTE -> return "4g"
-                else -> return "n/a"
-            }
-        } catch(e: SecurityException) {
-            Log.e(TAG, e.toString())
-        }
-        return "n/a"
-
-        // I want: true/No Internet Access
-        /**
-        val mTelephonyManager =
-            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.READ_PHONE_STATE
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return "unknown"
-        }
-        */
-
-    }
-
-    fun bluetooth(): CharSequence {
-        if (mBluetoothAdapter.isEnabled == true) {
-            return "on"
-        }
-        return "off"
-    }
-}
 
 class WeatherRunnables(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.weather, rerunDelayMillis = WEATHER_RUNNABLE_DELAY_MS) {
     val weatherRepository = WeatherRepository()
