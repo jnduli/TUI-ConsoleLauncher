@@ -13,11 +13,11 @@ android {
     defaultConfig {
         applicationId "ohi.andre.consolelauncher"
 
-        minSdkVersion 16
+        minSdkVersion 21
         flavorDimensions "default"
 
-        versionName "v6.16-jnduli"
-        versionCode 205
+        versionName "v6.17-jnduli"
+        versionCode 206
     }
     buildTypes {
         release {
