@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.os.Handler;
-import android.support.v4.content.LocalBroadcastManager;
 import android.text.TextUtils;
 
 import org.w3c.dom.Document;
@@ -45,6 +44,8 @@ import okhttp3.ResponseBody;
 import static ohi.andre.consolelauncher.managers.xml.XMLPrefsManager.VALUE_ATTRIBUTE;
 import static ohi.andre.consolelauncher.managers.xml.XMLPrefsManager.set;
 import static ohi.andre.consolelauncher.managers.xml.XMLPrefsManager.writeTo;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 /**
  * Created by francescoandreuzzi on 01/10/2017.

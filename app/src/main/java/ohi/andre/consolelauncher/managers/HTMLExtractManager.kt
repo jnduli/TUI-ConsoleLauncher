@@ -6,12 +6,12 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
 import android.net.Uri
-import android.support.v4.content.LocalBroadcastManager
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextUtils
 import android.text.style.ForegroundColorSpan
 import android.util.Log
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.jayway.jsonpath.JsonPath
 import net.minidev.json.JSONArray
 import ohi.andre.consolelauncher.BuildConfig
@@ -296,7 +296,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                 val action = intent.getAction()
 
                 val intent_id = intent.getIntExtra(ID, Int.Companion.MAX_VALUE)
-                val intent_tag = intent.getStringExtra(TAG_NAME)
+                val intent_tag: String = intent.getStringExtra(TAG_NAME).toString()
                 val intent_value = intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE)
 
                 when (action) {
@@ -316,7 +316,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
 
                         val values: MutableList<StoreableValue>
                         try {
-                            val p = StoreableValue.Type.valueOf(intent_tag!!)
+                            val p = StoreableValue.Type.valueOf(intent_tag)
                             values = getListFromType(p)
                         } catch (e: Exception) {
                             Log.e(TAG, e.toString())

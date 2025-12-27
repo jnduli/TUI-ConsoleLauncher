@@ -18,8 +18,6 @@ import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.Process;
-import android.support.annotation.NonNull;
-import android.support.v4.content.LocalBroadcastManager;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -57,6 +55,9 @@ import static ohi.andre.consolelauncher.managers.xml.XMLPrefsManager.VALUE_ATTRI
 import static ohi.andre.consolelauncher.managers.xml.XMLPrefsManager.resetFile;
 import static ohi.andre.consolelauncher.managers.xml.XMLPrefsManager.set;
 import static ohi.andre.consolelauncher.managers.xml.XMLPrefsManager.writeTo;
+
+import androidx.annotation.NonNull;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 public class AppsManager implements XMLPrefsElement {
 

@@ -13,10 +13,16 @@ import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.StatFs
-import android.support.v4.app.ActivityCompat
-import android.support.v4.content.LocalBroadcastManager
 import android.telephony.TelephonyManager
 import android.util.Log
+import androidx.core.app.ActivityCompat
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import ohi.andre.consolelauncher.UIManager.Label
 import ohi.andre.consolelauncher.managers.HTMLExtractManager
 import ohi.andre.consolelauncher.managers.TimeManager
@@ -32,6 +38,8 @@ import ohi.andre.consolelauncher.tuils.Tuils
 import java.io.File
 import java.lang.reflect.Method
 import java.text.DecimalFormat
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import java.util.regex.Pattern
 
@@ -50,6 +58,30 @@ abstract class UIRunnable(val uiManager: UIManager, val handler: Handler, val la
         uiManager.updateText(label, text())
         handler.postDelayed(this, rerunDelayMillis)
     }
+}
+
+class TimeViewModel: ViewModel() {
+    private val _currentTime = MutableStateFlow(getCurrentTime())
+    val currentTime: StateFlow<String> = _currentTime.asStateFlow()
+
+    init {
+        poll()
+    }
+
+    private fun poll() {
+        viewModelScope.launch {
+            while (true) {
+                _currentTime.value = getCurrentTime()
+                delay(1000)
+            }
+        }
+
+    }
+    private fun getCurrentTime(): String {
+        val current = SimpleDateFormat("dd MMM yyyy HH:mm:ss", Locale.getDefault())
+        return current.format(Date())
+    }
+
 }
 
 class TimeRunnable(uiManager: UIManager, handler: Handler) : UIRunnable(uiManager, handler, label=Label.time, rerunDelayMillis = TIME_RUNNABLE_DELAY_MS) {

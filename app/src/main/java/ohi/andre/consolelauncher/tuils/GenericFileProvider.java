@@ -1,6 +1,7 @@
 package ohi.andre.consolelauncher.tuils;
 
-import android.support.v4.content.FileProvider;
+
+import androidx.core.content.FileProvider;
 
 import ohi.andre.consolelauncher.BuildConfig;
 

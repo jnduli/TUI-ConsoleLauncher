@@ -4,7 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 android {
-    compileSdkVersion 29
+    compileSdkVersion 33
 
     buildFeatures {
         buildConfig = true
@@ -14,7 +14,6 @@ android {
         applicationId "ohi.andre.consolelauncher"
 
         minSdkVersion 16
-        targetSdkVersion 33
         flavorDimensions "default"
 
         versionName "v6.16-jnduli"
@@ -63,4 +62,8 @@ dependencies {
     implementation 'com.jayway.jsonpath:json-path:2.4.0'
     implementation 'org.jsoup:jsoup:1.11.3'
     implementation 'it.andreuzzi:CompareString2:1.0.9'
+    implementation "androidx.activity:activity-ktx:1.7.2"
+    implementation "androidx.fragment:fragment-ktx:1.6.1"
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
 }
