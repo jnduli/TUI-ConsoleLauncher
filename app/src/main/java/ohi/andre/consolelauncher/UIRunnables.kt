@@ -21,6 +21,9 @@ import ohi.andre.consolelauncher.UIManager.Label
 import ohi.andre.consolelauncher.managers.HTMLExtractManager
 import ohi.andre.consolelauncher.managers.TimeManager
 import ohi.andre.consolelauncher.managers.TuiLocationManager
+import ohi.andre.consolelauncher.managers.WeatherRepository
+import ohi.andre.consolelauncher.managers.WeatherResponse
+import ohi.andre.consolelauncher.managers.weatherURL
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Theme
@@ -200,6 +203,7 @@ class NetworkRunnable(uiManager: UIManager, handler: Handler): UIRunnable(uiMana
 }
 
 class WeatherRunnables(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.weather, rerunDelayMillis = WEATHER_RUNNABLE_DELAY_MS) {
+    val weatherRepository = WeatherRepository()
     val key = XMLPrefsManager.get(Behavior.weather_key)
     var isActive = true
     var weather_details: CharSequence = ""
@@ -217,22 +221,30 @@ class WeatherRunnables(uiManager: UIManager, handler: Handler): UIRunnable(uiMan
         weather_details = weather
     }
 
-    fun send(url: CharSequence) {
-        val intent = Intent(HTMLExtractManager.ACTION_WEATHER)
-        intent.putExtra(XMLPrefsManager.VALUE_ATTRIBUTE, url )
-        intent.putExtra(HTMLExtractManager.BROADCAST_COUNT, HTMLExtractManager.broadcastCount)
-        LocalBroadcastManager.getInstance(uiManager.mContext.applicationContext).sendBroadcast(intent)
-    }
-
-    fun getWeatherUrl(latitude: Double, longitude: Double): String {
-        return "https://api.openweathermap.org/data/2.5/weather?" + "lat=" + latitude + "&lon=" + longitude + "&appid=" + key + "&units=" + XMLPrefsManager.get( Behavior.weather_temperature_measure )
+    fun updateWeather() {
+        if (isActive == false) {
+            return
+        }
+        val url = weatherURL(key, uiManager.lastLatitude, uiManager.lastLongitude, XMLPrefsManager.get(Behavior.weather_temperature_measure))
+        // TODO(jnduli): not a great solution because updates for weather aren't done immediately
+        // won't work well if/when I increase the weather time out
+        weatherRepository.fetchWeather(url) {weatherData ->
+            run {
+                if (weatherData != null) {
+                    val weather_string: StringBuilder = StringBuilder().also {
+                        it.append("Weather: ")
+                    }
+                    weatherData.weather.forEach { weather_string.append(":$it.main") }
+                    val temp = weatherData.main.temp
+                    weather_string.append(" Temp: $temp")
+                    weather_details = weather_string
+                }
+            }
+        }
     }
 
     override fun text(): CharSequence {
-        val url = getWeatherUrl(uiManager.lastLatitude, uiManager.lastLongitude)
-        if (isActive == true) {
-            send(url)
-        }
+        updateWeather()
         return weather_details
     }
 }

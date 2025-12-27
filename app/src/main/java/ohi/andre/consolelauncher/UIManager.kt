@@ -656,7 +656,7 @@ class UIManager(
                     var s = intent.getCharSequenceExtra(XMLPrefsManager.VALUE_ATTRIBUTE)
                     if (s == null) s = intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE)
                     if (s == null) return
-                    weatherRunnable?.set_weather(s)
+                    // weatherRunnable?.set_weather(s)
 
                     if (showWeatherUpdate) {
                         val message =
@@ -666,11 +666,6 @@ class UIManager(
                         Tuils.sendOutput(context, message, TerminalManager.CATEGORY_OUTPUT)
                     }
                 } else if (action == ACTION_WEATHER_GOT_LOCATION) {
-//                    int result = intent.getIntExtra(XMLPrefsManager.VALUE_ATTRIBUTE, 0);
-//                    if(result == PackageManager.PERMISSION_DENIED) {
-//                        updateText(Label.weather, Tuils.span(context, context.getString(R.string.location_error), weatherColor, labelSizes[Label.weather.ordinal()]));
-//                    } else handler.post(weatherRunnable);
-
                     if (intent.getBooleanExtra(TuiLocationManager.FAIL, false)) {
                         weatherRunnable?.disable()
                         weatherRunnable?.set_weather(context.getString(R.string.location_error))

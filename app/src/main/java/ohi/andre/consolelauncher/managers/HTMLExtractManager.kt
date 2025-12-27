@@ -100,15 +100,15 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
 
                     val response = client.newCall(builder.build()).execute()
 
-                    if (response.code() == 429 && weatherArea) {
+                    if (response.code == 429 && weatherArea) {
                         val i = Intent(UIManager.ACTION_WEATHER_DELAY)
                         LocalBroadcastManager.getInstance(context.getApplicationContext())
                             .sendBroadcast(i)
 
                         return
-                    } else if (!response.isSuccessful()) {
+                    } else if (!response.isSuccessful) {
                         val message =
-                            context.getString(R.string.internet_error) + Tuils.SPACE + response.code()
+                            context.getString(R.string.internet_error) + Tuils.SPACE + response.code
 
                         if (weatherArea) {
                             val i = Intent(UIManager.ACTION_WEATHER)
@@ -122,7 +122,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                         return
                     }
 
-                    val inputStream = response.body()!!.byteStream()
+                    val inputStream = response.body!!.byteStream()
 
                     var output: CharSequence? = Tuils.span(Tuils.EMPTYSTRING, outputColor)
 

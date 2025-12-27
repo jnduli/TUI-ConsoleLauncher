@@ -13,6 +13,11 @@ buildscript {
         classpath 'com.android.tools.build:gradle:8.13.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
+
+}
+
+plugins {
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.3.0" apply false
 }
 
 task clean(type: Delete) {
