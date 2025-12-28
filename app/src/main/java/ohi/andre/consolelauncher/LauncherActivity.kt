@@ -27,6 +27,7 @@ import android.view.Window
 import android.view.WindowManager
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -205,6 +206,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
     private val mobileViewModel by viewModels<MobileViewModel>()
     private val bluetoothViewModel by viewModels<BlueToothViewModel>()
     private val batteryViewModel by viewModels<BatteryViewModel>()
+    private val weatherViewModel by viewModels<WeatherViewModel>()
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -222,6 +224,8 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         val storageTextView = mainView.findViewById<TextView>(R.id.tv3)
         val networkTextView = mainView.findViewById<TextView>(R.id.tv4)
         val batteryTextView = mainView.findViewById<TextView>(R.id.tv2)
+        val weatherTextView = mainView.findViewById<TextView>(R.id.tv7)
+        checkAndRequestPermissions(REQUIRED_LOCATION_PERMISSIONS, LOCATION_REQUEST_PERMISSION)
 
         lifecycle.addObserver(TextUpdateManager(timeTextView, timeViewModel.currentText))
         lifecycle.addObserver(TextUpdateManager(memoryTextView, memoryViewModel.currentText))
@@ -233,6 +237,8 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
             SharingStarted.WhileSubscribed(5000), "Loading...")
         lifecycle.addObserver(TextUpdateManager(networkTextView, combinedNetworkFlow))
         lifecycle.addObserver(TextUpdateManager(batteryTextView, batteryViewModel.batteryStatus))
+        lifecycle.addObserver(TextUpdateManager(weatherTextView, weatherViewModel.weather))
+
 
     }
 
@@ -600,22 +606,21 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         }
     }
 
-    public fun checkAndRequestConnectivityPermissions() {
-        val allPermissionsGranted = REQUIRED_CONNECTIVITY_PERMISSIONS.all {
+
+    public fun checkAndRequestPermissions(permissions: Array<String>, requestCode: Int) {
+        val allPermissionsGranted = permissions.all {
             ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }
         if (allPermissionsGranted) {
-            Log.d(TAG, "All connectivity permissions granted.")
+            Log.d(TAG, "All permissions granted.")
         } else {
             Log.d(TAG, "Requesting permissions.")
             ActivityCompat.requestPermissions(
                 this,
-                REQUIRED_CONNECTIVITY_PERMISSIONS,
-                CONNECTIVITY_PERMISSION
+                permissions,
+                requestCode
             )
         }
-
-
     }
 
     override fun onRequestPermissionsResult(
@@ -793,6 +798,8 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.ACCESS_WIFI_STATE,
         )
+
+        val REQUIRED_LOCATION_PERMISSIONS = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
 
     }
 }

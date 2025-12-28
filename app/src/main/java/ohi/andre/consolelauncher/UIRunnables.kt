@@ -8,6 +8,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
+import android.location.Criteria
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.ConnectivityManager.NetworkCallback
 import android.net.Network
@@ -29,6 +33,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,12 +42,14 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ohi.andre.consolelauncher.UIManager.Label
+import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.TuiLocationManager
 import ohi.andre.consolelauncher.managers.WeatherRepository
 import ohi.andre.consolelauncher.managers.weatherURL
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Theme
+import ohi.andre.consolelauncher.tuils.Tuils
 import java.io.File
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
@@ -268,6 +275,77 @@ class BatteryViewModel(application: Application) : AndroidViewModel(application)
     )
 }
 
+class WeatherViewModel(application: Application): AndroidViewModel(application) {
+    val key = XMLPrefsManager.get(Behavior.weather_key)
+    val fg_color = XMLPrefsManager.getColor(Theme.weather_color)
+    val weatherRepository = WeatherRepository()
+
+    private val locationManager = application.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    private var location: Location? = null
+
+    // A sealed class is best to handle the state of coordinates
+    sealed class LocationState {
+        object Loading : LocationState()
+        data class Success(val lat: Double, val lon: Double) : LocationState()
+        data class Error(val message: String) : LocationState()
+    }
+    val weather: StateFlow<CharSequence> = callbackFlow {
+        Tuils.sendOutput(application, "Found location", TerminalManager.CATEGORY_OUTPUT)
+        var listener = object: LocationListener {
+            override fun onLocationChanged(p0: Location) {
+                location = p0
+                Log.e(TAG, "Found location: $location")
+                Tuils.sendOutput(application, "Found location: $location", TerminalManager.CATEGORY_OUTPUT)
+                val url = weatherURL(
+                    key,
+                    location!!.latitude,
+                    location!!.longitude,
+                    XMLPrefsManager.get(Behavior.weather_temperature_measure)
+                )
+                weatherRepository.fetchWeather(url) { weatherData ->
+                    if (weatherData != null) {
+                        val weather_string: StringBuilder = StringBuilder("Weather: ")
+                        weatherData.weather.forEach { weather_string.append("${it.main};") }
+                        val temp = weatherData.main.temp
+                        weather_string.append(" Temp: $temp")
+                        trySend(colorString(weather_string, fg_color))
+                    }
+                }
+            }
+        }
+
+        try {
+            // 1. Immediately check for Last Known Location to skip the wait
+            val lastGps = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+            val lastNet = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+            val bestLastLocation = lastGps ?: lastNet
+
+            if (bestLastLocation != null) {
+                listener.onLocationChanged(bestLastLocation)
+            }
+
+            // 2. Request updates from BOTH GPS and Network (Indoors vs Outdoors)
+            if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000L, 10f, listener)
+            }
+            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000L, 10f, listener)
+            }
+
+        } catch (e: SecurityException) {
+            trySend(colorString("Permission Denied", fg_color))
+            close(e)
+        } catch (e: Exception) {
+            close(e)
+        }
+        awaitClose { locationManager.removeUpdates(listener) }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = colorString("Loading...", fg_color)
+    )
+}
+
 /**
  * An object containing the logic and constants for converting raw byte counts
  * into human-readable strings (KB, MB, GB, etc.).
@@ -309,50 +387,3 @@ object ByteFormatter {
 
 
 
-
-class WeatherRunnables(uiManager: UIManager, handler: Handler): UIRunnable(uiManager, handler, label=Label.weather, rerunDelayMillis = WEATHER_RUNNABLE_DELAY_MS) {
-    val weatherRepository = WeatherRepository()
-    val key = XMLPrefsManager.get(Behavior.weather_key)
-    var isActive = true
-    var weather_details: CharSequence = ""
-
-    init {
-        val location = TuiLocationManager.instance(uiManager.mContext)
-        location.add(UIManager.ACTION_WEATHER_GOT_LOCATION)
-    }
-
-    public fun disable() {
-        isActive = false
-    }
-
-    public fun set_weather(weather: CharSequence) {
-        weather_details = weather
-    }
-
-    fun updateWeather() {
-        if (isActive == false) {
-            return
-        }
-        val url = weatherURL(key, uiManager.lastLatitude, uiManager.lastLongitude, XMLPrefsManager.get(Behavior.weather_temperature_measure))
-        // TODO(jnduli): not a great solution because updates for weather aren't done immediately
-        // won't work well if/when I increase the weather time out
-        weatherRepository.fetchWeather(url) {weatherData ->
-            run {
-                if (weatherData != null) {
-                    val weather_string: StringBuilder = StringBuilder().also {
-                        it.append("Weather: ")
-                    }
-                    weatherData.weather.forEach { weather_string.append(":$it.main") }
-                    val temp = weatherData.main.temp
-                    weather_string.append(" Temp: $temp")
-                    weather_details = weather_string
-                }
-            }
-        }
-    }
-
-    override fun text(): CharSequence {
-        updateWeather()
-        return weather_details
-    }
-}

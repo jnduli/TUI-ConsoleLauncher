@@ -186,8 +186,6 @@ class UIManager(
     private var fixedLocation = false
 
     private var weatherPerformedStartupRun = false
-    private var weatherRunnable: WeatherRunnables? = null
-    var showWeatherUpdate: Boolean = false
 
     data class LabelView(val textView: TextView, val size: Int, val color: Int, val show: Boolean)
 
@@ -204,14 +202,6 @@ class UIManager(
                XMLPrefsManager.getInt(Ui.device_size),
                XMLPrefsManager.getColor(Theme.device_color),
                XMLPrefsManager.getBoolean(Ui.show_device_name),
-           ),
-           Label.weather to LabelView(
-               rootView.findViewById<View?>(R.id.tv7) as TextView,
-               XMLPrefsManager.getInt(Ui.weather_size),
-               XMLPrefsManager.getColor(Theme.weather_color),
-               true,
-                 // TODO: jnduli figure out why this is False
-                // XMLPrefsManager.getBoolean(Ui.show_weather),
            ),
            Label.unlock to LabelView(
                rootView.findViewById<View?>(R.id.tv8) as TextView,
@@ -534,6 +524,7 @@ class UIManager(
                     if (s == null) return
                     // weatherRunnable?.set_weather(s)
 
+                    /**
                     if (showWeatherUpdate) {
                         val message =
                             context.getString(R.string.weather_updated) + Tuils.SPACE + c.get(
@@ -541,7 +532,9 @@ class UIManager(
                             ) + "." + c.get(Calendar.MINUTE) + Tuils.SPACE + "(" + lastLatitude + ", " + lastLongitude + ")" + " to: " + s
                         Tuils.sendOutput(context, message, TerminalManager.CATEGORY_OUTPUT)
                     }
+                    */
                 } else if (action == ACTION_WEATHER_GOT_LOCATION) {
+                    /**
                     if (intent.getBooleanExtra(TuiLocationManager.FAIL, false)) {
                         weatherRunnable?.disable()
                         weatherRunnable?.set_weather(context.getString(R.string.location_error))
@@ -561,9 +554,11 @@ class UIManager(
                             }
                         }
                     }
+                    */
                 } else if (action == ACTION_WEATHER_DELAY) {
                     val c = Calendar.getInstance()
                     c.setTimeInMillis(System.currentTimeMillis() + 1000 * 10)
+                    /**
 
                     if (showWeatherUpdate) {
                         val message =
@@ -577,9 +572,8 @@ class UIManager(
                         handler.removeCallbacks(weatherRunnable!!)
                         handler.postDelayed(weatherRunnable!!, (1000 * 60).toLong())
                     }
+                    */
                 } else if (action == ACTION_WEATHER_MANUAL_UPDATE) {
-                    handler.removeCallbacks(weatherRunnable!!)
-                    handler.post(weatherRunnable!!)
                 }
             }
         }
@@ -851,15 +845,7 @@ class UIManager(
                     }
 
                 }
-                Label.weather -> {
-                    weatherRunnable = WeatherRunnables(this, handler)
-                    weatherRunnable?.set_weather(lastWeather)
-                    if (weatherRunnable != null) {
-                        handler.post(weatherRunnable!!)
-                    }
-                    // TODO: move showWeatherUpdate functionality to the weatherRunnable
-                    showWeatherUpdate = XMLPrefsManager.getBoolean(Behavior.show_weather_updates)
-                }
+                Label.weather -> TODO()
                 Label.unlock -> {
                     unlockTimes = preferences.getInt(UNLOCK_KEY, 0)
                     unlockColor = XMLPrefsManager.getColor(Theme.unlock_counter_color)
