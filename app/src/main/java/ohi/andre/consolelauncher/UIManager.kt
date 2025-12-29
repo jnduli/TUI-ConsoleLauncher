@@ -98,8 +98,6 @@ class TextUpdateManager(private val textView: TextView, private val dataFlow: St
     }
 }
 
-
-
 class UIManager(
     context: Context,
     rootView: ViewGroup,
@@ -203,16 +201,8 @@ class UIManager(
                XMLPrefsManager.getColor(Theme.device_color),
                XMLPrefsManager.getBoolean(Ui.show_device_name),
            ),
-           Label.unlock to LabelView(
-               rootView.findViewById<View?>(R.id.tv8) as TextView,
-               XMLPrefsManager.getInt(Ui.unlock_size),
-               XMLPrefsManager.getColor(Theme.unlock_counter_color),
-               XMLPrefsManager.getBoolean(Ui.show_unlock_counter),
-           ),
         )
     }
-
-
 
     public fun updateText(l: Label, s: CharSequence) {
         val dataLabel = mapLabelViews.get(l)
@@ -250,8 +240,6 @@ class UIManager(
         Tuils.unregisterBatteryReceiver(mContext)
 
         Tuils.cancelFont()
-
-        unregisterLockReceiver()
     }
 
     fun openKeyboard() {
@@ -335,139 +323,6 @@ class UIManager(
             }
         }
     }
-
-    private var lockReceiver: BroadcastReceiver? = null
-    private fun registerLockReceiver() {
-        if (lockReceiver != null) return
-
-        val theFilter = IntentFilter()
-
-        theFilter.addAction(Intent.ACTION_SCREEN_ON)
-        theFilter.addAction(Intent.ACTION_SCREEN_OFF)
-        theFilter.addAction(Intent.ACTION_USER_PRESENT)
-
-        lockReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                val strAction = intent.getAction()
-
-                val myKM = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-                if (strAction == Intent.ACTION_USER_PRESENT || strAction == Intent.ACTION_SCREEN_OFF || strAction == Intent.ACTION_SCREEN_ON) if (myKM.inKeyguardRestrictedInputMode()) onLock()
-                else onUnlock()
-            }
-        }
-
-        mContext.getApplicationContext().registerReceiver(lockReceiver, theFilter)
-    }
-
-    private fun unregisterLockReceiver() {
-        if (lockReceiver != null) mContext.getApplicationContext().unregisterReceiver(lockReceiver)
-    }
-
-    private fun onLock() {
-        if (clearOnLock) {
-            mTerminalAdapter?.clear()
-        }
-    }
-
-    private val A_DAY = (1000 * 60 * 60 * 24).toLong()
-
-    private var unlockColor = 0
-    private var unlockTimeOrder = 0
-
-    private var unlockTimes = 0
-    private var unlockHour = 0
-    private var unlockMinute = 0
-    private val cycleDuration = A_DAY.toInt()
-    private var lastUnlockTime: Long = -1
-    private var nextUnlockCycleRestart: Long = 0
-    private var unlockFormat: String? = null
-    private var notAvailableText: String? = null
-    private var unlockTimeDivider: String? = null
-
-    private val UP_DOWN = 1
-
-    //    last unlocks are stored here in this way
-    //    0 - the first
-    //    1 - the second
-    //    2 - ...
-    private var lastUnlocks: LongArray? = null
-
-    private fun onUnlock() {
-        if (System.currentTimeMillis() - lastUnlockTime < 1000 || lastUnlocks == null) return
-        lastUnlockTime = System.currentTimeMillis()
-
-        unlockTimes++
-
-        System.arraycopy(lastUnlocks!!, 0, lastUnlocks, 1, lastUnlocks!!.size - 1)
-        lastUnlocks!![0] = lastUnlockTime
-
-        preferences.edit()
-            .putInt(UNLOCK_KEY, unlockTimes)
-            .apply()
-
-        invalidateUnlockText()
-    }
-
-    val UNLOCK_RUNNABLE_DELAY: Int = cycleDuration / 24
-
-    //    this invalidates the text and checks the time values
-    var unlockTimeRunnable: Runnable = object : Runnable {
-        override fun run() {
-//            Tuils.log("run");
-            var delay = nextUnlockCycleRestart - System.currentTimeMillis()
-            //            Tuils.log("nucr", nextUnlockCycleRestart);
-//            Tuils.log("now", System.currentTimeMillis());
-//            Tuils.log("delay", delay);
-            if (delay <= 0) {
-                unlockTimes = 0
-
-                if (lastUnlocks != null) {
-                    for (c in lastUnlocks!!.indices) {
-                        lastUnlocks!![c] = -1
-                    }
-                }
-
-                val now = Calendar.getInstance()
-
-                //                Tuils.log("nw", now.toString());
-                val hour = now.get(Calendar.HOUR_OF_DAY)
-                val minute = now.get(Calendar.MINUTE)
-                if (unlockHour < hour || (unlockHour == hour && unlockMinute <= minute)) {
-                    now.set(Calendar.DAY_OF_YEAR, now.get(Calendar.DAY_OF_YEAR) + 1)
-                }
-                val nextRestart = now
-                nextRestart.set(Calendar.HOUR_OF_DAY, unlockHour)
-                nextRestart.set(Calendar.MINUTE, unlockMinute)
-                nextRestart.set(Calendar.SECOND, 0)
-
-                //                Tuils.log("nr", nextRestart.toString());
-                nextUnlockCycleRestart = nextRestart.getTimeInMillis()
-
-                //                Tuils.log("new setted", nextUnlockCycleRestart);
-                preferences.edit()
-                    .putLong(NEXT_UNLOCK_CYCLE_RESTART, nextUnlockCycleRestart)
-                    .putInt(UNLOCK_KEY, 0)
-                    .apply()
-
-                delay = nextUnlockCycleRestart - System.currentTimeMillis()
-                if (delay < 0) delay = 0
-            }
-
-            invalidateUnlockText()
-
-            delay = min(delay, UNLOCK_RUNNABLE_DELAY.toLong())
-            //            Tuils.log("with delay", delay);
-            handler.postDelayed(this, delay)
-        }
-    }
-
-    var unlockCount: Pattern = Pattern.compile("%c", Pattern.CASE_INSENSITIVE)
-    var advancement: Pattern = Pattern.compile("%a(\\d+)(.)")
-
-    //    Pattern timePattern = Pattern.compile("(%t\\d*)(?:\\((?:(\\d+)([^\\)]*))\\)|\\((?:([^\\)]*)(\\d+))\\))?");
-    var timePattern: Pattern = Pattern.compile("(%t\\d*)(?:\\(([^\\)]*)\\))?(\\d+)?")
-    var indexPattern: Pattern = Pattern.compile("%i", Pattern.CASE_INSENSITIVE)
-    var whenPattern  = "%w"
 
     init {
         val filter = IntentFilter()
@@ -846,42 +701,7 @@ class UIManager(
 
                 }
                 Label.weather -> TODO()
-                Label.unlock -> {
-                    unlockTimes = preferences.getInt(UNLOCK_KEY, 0)
-                    unlockColor = XMLPrefsManager.getColor(Theme.unlock_counter_color)
-                    unlockFormat = XMLPrefsManager.get(Behavior.unlock_counter_format) as String?
-                    notAvailableText = XMLPrefsManager.get(Behavior.not_available_text) as String?
-                    unlockTimeDivider = XMLPrefsManager.get(Behavior.unlock_time_divider) as String?
-                    unlockTimeDivider =
-                        Tuils.patternNewline.matcher(unlockTimeDivider).replaceAll(Tuils.NEWLINE) as String?
-                    val start = XMLPrefsManager.get(Behavior.unlock_counter_cycle_start)
-                    val p = Pattern.compile("(\\d{1,2}).(\\d{1,2})")
-                    var m = p.matcher(start)
-                    if (!m.find()) {
-                        m = p.matcher(Behavior.unlock_counter_cycle_start.defaultValue())
-                        m.find()
-                    }
-                    unlockHour = m.group(1).toInt()
-                    unlockMinute = m.group(2).toInt()
-                    unlockTimeOrder = XMLPrefsManager.getInt(Behavior.unlock_time_order)
-                    nextUnlockCycleRestart = preferences.getLong(NEXT_UNLOCK_CYCLE_RESTART, 0)
-                    m = timePattern.matcher(unlockFormat)
-                    if (m.find()) {
-                        var s = m.group(3)
-                        if (s == null || s.length == 0) s = "1"
-                        lastUnlocks = LongArray(s.toInt())
-                        lastUnlocks?.let {
-                            for (c in it.indices) {
-                                lastUnlocks!![c] = -1
-                            }
-                        }
-                        registerLockReceiver()
-                        handler.post(unlockTimeRunnable)
-                    } else {
-                        lastUnlocks = null
-                    }
-
-                }
+                Label.unlock -> TODO()
                 Label.ram -> TODO()
                 Label.time -> TODO()
                 Label.storage -> TODO()
@@ -1036,86 +856,6 @@ class UIManager(
         OutlineTextView.redrawTimes = drawTimes
     }
 
-    private fun invalidateUnlockText() {
-        var cp = unlockFormat as kotlin.String
-
-        cp = unlockCount.matcher(cp).replaceAll(unlockTimes.toString())
-        cp = Tuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE)
-
-        val m = advancement.matcher(cp)
-        if (m.find()) {
-            val denominator: Int = m.group(1).toInt()
-            val divider = m.group(2)
-
-            val lastCycleStart = nextUnlockCycleRestart - cycleDuration
-
-            val elapsed = (System.currentTimeMillis() - lastCycleStart).toInt()
-            val numerator = denominator * elapsed / cycleDuration
-
-            cp = m.replaceAll(numerator.toString() + divider + denominator)
-        }
-
-        var s: CharSequence? =
-            Tuils.span(cp, unlockColor)
-
-        val timeMatcher = timePattern.matcher(cp)
-        if (timeMatcher.find()) {
-            val timeGroup = timeMatcher.group(1)
-            var text = timeMatcher.group(2)
-            if (text == null) text = whenPattern as kotlin.String?
-
-            var cs: CharSequence? = Tuils.EMPTYSTRING
-
-            var c: Int
-            val change: Int
-            if (unlockTimeOrder == UP_DOWN) {
-                c = 0
-                change = +1
-            } else {
-                c = lastUnlocks!!.size - 1
-                change = -1
-            }
-
-            var counter = 0
-            while (counter < lastUnlocks!!.size) {
-                var t: kotlin.String? = text
-                t = indexPattern.matcher(t).replaceAll((c + 1).toString())
-
-                cs = TextUtils.concat(cs, t)
-
-                val time: CharSequence?
-                if (lastUnlocks!![c] > 0) time =
-                    TimeManager.instance.getCharSequence(timeGroup, lastUnlocks!![c])
-                else time = notAvailableText
-
-                if (time == null) {
-                    counter++
-                    c += change
-                    continue
-                }
-
-                cs = TextUtils.replace(
-                    cs,
-                    arrayOf<kotlin.String?>(whenPattern.toString()),
-                    arrayOf<CharSequence>(time)
-                )
-
-                if (counter != lastUnlocks!!.size - 1) cs = TextUtils.concat(cs, unlockTimeDivider)
-                counter++
-                c += change
-            }
-
-            s = TextUtils.replace(
-                s,
-                arrayOf<kotlin.String?>(timeMatcher.group(0)),
-                arrayOf<CharSequence?>(cs)
-            )
-        }
-        if (s != null) {
-            updateText(Label.unlock, s)
-        }
-
-    }
 
     companion object {
 
@@ -1238,9 +978,6 @@ class UIManager(
             if (!(color.startsWith("#00") && color.length == 9)) {
                 v.setShadowLayer(radius, x.toFloat(), y.toFloat(), Color.parseColor(color))
                 v.setTag(OutlineTextView.SHADOW_TAG)
-
-                //            if(radius > v.getPaddingTop()) v.setPadding(v.getPaddingLeft(), (int) Math.floor(radius), v.getPaddingRight(), (int) Math.floor(radius));
-//            if(radius > v.getPaddingLeft()) v.setPadding((int) Math.floor(radius), v.getPaddingTop(), (int) Math.floor(radius), v.getPaddingBottom());
             }
         }
 

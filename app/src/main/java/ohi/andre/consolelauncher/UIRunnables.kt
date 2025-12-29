@@ -1,12 +1,15 @@
 package ohi.andre.consolelauncher
 
+import android.R
 import android.app.ActivityManager
 import android.app.Application
+import android.app.KeyguardManager
 import android.bluetooth.BluetoothAdapter
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.graphics.Color
 import android.location.Criteria
 import android.location.Location
@@ -25,6 +28,7 @@ import android.os.StatFs
 import android.telephony.TelephonyManager
 import android.text.SpannableString
 import android.text.Spanned
+import android.text.TextUtils
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
 import android.util.Log
@@ -41,8 +45,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import ohi.andre.consolelauncher.UIManager.Companion.NEXT_UNLOCK_CYCLE_RESTART
+import ohi.andre.consolelauncher.UIManager.Companion.UNLOCK_KEY
 import ohi.andre.consolelauncher.UIManager.Label
 import ohi.andre.consolelauncher.managers.TerminalManager
+import ohi.andre.consolelauncher.managers.TimeManager
 import ohi.andre.consolelauncher.managers.TuiLocationManager
 import ohi.andre.consolelauncher.managers.WeatherRepository
 import ohi.andre.consolelauncher.managers.weatherURL
@@ -53,8 +60,13 @@ import ohi.andre.consolelauncher.tuils.Tuils
 import java.io.File
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.regex.Pattern
+import kotlin.math.min
+import kotlin.text.toInt
 
 const val TIME_RUNNABLE_DELAY_MS: Long = 1 * 1000 // 1 second
 const val RAM_RUNNABLE_DELAY_MS: Long = 5 * 1000 // 5 seconds
@@ -385,5 +397,150 @@ object ByteFormatter {
     }
 }
 
+class UnlockTimeViewModel(application: Application) : AndroidViewModel(application) {
+    /**
+     * How I register and unregister the BroadcastReceiver isn't too great. I'll improve this later on
+     * There was the clearOnLock flag, but I haven't implemented it yet here
+     * There are too many variables in this class meaning there's a good option for clean up
+     * */
+
+    var preferences = application.getSharedPreferences(UIManager.PREFS_NAME, 0)
+    var unlockTimes = preferences.getInt(UNLOCK_KEY, 0)
+    var notAvailableText = XMLPrefsManager.get(Behavior.not_available_text)
+
+    private var lastUnlocks = ArrayDeque<Long>()
+    private var lastUnlockTime: Long = -1
+    var nextUnlockCycleRestart = preferences.getLong(UIManager.NEXT_UNLOCK_CYCLE_RESTART, 0)
+    private val A_DAY = (1000 * 60 * 60 * 24).toLong()
+    private val cycleDuration = A_DAY.toInt()
+    private val fg_color = XMLPrefsManager.getColor(Theme.unlock_counter_color)
+    private var unlockHour = 0
+    private var unlockMinute = 0
+    val minTimeUnlocksArray = 3
+    private val UNLOCK_RUNNABLE_DELAY: Long = 1 * 60 * 60 * 1000 // 1 hour
+
+    private var lockReceiver: BroadcastReceiver? = null
+    private var context = application.applicationContext
 
 
+    private val _currentText = MutableStateFlow(colorString(text(), fg_color))
+    val currentText: StateFlow<CharSequence> = _currentText.asStateFlow()
+
+    init {
+        registerLockReceiver()
+        val start = XMLPrefsManager.get(Behavior.unlock_counter_cycle_start)
+        val (hStr, mStr) = start.split(".")
+        unlockHour = hStr.toInt()
+        unlockMinute = mStr.toInt()
+        nextUnlockCycleRestart = preferences.getLong(NEXT_UNLOCK_CYCLE_RESTART, 0)
+        repeat(minTimeUnlocksArray) {
+            lastUnlocks.add(-1)
+        }
+        poll()
+    }
+
+
+    private fun onUnlock() {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastUnlockTime < 1000 ) return
+        unlockTimes++
+        lastUnlocks.addFirst(currentTime)
+        preferences.edit().putInt(UNLOCK_KEY, unlockTimes).apply()
+        while (lastUnlocks.size > minTimeUnlocksArray) {
+            lastUnlocks.removeLast()
+        }
+        _currentText.value = colorString(text(), fg_color)
+    }
+
+    private fun resetUnlocks() {
+        var delay = nextUnlockCycleRestart - System.currentTimeMillis()
+        if (delay > 0) return
+        unlockTimes = 0
+        lastUnlocks = ArrayDeque<Long>()
+        for (c in lastUnlocks.indices) {
+            lastUnlocks[c] = -1
+        }
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.DAY_OF_YEAR, 1)
+        calendar.set(Calendar.HOUR_OF_DAY, unlockHour)
+        calendar.set(Calendar.MINUTE, unlockMinute)
+        calendar.set(Calendar.SECOND, 0)
+        nextUnlockCycleRestart = calendar.timeInMillis
+        preferences.edit()
+            .putLong(NEXT_UNLOCK_CYCLE_RESTART, nextUnlockCycleRestart)
+            .putInt(UNLOCK_KEY, 0)
+            .apply()
+        _currentText.value = colorString(text(), fg_color)
+    }
+
+
+    private fun text(): CharSequence {
+        // Current value for unlockFormat
+        // return "Unlocked %c times (%a10/)%n%t(Unlock n. %i --> %w)3";
+        // TODO: use the formatter methods here, for now I'll hard code the strings i.e. unlockFormat
+        var unlockString = "Unlocked $unlockTimes times"
+        var denominator = 10
+        val lastCycleStart = nextUnlockCycleRestart - cycleDuration
+        val elapsed = (System.currentTimeMillis() - lastCycleStart).toInt()
+        val numerator = denominator * elapsed / cycleDuration
+        val ratioString = "($numerator/$denominator)"
+        val dateFormat = SimpleDateFormat("dd MMM yyyy HH:mm:ss", Locale.getDefault())
+
+        var countersStrings = mutableListOf<String>()
+        lastUnlocks.forEachIndexed { index, millis ->
+            var timeString = notAvailableText
+            if (millis > 0) {
+                val date = Date(millis)
+                timeString = dateFormat.format(date)
+            }
+            countersStrings.add("Unlock n. $index --> $timeString")
+        }
+        val counterString = countersStrings.joinToString(separator = Tuils.NEWLINE)
+        return "$unlockString $ratioString${Tuils.NEWLINE}$counterString"
+    }
+
+    private fun poll() {
+        viewModelScope.launch {
+            while (true) {
+                resetUnlocks()
+                delay(UNLOCK_RUNNABLE_DELAY)
+            }
+        }
+    }
+
+    private fun registerLockReceiver() {
+        if (lockReceiver != null) return
+
+        val theFilter = IntentFilter()
+        theFilter.addAction(Intent.ACTION_SCREEN_ON)
+        theFilter.addAction(Intent.ACTION_SCREEN_OFF)
+        theFilter.addAction(Intent.ACTION_USER_PRESENT)
+
+        lockReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val strAction = intent.getAction()
+
+                val myKM = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                if (strAction == Intent.ACTION_USER_PRESENT || strAction == Intent.ACTION_SCREEN_OFF || strAction == Intent.ACTION_SCREEN_ON) if (myKM.inKeyguardRestrictedInputMode()) onLock()
+                else onUnlock()
+            }
+        }
+        context.registerReceiver(lockReceiver, theFilter)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        unregisterLockReceiver()
+    }
+
+    private fun unregisterLockReceiver() {
+        if (lockReceiver != null) context.unregisterReceiver(lockReceiver)
+    }
+
+    private fun onLock() {
+        Log.i(TAG, "onLock action")
+        // if (clearOnLock) {
+        //     mTerminalAdapter?.clear()
+        // }
+    }
+}

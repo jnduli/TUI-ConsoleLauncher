@@ -207,6 +207,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
     private val bluetoothViewModel by viewModels<BlueToothViewModel>()
     private val batteryViewModel by viewModels<BatteryViewModel>()
     private val weatherViewModel by viewModels<WeatherViewModel>()
+    private val unlockTimeViewModel by viewModels<UnlockTimeViewModel>()
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -225,6 +226,8 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         val networkTextView = mainView.findViewById<TextView>(R.id.tv4)
         val batteryTextView = mainView.findViewById<TextView>(R.id.tv2)
         val weatherTextView = mainView.findViewById<TextView>(R.id.tv7)
+        val unlockTimeTextView = mainView.findViewById<TextView>(R.id.tv8)
+
         checkAndRequestPermissions(REQUIRED_LOCATION_PERMISSIONS, LOCATION_REQUEST_PERMISSION)
 
         lifecycle.addObserver(TextUpdateManager(timeTextView, timeViewModel.currentText))
@@ -238,6 +241,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         lifecycle.addObserver(TextUpdateManager(networkTextView, combinedNetworkFlow))
         lifecycle.addObserver(TextUpdateManager(batteryTextView, batteryViewModel.batteryStatus))
         lifecycle.addObserver(TextUpdateManager(weatherTextView, weatherViewModel.weather))
+        lifecycle.addObserver(TextUpdateManager(unlockTimeTextView, unlockTimeViewModel.currentText))
 
 
     }
