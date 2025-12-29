@@ -15,7 +15,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.provider.Settings
 import android.text.TextUtils
-import android.text.method.LinkMovementMethod
 import android.util.Log
 import android.view.ContextMenu
 import android.view.ContextMenu.ContextMenuInfo
@@ -540,7 +539,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
             menu.setHeaderTitle(contact.name)
             for (count in contact.numbers.indices) {
-                menu.add(0, count, count, contact.numbers.get(count))
+                menu.add(0, count, count, contact.numbers[count])
             }
         }
     }

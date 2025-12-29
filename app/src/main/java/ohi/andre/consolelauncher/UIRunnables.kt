@@ -8,9 +8,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.SharedPreferences
 import android.graphics.Color
-import android.location.Criteria
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -22,24 +20,20 @@ import android.net.NetworkRequest
 import android.net.wifi.WifiManager
 import android.os.BatteryManager
 import android.os.Environment
-import android.os.Handler
 import android.os.StatFs
 import android.telephony.TelephonyManager
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextUtils
 import android.text.method.LinkMovementMethod
-import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
 import android.util.Log
-import android.util.TypedValue
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import android.widget.TextView
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -49,11 +43,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ohi.andre.consolelauncher.UIManager.Companion.NEXT_UNLOCK_CYCLE_RESTART
 import ohi.andre.consolelauncher.UIManager.Companion.UNLOCK_KEY
-import ohi.andre.consolelauncher.UIManager.Label
 import ohi.andre.consolelauncher.managers.NotesManager
 import ohi.andre.consolelauncher.managers.TerminalManager
-import ohi.andre.consolelauncher.managers.TimeManager
-import ohi.andre.consolelauncher.managers.TuiLocationManager
 import ohi.andre.consolelauncher.managers.WeatherRepository
 import ohi.andre.consolelauncher.managers.weatherURL
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
@@ -64,15 +55,10 @@ import ohi.andre.consolelauncher.tuils.Tuils
 import java.io.File
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
-import java.time.LocalDate
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import java.util.regex.Pattern
-import kotlin.compareTo
-import kotlin.math.min
 import kotlin.text.toInt
-import kotlin.text.toLong
 
 const val TIME_RUNNABLE_DELAY_MS: Long = 1 * 1000 // 1 second
 const val RAM_RUNNABLE_DELAY_MS: Long = 5 * 1000 // 5 seconds
@@ -133,9 +119,9 @@ class StorageViewModel(application: Application): PollViewModel(application,STOR
     override fun getText(): CharSequence {
         val internalStorageSize = getSpaceInBytes(Environment.getDataDirectory())
         // TODO(jnduli): handle externalStorageSize
-        val externalStorageSize = getSpaceInBytes(Environment.getExternalStorageDirectory())
-        return "Internal Strg: " + ByteFormatter.toHumanReadableSize(internalStorageSize.getOrElse(StorageType.Available, { 0 })) + " / " + ByteFormatter.toHumanReadableSize(internalStorageSize.getOrElse(StorageType.Total,
-            { 0 }))
+        // val _externalStorageSize = getSpaceInBytes(Environment.getExternalStorageDirectory())
+        return "Internal Strg: " + ByteFormatter.toHumanReadableSize(internalStorageSize.getOrElse(StorageType.Available) { 0 }) + " / " + ByteFormatter.toHumanReadableSize(internalStorageSize.getOrElse(StorageType.Total
+        ) { 0 })
     }
 
     private enum class StorageType {
@@ -175,10 +161,22 @@ class WifiViewModel(application: Application) : AndroidViewModel(application) {
     private val _ssid = MutableStateFlow("n/a")
     val ssid = _ssid.asStateFlow()
 
-    fun updateSsid() {
+    init {
+        viewModelScope.launch {
+            while(true) {
+                _ssid.value = ssid()
+                delay(NETWORK_RUNNABLE_DELAY_MS)
+            }
+        }
+    }
+
+    fun ssid(): String {
         val info = wifi_manager.connectionInfo.ssid
-        val ssid = info.removeSurrounding("\"")
-        _ssid.value = ssid
+        var ssid = info.removeSurrounding("\"")
+        if (ssid == WifiManager.UNKNOWN_SSID) {
+            ssid = "n/a"
+        }
+        return ssid
     }
 }
 
@@ -221,14 +219,15 @@ class MobileViewModel(application: Application) : AndroidViewModel(application) 
     fun mobile(): CharSequence {
         try {
             val networkType = telephonyManager.networkType
-            when (networkType) {
-                TelephonyManager.NETWORK_TYPE_GPRS, TelephonyManager.NETWORK_TYPE_EDGE, TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT, TelephonyManager.NETWORK_TYPE_IDEN -> return "2g"
-                TelephonyManager.NETWORK_TYPE_UMTS, TelephonyManager.NETWORK_TYPE_EVDO_0, TelephonyManager.NETWORK_TYPE_EVDO_A, TelephonyManager.NETWORK_TYPE_HSDPA, TelephonyManager.NETWORK_TYPE_HSUPA, TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_EVDO_B, TelephonyManager.NETWORK_TYPE_EHRPD, TelephonyManager.NETWORK_TYPE_HSPAP -> return "3g"
-                TelephonyManager.NETWORK_TYPE_LTE -> return "4g"
-                else -> return "n/a"
+            return when (networkType) {
+                TelephonyManager.NETWORK_TYPE_GPRS, TelephonyManager.NETWORK_TYPE_EDGE, TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT, TelephonyManager.NETWORK_TYPE_IDEN -> "2g"
+                TelephonyManager.NETWORK_TYPE_UMTS, TelephonyManager.NETWORK_TYPE_EVDO_0, TelephonyManager.NETWORK_TYPE_EVDO_A, TelephonyManager.NETWORK_TYPE_HSDPA, TelephonyManager.NETWORK_TYPE_HSUPA, TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_EVDO_B, TelephonyManager.NETWORK_TYPE_EHRPD, TelephonyManager.NETWORK_TYPE_HSPAP -> "3g"
+                TelephonyManager.NETWORK_TYPE_LTE -> "4g"
+                else -> "n/a"
             }
         } catch(e: SecurityException) {
             Log.e(TAG, e.toString())
+            return "no_perm"
         }
         return "n/a"
     }
@@ -291,25 +290,23 @@ class WeatherViewModel(application: Application): AndroidViewModel(application) 
 
     val weather: StateFlow<CharSequence> = callbackFlow {
         Tuils.sendOutput(application, "Found location", TerminalManager.CATEGORY_OUTPUT)
-        var listener = object: LocationListener {
-            override fun onLocationChanged(p0: Location) {
-                location = p0
-                Log.e(TAG, "Found location: $location")
-                Tuils.sendOutput(application, "Found location: $location", TerminalManager.CATEGORY_OUTPUT)
-                val url = weatherURL(
-                    key,
-                    location!!.latitude,
-                    location!!.longitude,
-                    XMLPrefsManager.get(Behavior.weather_temperature_measure)
-                )
-                weatherRepository.fetchWeather(url) { weatherData ->
-                    if (weatherData != null) {
-                        val weather_string: StringBuilder = StringBuilder("Weather: ")
-                        weatherData.weather.forEach { weather_string.append("${it.main};") }
-                        val temp = weatherData.main.temp
-                        weather_string.append(" Temp: $temp")
-                        trySend(colorString(weather_string, fg_color))
-                    }
+        var listener = LocationListener { p0 ->
+            location = p0
+            Log.e(TAG, "Found location: $location")
+            Tuils.sendOutput(application, "Found location: $location", TerminalManager.CATEGORY_OUTPUT)
+            val url = weatherURL(
+                key,
+                location!!.latitude,
+                location!!.longitude,
+                XMLPrefsManager.get(Behavior.weather_temperature_measure)
+            )
+            weatherRepository.fetchWeather(url) { weatherData ->
+                if (weatherData != null) {
+                    val weather_string: StringBuilder = StringBuilder("Weather: ")
+                    weatherData.weather.forEach { weather_string.append("${it.main};") }
+                    val temp = weatherData.main.temp
+                    weather_string.append(" Temp: $temp")
+                    trySend(colorString(weather_string, fg_color))
                 }
             }
         }
@@ -441,7 +438,7 @@ class UnlockTimeViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private fun resetUnlocks() {
-        var delay = nextUnlockCycleRestart - System.currentTimeMillis()
+        val delay = nextUnlockCycleRestart - System.currentTimeMillis()
         if (delay > 0) return
         unlockTimes = 0
         lastUnlocks = ArrayDeque<Long>()
@@ -466,15 +463,15 @@ class UnlockTimeViewModel(application: Application) : AndroidViewModel(applicati
         // Current value for unlockFormat
         // return "Unlocked %c times (%a10/)%n%t(Unlock n. %i --> %w)3";
         // TODO: use the formatter methods here, for now I'll hard code the strings i.e. unlockFormat
-        var unlockString = "Unlocked $unlockTimes times"
-        var denominator = 10
+        val unlockString = "Unlocked $unlockTimes times"
+        val denominator = 10
         val lastCycleStart = nextUnlockCycleRestart - cycleDuration
         val elapsed = (System.currentTimeMillis() - lastCycleStart).toInt()
         val numerator = denominator * elapsed / cycleDuration
         val ratioString = "($numerator/$denominator)"
         val dateFormat = SimpleDateFormat("dd MMM yyyy HH:mm:ss", Locale.getDefault())
 
-        var countersStrings = mutableListOf<String>()
+        val countersStrings = mutableListOf<String>()
         lastUnlocks.forEachIndexed { index, millis ->
             var timeString = notAvailableText
             if (millis > 0) {
@@ -506,7 +503,7 @@ class UnlockTimeViewModel(application: Application) : AndroidViewModel(applicati
 
         lockReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                val strAction = intent.getAction()
+                val strAction = intent.action
 
                 val myKM = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
                 if (strAction == Intent.ACTION_USER_PRESENT || strAction == Intent.ACTION_SCREEN_OFF || strAction == Intent.ACTION_SCREEN_ON) if (myKM.inKeyguardRestrictedInputMode()) onLock()
@@ -558,19 +555,19 @@ class NotesViewModel(application: Application): AndroidViewModel(application) {
     fun updateTextView(tv: TextView) {
         val allowLink = XMLPrefsManager.getBoolean(Behavior.notes_allow_link)
         if (allowLink) {
-            tv.setMovementMethod(LinkMovementMethod())
+            tv.movementMethod = LinkMovementMethod()
         }
-        tv.setMaxLines(notesMaxLines)
-        tv.setEllipsize(TextUtils.TruncateAt.MARQUEE)
+        tv.maxLines = notesMaxLines
+        tv.ellipsize = TextUtils.TruncateAt.MARQUEE
         if (!showScrollNotes) return
-        tv.getViewTreeObserver()
+        tv.viewTreeObserver
             ?.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
                 var linesBefore: Int = Int.Companion.MIN_VALUE
                 override fun onGlobalLayout() {
-                    if (tv.getLineCount() > notesMaxLines && linesBefore <= notesMaxLines) {
+                    if (tv.lineCount > notesMaxLines && linesBefore <= notesMaxLines) {
                         Tuils.sendOutput(Color.RED, context, ohi.andre.consolelauncher.R.string.note_max_reached)
                     }
-                    linesBefore = tv.getLineCount()
+                    linesBefore = tv.lineCount
                 }
             })
     }

@@ -142,15 +142,15 @@ class UIManager(
     }
 
     public fun updateText(l: Label, s: CharSequence) {
-        val dataLabel = mapLabelViews.get(l)
-        if (dataLabel?.show == false ||  s.length <= 0) {
-            dataLabel?.textView?.setVisibility(View.GONE)
+        val dataLabel = mapLabelViews[l]
+        if (dataLabel?.show == false || s.isEmpty()) {
+            dataLabel?.textView?.visibility = View.GONE
             return
         }
         val color = dataLabel?.color?: Color.RED
         val coloredSpan = Tuils.span(s, color)
-        dataLabel?.textView?.setVisibility(View.VISIBLE)
-        dataLabel?.textView?.setText(coloredSpan)
+        dataLabel?.textView?.visibility = View.VISIBLE
+        dataLabel?.textView?.text = coloredSpan
     }
 
     private var suggestionsManager: SuggestionsManager? = null
@@ -169,7 +169,7 @@ class UIManager(
         handler.removeCallbacksAndMessages(null)
         suggestionsManager?.dispose()
 
-        LocalBroadcastManager.getInstance(mContext.getApplicationContext())
+        LocalBroadcastManager.getInstance(mContext.applicationContext)
             .unregisterReceiver(receiver)
         Tuils.unregisterBatteryReceiver(mContext)
 
@@ -178,12 +178,12 @@ class UIManager(
 
     fun openKeyboard() {
         mTerminalAdapter?.requestInputFocus()
-        imm.showSoftInput(mTerminalAdapter?.getInputView(), InputMethodManager.SHOW_IMPLICIT)
+        imm.showSoftInput(mTerminalAdapter?.inputView, InputMethodManager.SHOW_IMPLICIT)
         //        mTerminalAdapter.scrollToEnd();
     }
 
     fun closeKeyboard() {
-        imm.hideSoftInputFromWindow(mTerminalAdapter?.getInputWindowToken(), 0)
+        imm.hideSoftInputFromWindow(mTerminalAdapter?.inputWindowToken, 0)
     }
 
     fun onStart(openKeyboardOnStart: Boolean) {
@@ -193,7 +193,7 @@ class UIManager(
     fun setInput(s: String?) {
         if (s == null) return
 
-        mTerminalAdapter?.setInput(s as kotlin.String?)
+        mTerminalAdapter?.input = s as kotlin.String?
         mTerminalAdapter?.focusInputEnd()
     }
 
@@ -274,7 +274,7 @@ class UIManager(
 
         receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                val action = intent.getAction()
+                val action = intent.action
 
                 if (action == ACTION_UPDATE_SUGGESTIONS) {
                     suggestionsManager?.requestSuggestion(Tuils.EMPTYSTRING)
@@ -296,8 +296,8 @@ class UIManager(
                     try {
                         file.createNewFile()
                         val fos = FileOutputStream(file)
-                        fos.write(mTerminalAdapter?.getTerminalText()?.toByteArray())
-                        Tuils.sendOutput(context, "Logged to " + file.getAbsolutePath())
+                        fos.write(mTerminalAdapter?.terminalText?.toByteArray())
+                        Tuils.sendOutput(context, "Logged to " + file.absolutePath)
                     } catch (e: Exception) {
                         Log.e(TAG, e.toString())
                         Tuils.sendOutput(Color.RED, context, e.toString())
@@ -346,7 +346,7 @@ class UIManager(
                     */
                 } else if (action == ACTION_WEATHER_DELAY) {
                     val c = Calendar.getInstance()
-                    c.setTimeInMillis(System.currentTimeMillis() + 1000 * 10)
+                    c.timeInMillis = System.currentTimeMillis() + 1000 * 10
                     /**
 
                     if (showWeatherUpdate) {
@@ -367,7 +367,7 @@ class UIManager(
             }
         }
 
-        LocalBroadcastManager.getInstance(context.getApplicationContext())
+        LocalBroadcastManager.getInstance(context.applicationContext)
             .registerReceiver(receiver, filter)
 
         policy = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager?
@@ -388,8 +388,8 @@ class UIManager(
 
         //        scrolllllll
         if (XMLPrefsManager.getBoolean(Behavior.auto_scroll)) {
-            rootView.getViewTreeObserver().addOnGlobalLayoutListener(OnGlobalLayoutListener {
-                val heightDiff = rootView.getRootView().getHeight() - rootView.getHeight()
+            rootView.viewTreeObserver.addOnGlobalLayoutListener(OnGlobalLayoutListener {
+                val heightDiff = rootView.rootView.height - rootView.height
                 if (heightDiff > Tuils.dpToPx(
                         context,
                         200
@@ -451,11 +451,11 @@ class UIManager(
                 }
 
                 override fun onDoubleTap(p0: MotionEvent): Boolean {
-                    if (doubleTapCmd != null && doubleTapCmd!!.length > 0) {
-                        val input = mTerminalAdapter?.getInput()
-                        mTerminalAdapter?.setInput(doubleTapCmd as kotlin.String?)
+                    if (doubleTapCmd != null && doubleTapCmd!!.isNotEmpty()) {
+                        val input = mTerminalAdapter?.input
+                        mTerminalAdapter?.input = doubleTapCmd as kotlin.String?
                         mTerminalAdapter?.simulateEnter()
-                        mTerminalAdapter?.setInput(input)
+                        mTerminalAdapter?.input = input
                     }
 
                     if (lockOnDbTap) {
@@ -481,7 +481,7 @@ class UIManager(
 
         val displayMargins: IntArray =
             getListOfIntValues(XMLPrefsManager.get(Ui.display_margin_mm), 4, 0)
-        val metrics = mContext.getResources().getDisplayMetrics()
+        val metrics = mContext.resources.displayMetrics
         rootView.setPadding(
             Tuils.mmToPx(metrics, displayMargins[0]),
             Tuils.mmToPx(metrics, displayMargins[1]),
@@ -585,7 +585,7 @@ class UIManager(
                 viewParent.removeView(tv)
             }
             if (label != Label.notes) {
-                tv.setVerticalScrollBarEnabled(false)
+                tv.isVerticalScrollBarEnabled = false
             }
             val strokeColor = XMLPrefsManager.get(Theme.output_bgrectcolor).toString()
             val bgColor = XMLPrefsManager.get(Theme.output_bg).toString()
@@ -627,7 +627,7 @@ class UIManager(
 
         terminalView = inputOutputView.findViewById<View?>(R.id.terminal_view) as TextView
         terminalView.setOnTouchListener(this)
-        (terminalView.getParent().getParent() as View).setOnTouchListener(this)
+        (terminalView.parent.parent as View).setOnTouchListener(this)
 
         Companion.applyBgRect(
             terminalView,
@@ -677,7 +677,7 @@ class UIManager(
         var submitView = inputOutputView.findViewById<View?>(R.id.submit_tv) as ImageView?
         val showSubmit = XMLPrefsManager.getBoolean(Ui.show_enter_button)
         if (!showSubmit) {
-            submitView!!.setVisibility(View.GONE)
+            submitView!!.visibility = View.GONE
             submitView = null
         }
 
@@ -688,7 +688,7 @@ class UIManager(
         var pasteView: ImageButton? = null
 
         if (!showToolbar) {
-            inputOutputView.findViewById<View?>(R.id.tools_view)?.setVisibility(View.GONE)
+            inputOutputView.findViewById<View?>(R.id.tools_view)?.visibility = View.GONE
             toolbarView = null
         } else {
             backView = inputOutputView.findViewById<View?>(R.id.back_view) as ImageButton?
@@ -727,11 +727,11 @@ class UIManager(
             val sv =
                 rootView.findViewById<View?>(R.id.suggestions_container) as HorizontalScrollView
             sv.setFocusable(false)
-            sv.setOnFocusChangeListener(OnFocusChangeListener { v: View?, hasFocus: Boolean ->
+            sv.onFocusChangeListener = OnFocusChangeListener { v: View?, hasFocus: Boolean ->
                 if (hasFocus) {
                     v!!.clearFocus()
                 }
-            })
+            }
             Companion.applyBgRect(
                 sv,
                 bgRectColors[SUGGESTIONS_BGCOLOR_INDEX]!!.toString(),
@@ -751,12 +751,12 @@ class UIManager(
                     suggestionsManager,
                     OnTextChanged { currentText: kotlin.String?, before: Int ->
                         if (!hideToolbarNoInput) return@OnTextChanged
-                        if (currentText!!.length == 0) toolbarView!!.setVisibility(View.GONE)
-                        else if (before == 0) toolbarView!!.setVisibility(View.VISIBLE)
+                        if (currentText!!.isEmpty()) toolbarView!!.visibility = View.GONE
+                        else if (before == 0) toolbarView!!.visibility = View.VISIBLE
                     })
             )
         } else {
-            rootView.findViewById<View?>(R.id.suggestions_group)?.setVisibility(View.GONE)
+            rootView.findViewById<View?>(R.id.suggestions_group)?.visibility = View.GONE
         }
 
         var drawTimes = XMLPrefsManager.getInt(Ui.text_redraw_times)
@@ -854,8 +854,8 @@ class UIManager(
         ) {
             try {
                 val d = GradientDrawable()
-                d.setShape(GradientDrawable.RECTANGLE)
-                d.setCornerRadius(cornerRadius.toFloat())
+                d.shape = GradientDrawable.RECTANGLE
+                d.cornerRadius = cornerRadius.toFloat()
 
                 if (!(strokeColor.startsWith("#00") && strokeColor.length == 9)) {
                     d.setStroke(strokeWidth, Color.parseColor(strokeColor))
@@ -867,14 +867,14 @@ class UIManager(
                 v.setBackgroundDrawable(d)
             } catch (e: Exception) {
                 Log.e(TAG, e.toString())
-                Tuils.toFile(v.getContext(), e)
+                Tuils.toFile(v.context, e)
             }
         }
 
         private fun applyMargins(v: View, margins: IntArray) {
             v.setPadding(margins[2], margins[3], margins[2], margins[3])
 
-            val params = v.getLayoutParams()
+            val params = v.layoutParams
             if (params is RelativeLayout.LayoutParams) {
                 params.setMargins(margins[0], margins[1], margins[0], margins[1])
             } else if (params is LinearLayout.LayoutParams) {
@@ -885,7 +885,7 @@ class UIManager(
         private fun applyShadow(v: TextView, color: kotlin.String, x: Int, y: Int, radius: Float) {
             if (!(color.startsWith("#00") && color.length == 9)) {
                 v.setShadowLayer(radius, x.toFloat(), y.toFloat(), Color.parseColor(color))
-                v.setTag(OutlineTextView.SHADOW_TAG)
+                v.tag = OutlineTextView.SHADOW_TAG
             }
         }
 
