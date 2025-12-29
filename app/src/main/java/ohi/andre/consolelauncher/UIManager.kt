@@ -1,7 +1,6 @@
 package ohi.andre.consolelauncher
 
 import android.app.Activity
-import android.app.KeyguardManager
 import android.app.admin.DevicePolicyManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -11,11 +10,8 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
-import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
-import android.text.TextUtils
-import android.text.method.LinkMovementMethod
 import android.util.Log
 import android.view.GestureDetector
 import android.view.GestureDetector.OnDoubleTapListener
@@ -44,10 +40,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import ohi.andre.consolelauncher.commands.main.MainPack
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
-import ohi.andre.consolelauncher.managers.NotesManager
 import ohi.andre.consolelauncher.managers.TerminalManager
-import ohi.andre.consolelauncher.managers.TimeManager
-import ohi.andre.consolelauncher.managers.TuiLocationManager
 import ohi.andre.consolelauncher.managers.suggestions.SuggestionTextWatcher
 import ohi.andre.consolelauncher.managers.suggestions.SuggestionsManager
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
@@ -59,7 +52,6 @@ import ohi.andre.consolelauncher.managers.xml.options.Ui
 import ohi.andre.consolelauncher.tuils.OutlineTextView
 import ohi.andre.consolelauncher.tuils.Tuils
 import ohi.andre.consolelauncher.tuils.interfaces.CommandExecuter
-import ohi.andre.consolelauncher.tuils.interfaces.OnBatteryUpdate
 import ohi.andre.consolelauncher.tuils.interfaces.OnRedirectionListener
 import ohi.andre.consolelauncher.tuils.interfaces.OnTextChanged
 import ohi.andre.consolelauncher.tuils.stuff.PolicyReceiver
@@ -75,8 +67,6 @@ import kotlin.Exception
 import kotlin.Float
 import kotlin.Int
 import kotlin.IntArray
-import kotlin.Long
-import kotlin.LongArray
 import kotlin.arrayOf
 import kotlin.arrayOfNulls
 import kotlin.math.min
@@ -130,10 +120,6 @@ class UIManager(
     private val imm: InputMethodManager
     private var mTerminalAdapter: TerminalManager?
 
-    var mediumPercentage: Int = 0
-    var lowPercentage: Int = 0
-    var batteryFormat: String? = null
-
     var hideToolbarNoInput: Boolean = false
     var toolbarView: View? = null
 
@@ -141,60 +127,11 @@ class UIManager(
     // TODO: change this to a map to enable easier modification and access
     val mapLabelViews = loadTextViews(rootView)
 
-    private fun getLabelView(l: Label): TextView? {
-        val dataLabel = mapLabelViews.get(l)
-        return dataLabel?.textView
-    }
-
-    public fun getLabelSize(l: Label): Int {
-        val tv = getLabelView(l)
-        if (tv == null) {
-            return 0
-        }
-        return tv.text.length
-    }
-
-    private var notesMaxLines = 0
-    private var notesManager: NotesManager? = null
-
-    private inner class NotesRunnable : Runnable {
-        var updateTime: Int = 2000
-
-        override fun run() {
-            if (notesManager != null) {
-                if (notesManager!!.hasChanged) {
-                    this@UIManager.updateText(
-                        Label.notes,
-                        notesManager!!.getNotes()
-                    )
-                }
-
-                handler.postDelayed(this, updateTime.toLong())
-            }
-        }
-    }
-
-
-    public var lastLatitude = 0.0
-    public var lastLongitude = 0.0
-    public var lastWeather = "unavailable"
-
-
-    private var location: String? = null
-    private var fixedLocation = false
-
-    private var weatherPerformedStartupRun = false
 
     data class LabelView(val textView: TextView, val size: Int, val color: Int, val show: Boolean)
 
     private fun loadTextViews(rootView: ViewGroup): Map<Label, LabelView?> {
        return  mapOf(
-           Label.notes to LabelView(
-               rootView.findViewById<View?>(R.id.tv5) as TextView,
-               XMLPrefsManager.getInt(Ui.notes_size),
-               XMLPrefsManager.getColor(Theme.notes_color),
-                   XMLPrefsManager.getBoolean(Ui.show_notes),
-           ),
            Label.device to LabelView(
                rootView.findViewById<View?>(R.id.tv6) as TextView,
                XMLPrefsManager.getInt(Ui.device_size),
@@ -228,12 +165,9 @@ class UIManager(
     @kotlin.jvm.JvmField
     var pack: MainPack? = null
 
-    private val clearOnLock = XMLPrefsManager.getBoolean(Behavior.clear_on_lock)
-
     fun dispose() {
         handler.removeCallbacksAndMessages(null)
         suggestionsManager?.dispose()
-        notesManager?.dispose(mContext)
 
         LocalBroadcastManager.getInstance(mContext.getApplicationContext())
             .unregisterReceiver(receiver)
@@ -643,10 +577,7 @@ class UIManager(
 
 
         for ((label, view) in  mapLabelViews) {
-            val tv = view?.textView
-            if (tv == null) {
-                continue
-            }
+            val tv = view?.textView ?: continue
             tv.setOnTouchListener(this)
             tv.setTypeface(Tuils.getTypeface(context))
             if (view?.show == false) {
@@ -676,30 +607,7 @@ class UIManager(
                 }
                 Label.battery -> TODO()
                 Label.network -> TODO()
-                Label.notes -> {
-                    notesManager = NotesManager(context, tv)
-                    val notesRunnable = NotesRunnable()
-                    handler.post(notesRunnable)
-                    tv.setMovementMethod(LinkMovementMethod())
-                    notesMaxLines = XMLPrefsManager.getInt(Ui.notes_max_lines)
-                    if (notesMaxLines > 0) {
-                        tv.setMaxLines(notesMaxLines)
-                        tv.setEllipsize(TextUtils.TruncateAt.MARQUEE)
-                        if (XMLPrefsManager.getBoolean( Ui.show_scroll_notes_message ) ) {
-                            tv.getViewTreeObserver()
-                                ?.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
-                                    var linesBefore: Int = Int.Companion.MIN_VALUE
-                                    override fun onGlobalLayout() {
-                                        if (tv.getLineCount() > notesMaxLines && linesBefore <= notesMaxLines) {
-                                            Tuils.sendOutput(Color.RED, context, R.string.note_max_reached)
-                                        }
-                                        linesBefore = tv.getLineCount()
-                                    }
-                                })
-                        }
-                    }
-
-                }
+                Label.notes -> TODO()
                 Label.weather -> TODO()
                 Label.unlock -> TODO()
                 Label.ram -> TODO()

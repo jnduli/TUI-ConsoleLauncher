@@ -1,6 +1,5 @@
 package ohi.andre.consolelauncher
 
-import android.R
 import android.app.ActivityManager
 import android.app.Application
 import android.app.KeyguardManager
@@ -29,10 +28,13 @@ import android.telephony.TelephonyManager
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextUtils
+import android.text.method.LinkMovementMethod
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
 import android.util.Log
 import android.util.TypedValue
+import android.view.ViewTreeObserver.OnGlobalLayoutListener
+import android.widget.TextView
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.awaitClose
@@ -48,6 +50,7 @@ import kotlinx.coroutines.launch
 import ohi.andre.consolelauncher.UIManager.Companion.NEXT_UNLOCK_CYCLE_RESTART
 import ohi.andre.consolelauncher.UIManager.Companion.UNLOCK_KEY
 import ohi.andre.consolelauncher.UIManager.Label
+import ohi.andre.consolelauncher.managers.NotesManager
 import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.TimeManager
 import ohi.andre.consolelauncher.managers.TuiLocationManager
@@ -56,6 +59,7 @@ import ohi.andre.consolelauncher.managers.weatherURL
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Theme
+import ohi.andre.consolelauncher.managers.xml.options.Ui
 import ohi.andre.consolelauncher.tuils.Tuils
 import java.io.File
 import java.text.DecimalFormat
@@ -65,26 +69,16 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.regex.Pattern
+import kotlin.compareTo
 import kotlin.math.min
 import kotlin.text.toInt
+import kotlin.text.toLong
 
 const val TIME_RUNNABLE_DELAY_MS: Long = 1 * 1000 // 1 second
 const val RAM_RUNNABLE_DELAY_MS: Long = 5 * 1000 // 5 seconds
 const val STORAGE_RUNNABLE_DELAY_MS: Long =  60 * 1000 // 1 minute
 const val NETWORK_RUNNABLE_DELAY_MS: Long = 10 * 1000 // 10 seconds
-const val WEATHER_RUNNABLE_DELAY_MS: Long =  120 * 1000 // 1 minute
 const val TAG = "UIRunnables"
-
-abstract class UIRunnable(val uiManager: UIManager, val handler: Handler, val label: UIManager.Label, val rerunDelayMillis: Long) : Runnable{
-
-    abstract fun text(): CharSequence
-
-    override fun run() {
-        uiManager.updateText(label, text())
-        handler.postDelayed(this, rerunDelayMillis)
-    }
-}
-
 
 fun colorString(content: CharSequence, fg: Int): SpannableString {
     val spannableString = SpannableString(content)
@@ -295,12 +289,6 @@ class WeatherViewModel(application: Application): AndroidViewModel(application) 
     private val locationManager = application.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private var location: Location? = null
 
-    // A sealed class is best to handle the state of coordinates
-    sealed class LocationState {
-        object Loading : LocationState()
-        data class Success(val lat: Double, val lon: Double) : LocationState()
-        data class Error(val message: String) : LocationState()
-    }
     val weather: StateFlow<CharSequence> = callbackFlow {
         Tuils.sendOutput(application, "Found location", TerminalManager.CATEGORY_OUTPUT)
         var listener = object: LocationListener {
@@ -410,7 +398,7 @@ class UnlockTimeViewModel(application: Application) : AndroidViewModel(applicati
 
     private var lastUnlocks = ArrayDeque<Long>()
     private var lastUnlockTime: Long = -1
-    var nextUnlockCycleRestart = preferences.getLong(UIManager.NEXT_UNLOCK_CYCLE_RESTART, 0)
+    var nextUnlockCycleRestart = preferences.getLong(NEXT_UNLOCK_CYCLE_RESTART, 0)
     private val A_DAY = (1000 * 60 * 60 * 24).toLong()
     private val cycleDuration = A_DAY.toInt()
     private val fg_color = XMLPrefsManager.getColor(Theme.unlock_counter_color)
@@ -543,4 +531,54 @@ class UnlockTimeViewModel(application: Application) : AndroidViewModel(applicati
         //     mTerminalAdapter?.clear()
         // }
     }
+}
+
+class NotesViewModel(application: Application): AndroidViewModel(application) {
+    val context: Context by lazy { application.applicationContext }
+    val notesManager = NotesManager(context)
+    val notesMaxLines = XMLPrefsManager.getInt(Ui.notes_max_lines)
+    val showScrollNotes = XMLPrefsManager.getBoolean( Ui.show_scroll_notes_message )
+    var updateTime: Long = 2000
+
+    private val _currentText = MutableStateFlow(notesManager.notes)
+    val currentText: StateFlow<CharSequence> = _currentText.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            while(true) {
+                if (notesManager.hasChanged) {
+                    _currentText.value = notesManager.notes
+                }
+                delay(updateTime)
+
+            }
+        }
+    }
+
+    fun updateTextView(tv: TextView) {
+        val allowLink = XMLPrefsManager.getBoolean(Behavior.notes_allow_link)
+        if (allowLink) {
+            tv.setMovementMethod(LinkMovementMethod())
+        }
+        tv.setMaxLines(notesMaxLines)
+        tv.setEllipsize(TextUtils.TruncateAt.MARQUEE)
+        if (!showScrollNotes) return
+        tv.getViewTreeObserver()
+            ?.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
+                var linesBefore: Int = Int.Companion.MIN_VALUE
+                override fun onGlobalLayout() {
+                    if (tv.getLineCount() > notesMaxLines && linesBefore <= notesMaxLines) {
+                        Tuils.sendOutput(Color.RED, context, ohi.andre.consolelauncher.R.string.note_max_reached)
+                    }
+                    linesBefore = tv.getLineCount()
+                }
+            })
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        notesManager.dispose(context)
+    }
+
+
 }

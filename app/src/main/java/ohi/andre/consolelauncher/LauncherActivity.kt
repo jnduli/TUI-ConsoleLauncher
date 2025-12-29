@@ -11,11 +11,11 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
-import androidx.activity.viewModels
 import android.os.Bundle
 import android.os.Handler
 import android.provider.Settings
 import android.text.TextUtils
+import android.text.method.LinkMovementMethod
 import android.util.Log
 import android.view.ContextMenu
 import android.view.ContextMenu.ContextMenuInfo
@@ -27,18 +27,15 @@ import android.view.Window
 import android.view.WindowManager
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import ohi.andre.consolelauncher.commands.main.raw.bluetooth
-import ohi.andre.consolelauncher.commands.main.raw.wifi
 import ohi.andre.consolelauncher.commands.tuixt.TuixtActivity
 import ohi.andre.consolelauncher.managers.ContactManager.Contact
 import ohi.andre.consolelauncher.managers.RegexManager
@@ -208,6 +205,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
     private val batteryViewModel by viewModels<BatteryViewModel>()
     private val weatherViewModel by viewModels<WeatherViewModel>()
     private val unlockTimeViewModel by viewModels<UnlockTimeViewModel>()
+    private val notesViewModel by viewModels<NotesViewModel>()
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -227,6 +225,9 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         val batteryTextView = mainView.findViewById<TextView>(R.id.tv2)
         val weatherTextView = mainView.findViewById<TextView>(R.id.tv7)
         val unlockTimeTextView = mainView.findViewById<TextView>(R.id.tv8)
+        val notesTextView = mainView.findViewById<TextView>(R.id.tv5)
+
+        notesViewModel.updateTextView(notesTextView)
 
         checkAndRequestPermissions(REQUIRED_LOCATION_PERMISSIONS, LOCATION_REQUEST_PERMISSION)
 
@@ -234,15 +235,17 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         lifecycle.addObserver(TextUpdateManager(memoryTextView, memoryViewModel.currentText))
         lifecycle.addObserver(TextUpdateManager(storageTextView, storageViewModel.currentText))
 
-        val combinedNetworkFlow = combine(networkViewModel.connectionStatus, wifiViewModel.ssid, mobileViewModel.status,
-            bluetoothViewModel.status, ) { ntwk, wifi, mobile, bth -> colorString("$ntwk | Wifi: $wifi | Mob: $mobile | Bth: $bth",
+        val combinedNetworkFlow = combine(
+            networkViewModel.connectionStatus, wifiViewModel.ssid, mobileViewModel.status,
+            bluetoothViewModel.status,
+        ) { ntwk, wifi, mobile, bth -> colorString("$ntwk | Wifi: $wifi | Mob: $mobile | Bth: $bth",
             XMLPrefsManager.getColor(Theme.network_info_color))}.stateIn(lifecycleScope,
             SharingStarted.WhileSubscribed(5000), "Loading...")
         lifecycle.addObserver(TextUpdateManager(networkTextView, combinedNetworkFlow))
         lifecycle.addObserver(TextUpdateManager(batteryTextView, batteryViewModel.batteryStatus))
         lifecycle.addObserver(TextUpdateManager(weatherTextView, weatherViewModel.weather))
         lifecycle.addObserver(TextUpdateManager(unlockTimeTextView, unlockTimeViewModel.currentText))
-
+        lifecycle.addObserver(TextUpdateManager(notesTextView, notesViewModel.currentText))
 
     }
 

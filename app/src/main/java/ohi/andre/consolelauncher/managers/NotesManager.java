@@ -92,7 +92,7 @@ public class NotesManager {
     public static int broadcastCount;
 
 //    noteview can't be changed too much, it may be shared
-    public NotesManager(Context context, TextView noteView) {
+    public NotesManager(Context context) {
         classes = new HashSet<>();
         notes = new ArrayList<>();
 
@@ -115,11 +115,9 @@ public class NotesManager {
         divider = Tuils.patternNewline.matcher(divider).replaceAll(Tuils.NEWLINE);
 
         allowLink = XMLPrefsManager.getBoolean(Behavior.notes_allow_link);
-        if(allowLink && noteView != null) {
-            noteView.setMovementMethod(new LinkMovementMethod());
+        if (allowLink) {
             linkColor = XMLPrefsManager.getColor(Theme.link_color);
         }
-
         Note.sorting = XMLPrefsManager.getInt(Behavior.notes_sorting);
 
         load(context, true);
