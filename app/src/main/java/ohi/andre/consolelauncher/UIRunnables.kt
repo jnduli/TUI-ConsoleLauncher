@@ -52,13 +52,14 @@ import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Theme
 import ohi.andre.consolelauncher.managers.xml.options.Ui
 import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.utils.ByteFormatter
 import java.io.File
-import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.text.toInt
+import androidx.core.content.edit
 
 const val TIME_RUNNABLE_DELAY_MS: Long = 1 * 1000 // 1 second
 const val RAM_RUNNABLE_DELAY_MS: Long = 5 * 1000 // 5 seconds
@@ -106,9 +107,6 @@ class MemoryViewModel(application: Application) : PollViewModel(application, RAM
     private val am = application.getSystemService((Context.ACTIVITY_SERVICE)) as ActivityManager
     override fun getText(): CharSequence {
         val memoryInfo = ActivityManager.MemoryInfo()
-        if (am == null) {
-            return "n/a"
-        }
         am.getMemoryInfo(memoryInfo)
         return ByteFormatter.toHumanReadableSize(memoryInfo.availMem) + " / " + ByteFormatter.toHumanReadableSize(memoryInfo.totalMem)
     }
@@ -343,45 +341,6 @@ class WeatherViewModel(application: Application): AndroidViewModel(application) 
     )
 }
 
-/**
- * An object containing the logic and constants for converting raw byte counts
- * into human-readable strings (KB, MB, GB, etc.).
- */
-object ByteFormatter {
-    
-    // Using binary multipliers (powers of 1024) - Standard for OS/memory
-    private const val KILOBYTE: Long = 1024
-    private const val MEGABYTE: Long = KILOBYTE * 1024
-    private const val GIGABYTE: Long = MEGABYTE * 1024
-    private const val TERABYTE: Long = GIGABYTE * 1024
-    private const val PETABYTE: Long = TERABYTE * 1024
-    
-    // Used for formatting the output string to two decimal places
-    private val DECIMAL_FORMAT = DecimalFormat("#.##")
-    
-    fun toHumanReadableSize(bytes: Long): String {
-        // Handle negative or zero bytes
-        if (bytes <= 0) return "0 Bytes"
-
-        // Determine the correct unit and calculate the result
-        return when {
-            bytes >= PETABYTE ->
-                "${DECIMAL_FORMAT.format(bytes.toDouble() / PETABYTE)} PB"
-            bytes >= TERABYTE ->
-                "${DECIMAL_FORMAT.format(bytes.toDouble() / TERABYTE)} TB"
-            bytes >= GIGABYTE ->
-                "${DECIMAL_FORMAT.format(bytes.toDouble() / GIGABYTE)} GB"
-            bytes >= MEGABYTE ->
-                "${DECIMAL_FORMAT.format(bytes.toDouble() / MEGABYTE)} MB"
-            bytes >= KILOBYTE ->
-                "${DECIMAL_FORMAT.format(bytes.toDouble() / KILOBYTE)} KB"
-
-            else ->
-                "$bytes Bytes" // Less than 1 KB
-        }.toString()
-    }
-}
-
 class UnlockTimeViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * How I register and unregister the BroadcastReceiver isn't too great. I'll improve this later on
@@ -430,7 +389,7 @@ class UnlockTimeViewModel(application: Application) : AndroidViewModel(applicati
         if (currentTime - lastUnlockTime < 1000 ) return
         unlockTimes++
         lastUnlocks.addFirst(currentTime)
-        preferences.edit().putInt(UNLOCK_KEY, unlockTimes).apply()
+        preferences.edit { putInt(UNLOCK_KEY, unlockTimes) }
         while (lastUnlocks.size > minTimeUnlocksArray) {
             lastUnlocks.removeLast()
         }
@@ -576,6 +535,4 @@ class NotesViewModel(application: Application): AndroidViewModel(application) {
         super.onCleared()
         notesManager.dispose(context)
     }
-
-
 }

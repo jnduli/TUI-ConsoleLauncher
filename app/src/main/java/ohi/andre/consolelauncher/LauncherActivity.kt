@@ -253,9 +253,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         if (requestedOrientation >= 0 && requestedOrientation != 2) {
             val orientation = getResources().getConfiguration().orientation
             if (orientation != requestedOrientation) setRequestedOrientation(requestedOrientation)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED)
-            }
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED)
         }
     }
 
