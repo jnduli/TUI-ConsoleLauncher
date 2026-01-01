@@ -150,7 +150,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                                     var value = m1.group(1)
                                     if (value == null || value.length == 0) value = m1.group(2)
 
-                                    if (converter != null && converter.length > 0) {
+                                    if (converter != null && converter.isNotEmpty()) {
                                         try {
                                             var d = value.toDouble()
                                             d = Tuils.textCalculus(d, converter)
@@ -206,7 +206,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                             copy = replaceLinkColorReplace(context, copy, url)
                             copy = removeDelimiter(copy)
 
-                            if (copy.toString().trim { it <= ' ' }.length > 0) output =
+                            if (copy.toString().trim { it <= ' ' }.isNotEmpty()) output =
                                 TextUtils.concat(
                                     output,
                                     (if (c != 0) Tuils.NEWLINE + Tuils.NEWLINE else Tuils.EMPTYSTRING),
@@ -252,7 +252,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                                 copy = replaceLinkColorReplace(context, copy, url)
                                 copy = removeDelimiter(copy)
 
-                                if (copy.toString().trim { it <= ' ' }.length > 0) output =
+                                if (copy.toString().trim { it <= ' ' }.isNotEmpty()) output =
                                     TextUtils.concat(
                                         output,
                                         (if (c != 0) Tuils.NEWLINE + Tuils.NEWLINE else Tuils.EMPTYSTRING),
@@ -522,7 +522,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                 arrayOf<String>(id.toString())
             )
             if (output != null) {
-                if (output.length > 0) Tuils.sendOutput(Color.RED, context, output)
+                if (output.isNotEmpty()) Tuils.sendOutput(Color.RED, context, output)
                 else {
                     Tuils.sendOutput(Color.RED, context, R.string.id_notfound)
                 }
@@ -545,7 +545,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                 false
             )
             if (output != null) {
-                if (output.length > 0) Tuils.sendOutput(Color.RED, context, output)
+                if (output.isNotEmpty()) Tuils.sendOutput(Color.RED, context, output)
                 else {
                     Tuils.sendOutput(Color.RED, context, R.string.id_notfound)
                 }
@@ -594,7 +594,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                     arrayOf<String?>(id.toString(), path)
                 )
                 if (output != null) {
-                    if (output.length > 0) Tuils.sendOutput(Color.RED, context, output)
+                    if (output.isNotEmpty()) Tuils.sendOutput(Color.RED, context, output)
                     else Tuils.sendOutput(Color.RED, context, R.string.output_error)
                     return null
                 }

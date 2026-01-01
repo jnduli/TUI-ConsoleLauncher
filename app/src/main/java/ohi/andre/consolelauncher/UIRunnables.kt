@@ -496,14 +496,14 @@ class NotesViewModel(application: Application): AndroidViewModel(application) {
     val showScrollNotes = XMLPrefsManager.getBoolean( Ui.show_scroll_notes_message )
     var updateTime: Long = 2000
 
-    private val _currentText = MutableStateFlow(notesManager.notes)
+    private val _currentText = MutableStateFlow(notesManager.getOldNotesString())
     val currentText: StateFlow<CharSequence> = _currentText.asStateFlow()
 
     init {
         viewModelScope.launch {
             while(true) {
                 if (notesManager.hasChanged) {
-                    _currentText.value = notesManager.notes
+                    _currentText.value = notesManager.getOldNotesString()
                 }
                 delay(updateTime)
 
