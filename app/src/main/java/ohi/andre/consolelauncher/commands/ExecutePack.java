@@ -5,6 +5,7 @@ import android.content.Context;
 import java.util.ArrayList;
 
 import ohi.andre.consolelauncher.managers.AppsManager;
+import ohi.andre.consolelauncher.managers.LaunchInfo;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 
 @SuppressWarnings("deprecation")
@@ -55,8 +56,8 @@ public abstract class ExecutePack {
         return (XMLPrefsSave) get();
     }
 
-    public AppsManager.LaunchInfo getLaunchInfo() {
-        return (AppsManager.LaunchInfo) get();
+    public LaunchInfo getLaunchInfo() {
+        return (LaunchInfo) get();
     }
 
     public void set(Object[] args) {

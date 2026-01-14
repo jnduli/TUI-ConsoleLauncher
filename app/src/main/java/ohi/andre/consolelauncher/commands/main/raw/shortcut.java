@@ -15,6 +15,7 @@ import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.specific.APICommand;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.AppsManager;
+import ohi.andre.consolelauncher.managers.LaunchInfo;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 /**
@@ -35,7 +36,7 @@ public class shortcut extends ParamCommand implements APICommand {
             @Override
             public String exec(ExecutePack pack) {
                 String id = pack.getString();
-                AppsManager.LaunchInfo li = pack.getLaunchInfo();
+                LaunchInfo li = pack.getLaunchInfo();
 
                 ShortcutInfo shortcut = null;
                 int index;
@@ -74,7 +75,7 @@ public class shortcut extends ParamCommand implements APICommand {
                 ShortcutInfo info = null;
 
                 Out:
-                for(AppsManager.LaunchInfo l : ((MainPack) pack).appsManager.shownApps()) {
+                for(LaunchInfo l : ((MainPack) pack).appsManager.shownApps()) {
                     if(l.shortcuts == null || l.shortcuts.size() == 0) continue;
 
                     for(ShortcutInfo i : l.shortcuts) {
@@ -106,7 +107,7 @@ public class shortcut extends ParamCommand implements APICommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                AppsManager.LaunchInfo li = pack.getLaunchInfo();
+                LaunchInfo li = pack.getLaunchInfo();
                 if(li.shortcuts == null || li.shortcuts.size() == 0) return "[]";
 
                 StringBuilder builder = new StringBuilder();
@@ -117,10 +118,10 @@ public class shortcut extends ParamCommand implements APICommand {
 
             @Override
             public String onNotArgEnough(ExecutePack pack, int n) {
-                List<AppsManager.LaunchInfo> infos = ((MainPack) pack).appsManager.shownApps();
+                List<LaunchInfo> infos = ((MainPack) pack).appsManager.shownApps();
                 StringBuilder builder = new StringBuilder();
 
-                for(AppsManager.LaunchInfo l : infos) {
+                for(LaunchInfo l : infos) {
                     if(l.shortcuts == null || l.shortcuts.size() == 0) continue;
 
                     builder.append(l.publicLabel).append(Tuils.NEWLINE);

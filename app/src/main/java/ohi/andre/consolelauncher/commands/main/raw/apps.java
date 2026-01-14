@@ -13,7 +13,9 @@ import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
+import ohi.andre.consolelauncher.managers.AppUtils;
 import ohi.andre.consolelauncher.managers.AppsManager;
+import ohi.andre.consolelauncher.managers.LaunchInfo;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.managers.xml.options.Apps;
 import ohi.andre.consolelauncher.tuils.Tuils;
@@ -62,7 +64,7 @@ public class apps extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                AppsManager.LaunchInfo i = pack.getLaunchInfo();
+                LaunchInfo i = pack.getLaunchInfo();
                 ((MainPack) pack).appsManager.showActivity(i);
                 return null;
             }
@@ -75,7 +77,7 @@ public class apps extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                AppsManager.LaunchInfo i = pack.getLaunchInfo();
+                LaunchInfo i = pack.getLaunchInfo();
                 ((MainPack) pack).appsManager.hideActivity(i);
                 return null;
             }
@@ -89,10 +91,10 @@ public class apps extends ParamCommand {
             @Override
             public String exec(ExecutePack pack) {
                 try {
-                    AppsManager.LaunchInfo i = pack.getLaunchInfo();
+                    LaunchInfo i = pack.getLaunchInfo();
 
                     PackageInfo info = pack.context.getPackageManager().getPackageInfo(i.componentName.getPackageName(), PackageManager.GET_PERMISSIONS | PackageManager.GET_ACTIVITIES | PackageManager.GET_SERVICES | PackageManager.GET_RECEIVERS);
-                    return AppsManager.AppUtils.format(i, info);
+                    return AppUtils.format(i, info);
                 } catch (PackageManager.NameNotFoundException e) {
                     return e.toString();
                 }
@@ -123,8 +125,8 @@ public class apps extends ParamCommand {
                 Object o = pack.get();
 
                 String marker;
-                if(o instanceof AppsManager.LaunchInfo) {
-                    AppsManager.LaunchInfo i = (AppsManager.LaunchInfo) o;
+                if(o instanceof LaunchInfo) {
+                    LaunchInfo i = (LaunchInfo) o;
                     marker = i.componentName.getPackageName() + "-" + i.componentName.getClassName();
                 } else {
                     marker = (String) o;
@@ -274,7 +276,7 @@ public class apps extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                AppsManager.LaunchInfo app = pack.getLaunchInfo();
+                LaunchInfo app = pack.getLaunchInfo();
                 app.launchedTimes = 0;
                 ((MainPack) pack).appsManager.writeLaunchTimes(app);
 
@@ -385,7 +387,7 @@ public class apps extends ParamCommand {
             @Override
             public String exec(ExecutePack pack) {
                 String name = pack.getString();
-                AppsManager.LaunchInfo app = pack.getLaunchInfo();
+                LaunchInfo app = pack.getLaunchInfo();
                 return ((MainPack) pack).appsManager.addAppToGroup(name, app);
             }
         },
@@ -398,7 +400,7 @@ public class apps extends ParamCommand {
             @Override
             public String exec(ExecutePack pack) {
                 String name = pack.getString();
-                AppsManager.LaunchInfo app = pack.getLaunchInfo();
+                LaunchInfo app = pack.getLaunchInfo();
                 return ((MainPack) pack).appsManager.removeAppFromGroup(name, app);
             }
         },

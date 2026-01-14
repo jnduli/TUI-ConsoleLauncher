@@ -300,7 +300,7 @@ public class TerminalManager {
 
         Object obj = null;
         try {
-            obj = ((Spannable) input).getSpans(0, input.length(), AppsManager.LaunchInfo.class)[0];
+            obj = ((Spannable) input).getSpans(0, input.length(), LaunchInfo.class)[0];
         } catch (Exception e) {
 //            an error will probably be thrown everytime, but we don't need to track it
         }

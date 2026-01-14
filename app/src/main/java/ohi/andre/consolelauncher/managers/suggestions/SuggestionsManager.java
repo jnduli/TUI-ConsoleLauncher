@@ -41,6 +41,7 @@ import ohi.andre.consolelauncher.managers.AliasManager;
 import ohi.andre.consolelauncher.managers.AppsManager;
 import ohi.andre.consolelauncher.managers.ContactManager;
 import ohi.andre.consolelauncher.managers.FileManager;
+import ohi.andre.consolelauncher.managers.LaunchInfo;
 import ohi.andre.consolelauncher.managers.RssManager;
 import ohi.andre.consolelauncher.managers.TerminalManager;
 import ohi.andre.consolelauncher.managers.music.Song;
@@ -570,7 +571,7 @@ public class SuggestionsManager {
             if (beforeLastSpace .length() == 0) {
                 comparator.noInput = true;
 
-                AppsManager.LaunchInfo[] apps = pack.appsManager.getSuggestedApps();
+                LaunchInfo[] apps = pack.appsManager.getSuggestedApps();
                 if (apps != null) {
                     for(int count = 0; count < apps.length && count < noInputCounts[Suggestion.TYPE_APP]; count++) {
                         if(apps[count] == null) {
@@ -1060,7 +1061,7 @@ public class SuggestionsManager {
     }
 
     private void suggestAllPackages(MainPack info, List<Suggestion> suggestions, String afterLastSpace, String beforeLastSpace ) {
-        List<AppsManager.LaunchInfo> apps = new ArrayList<>(info.appsManager.shownApps());
+        List<LaunchInfo> apps = new ArrayList<>(info.appsManager.shownApps());
         apps.addAll(info.appsManager.hiddenApps());
         suggestApp(apps, suggestions, afterLastSpace, beforeLastSpace, true);
     }
@@ -1072,14 +1073,14 @@ public class SuggestionsManager {
         suggestApp(info.appsManager.shownApps(), suggestions, afterLastSpace, beforeLastSpace, true);
     }
 
-    private void suggestApp(List<AppsManager.LaunchInfo> apps, List<Suggestion> suggestions, String afterLastSpace, String beforeLastSpace, boolean canClickToLaunch) {
+    private void suggestApp(List<LaunchInfo> apps, List<Suggestion> suggestions, String afterLastSpace, String beforeLastSpace, boolean canClickToLaunch) {
         if(apps == null || apps.size() == 0) return;
 
         apps = new ArrayList<>(apps);
 
         int canInsert = counts[Suggestion.TYPE_APP];
         if (afterLastSpace == null || afterLastSpace.length() == 0) {
-            for (AppsManager.LaunchInfo l : apps) {
+            for (LaunchInfo l : apps) {
                 if(canInsert == 0) return;
                 canInsert--;
 
@@ -1089,8 +1090,8 @@ public class SuggestionsManager {
             int counter = quickCompare(afterLastSpace, apps, suggestions, beforeLastSpace, canInsert, canClickToLaunch && clickToLaunch, Suggestion.TYPE_APP, canClickToLaunch && clickToLaunch);
             if(canInsert - counter <= 0) return;
 
-            AppsManager.LaunchInfo[] infos = CompareObjects.topMatchesWithDeadline(AppsManager.LaunchInfo.class, afterLastSpace, apps.size(), apps, canInsert - counter, suggestionsDeadline, SPLITTERS, algInstance, alg);
-            for(AppsManager.LaunchInfo i : infos) {
+            LaunchInfo[] infos = CompareObjects.topMatchesWithDeadline(LaunchInfo.class, afterLastSpace, apps.size(), apps, canInsert - counter, suggestionsDeadline, SPLITTERS, algInstance, alg);
+            for(LaunchInfo i : infos) {
                 if(i == null) break;
 
                 if(canInsert == 0) return;

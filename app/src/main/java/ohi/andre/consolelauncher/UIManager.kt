@@ -421,20 +421,21 @@ class UIManager(
                     }
 
                     override fun onScroll(
-                        p0: MotionEvent,
+                        p0: MotionEvent?,
                         p1: MotionEvent,
-                        distanceY: Float,
+                        p2: Float,
                         p3: Float
                     ): Boolean {
                         return false
                     }
 
+
                     override fun onLongPress(p0: MotionEvent) {}
 
                     override fun onFling(
-                        p0: MotionEvent,
+                        p0: MotionEvent?,
                         p1: MotionEvent,
-                        velocityY: Float,
+                        p2: Float,
                         p3: Float
                     ): Boolean {
                         return false
