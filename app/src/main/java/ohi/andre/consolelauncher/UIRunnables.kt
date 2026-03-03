@@ -106,9 +106,14 @@ class TimeViewModel(application: Application) : PollViewModel(application, TIME_
 class MemoryViewModel(application: Application) : PollViewModel(application, RAM_RUNNABLE_DELAY_MS, XMLPrefsManager.getColor(Theme.ram_color) ) {
     private val am = application.getSystemService((Context.ACTIVITY_SERVICE)) as ActivityManager
     override fun getText(): CharSequence {
-        val memoryInfo = ActivityManager.MemoryInfo()
-        am.getMemoryInfo(memoryInfo)
-        return ByteFormatter.toHumanReadableSize(memoryInfo.availMem) + " / " + ByteFormatter.toHumanReadableSize(memoryInfo.totalMem)
+        try {
+            val memoryInfo = ActivityManager.MemoryInfo()
+            am.getMemoryInfo(memoryInfo)
+            return ByteFormatter.toHumanReadableSize(memoryInfo.availMem) + " / " + ByteFormatter.toHumanReadableSize(memoryInfo.totalMem)
+        // TODO: this shouldn't happen
+        } catch (e: NullPointerException) {
+            return "null pointer exception"
+        }
     }
 }
 

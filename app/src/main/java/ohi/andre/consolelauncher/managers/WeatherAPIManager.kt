@@ -39,7 +39,7 @@ data class MainStats(
 @Serializable
 data class Wind(val speed: Double, val deg: Int)
 
-val TAG = "WeatherAPIManager"
+val WEATHER_TAG = "WeatherAPIManager"
 
 fun weatherURL(appId: String, latitude: Double, longitude: Double, units: String) : String {
     return "https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=$appId&units=$units"
@@ -51,7 +51,7 @@ class WeatherRepository {
     private val json = Json { ignoreUnknownKeys = true } // Skips fields we didn't define
 
     fun fetchWeather(url: String, callback: (WeatherResponse?) -> Unit) {
-        Log.i(TAG, "Fetching data for: $url")
+        Log.i(WEATHER_TAG, "Fetching data for: $url")
         // if (!Tuils.hasInternetAccess()) {
         //    return
         // }
@@ -66,7 +66,7 @@ class WeatherRepository {
 
         client.newCall(request).enqueue(object : okhttp3.Callback {
             override fun onFailure(call: okhttp3.Call, e: IOException) {
-                Log.e(TAG, e.toString())
+                Log.e(WEATHER_TAG, e.toString())
                 callback(null)
             }
 

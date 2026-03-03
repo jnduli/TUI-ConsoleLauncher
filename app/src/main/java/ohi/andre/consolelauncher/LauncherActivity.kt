@@ -394,10 +394,10 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
             mainView.setSystemUiVisibility(mainView.getSystemUiVisibility() or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR)
         }
 
-        ui = UIManager(this, mainView, main!!.getMainPack(), canApplyTheme, main!!.executer())
+        ui = UIManager(this, mainView, main!!.mainPack, canApplyTheme, main!!.executer())
 
         main!!.setRedirectionListener(ui!!.buildRedirectionListener())
-        ui!!.pack = main!!.getMainPack()
+        ui!!.pack = main!!.mainPack
 
         `in`.`in`(Tuils.EMPTYSTRING)
         ui!!.focusTerminal()
@@ -660,7 +660,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
                 Log.d(TAG, "Connectivity permissions granted, nothing more to do")
             }
             COMMAND_REQUEST_PERMISSION -> {
-                val info = main!!.getMainPack()
+                val info = main!!.mainPack
                 main!!.onCommand(info.lastCommand, null as String?, false)
             }
             COMMAND_SUGGESTION_REQUEST_PERMISSION -> {

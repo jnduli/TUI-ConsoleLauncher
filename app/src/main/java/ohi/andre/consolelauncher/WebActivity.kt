@@ -10,6 +10,10 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
 class WebActivity : AppCompatActivity() {
+    companion object {
+
+        const val URL_EXTRA = "EXTRA_URL"
+    }
 
     private lateinit var myWebView: WebView
 
@@ -27,7 +31,7 @@ class WebActivity : AppCompatActivity() {
         myWebView.settings.domStorageEnabled = true
         myWebView.webViewClient = WebViewClient()
 
-        val url = intent.getStringExtra("EXTRA_URL") ?: "https://google.com"
+        val url = intent.getStringExtra(URL_EXTRA) ?: "https://google.com"
         myWebView.loadUrl(url)
 
         onBackPressedDispatcher.addCallback(this, object: OnBackPressedCallback(true) {
