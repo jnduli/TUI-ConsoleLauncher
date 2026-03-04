@@ -246,7 +246,12 @@ public class CommandTuils {
     }
 
     private static ArgInfo plainText(String input) {
-        return new ArgInfo(input, "", true, 1);
+        if(input == null) return null;
+
+        int index = input.indexOf(Tuils.SPACE);
+        if(index == -1) index = input.length();
+
+        return new ArgInfo(input.substring(0,index), input.length() > index ? input.substring(index + 1) : null, true, 1);
     }
 
     private static ArgInfo textList(String input) {

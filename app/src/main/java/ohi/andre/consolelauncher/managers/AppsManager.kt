@@ -226,14 +226,12 @@ class LauncherManager(val context: Context, val mgr: PackageManager) {
     fun createLaunchablesList(context: Context, mgr: PackageManager): List<Launchable> {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val main = mgr.queryIntentActivities(intent, 0 )
-
         val apps: MutableList<Launchable> = ArrayList<Launchable>()
 
         for (app in main) {
             val activityInfo = app.activityInfo
             val appLauncher = AppLauncher(activityInfo.packageName, activityInfo.name,
                 app.loadLabel(mgr) as String, "")
-
             // Note: For SIM TOolkit, the name 'SIM Toolkit' is defined as one of the shortcuts so not the actual app name found by
             // resovleinfo.loadLabel(mgr), so ensure T-UI is the default for this to work
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
@@ -257,11 +255,8 @@ class LauncherManager(val context: Context, val mgr: PackageManager) {
             apps.add(appLauncher)
         }
         // TODO: jnduli fix this with generic implementation
-        val orodha =  WebLauncher("orodha", "https://mlango.jnduli.co.ke/orodha")
-        apps.add(orodha)
-
-        val mlango =  WebLauncher("mlango", "https://mlango.jnduli.co.ke/")
-        apps.add(mlango)
+        // val webApps = loadWebApps()
+        // apps.addAll(webApps)
         return apps
     }
 }
@@ -968,15 +963,69 @@ class AppsManager(context: Context) : XMLPrefsElement {
             }
         }
 
-        val orodha = LaunchInfo(
-            "ohi.andre.consolelauncher",
-            "WebActivity",
-            "orodha",
-            LauncherType.WEB
-        )
-        infos.add(orodha)
+        // TODO:
+        // 1. Fix bug with adding web launchable
+        // 1. adjust LaunchInfo to take in a website too for WEB LauncherType
+        // 2. adjust the performLaunch to consider LauncherType in this class
+        // 3. modify the caller in MainManager to remove the need for LauncherTypes
+        // 4. test changes in personal phone
+        // 5. Plan out replacement for LaunchInfo with Launchables and figure out next steps
+        // 6. Plan out cleaner interfaces for AppsManager callers to better support loads
+        // 7. Figure out how to link this with raw/apps.kt for instructions to link to
+        val webApps = loadWebAppsForAppsManager()
+        for (webApp in webApps) {
+            val launchInfo = LaunchInfo(
+                "ohi.andre.consolelauncher",
+                "WebActivity",
+                webApp.name,
+                LauncherType.WEB
+            )
+            infos.add(launchInfo)
+        }
 
         return infos
+    }
+
+    fun loadWebAppsForAppsManager(fileName: String = "web_app.xml"): List<WebLauncher> {
+        return try {
+            val file = File(Tuils.getFolder(context), fileName)
+            if (file.exists()) {
+                val xmlString = file.readText()
+                Launchable.listFromXml(xmlString).filterIsInstance<WebLauncher>()
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e(APP_TAG, "Error loading web apps", e)
+            emptyList()
+        }
+    }
+
+    fun saveWebAppsForAppsManager(webLaunchers: List<WebLauncher>, fileName: String = "web_app.xml") {
+        try {
+            val file = File(Tuils.getFolder(context), fileName)
+            val xmlString = Launchable.listToXml(webLaunchers)
+            file.writeText(xmlString)
+        } catch (e: Exception) {
+            Log.e(APP_TAG, "Error saving web apps", e)
+        }
+    }
+
+    fun addWebApp(name: String, url: String, fileName: String = "web_app.xml"): Boolean {
+        return try {
+            val currentWebApps = loadWebAppsForAppsManager(fileName).toMutableList()
+            val existingIndex = currentWebApps.indexOfFirst { it.name.equals(name, ignoreCase = true) }
+            if (existingIndex != -1) {
+                currentWebApps[existingIndex] = WebLauncher(name, url)
+            } else {
+                currentWebApps.add(WebLauncher(name, url))
+            }
+            saveWebAppsForAppsManager(currentWebApps, fileName)
+            true
+        } catch (e: Exception) {
+            Log.e(APP_TAG, "Error adding web app", e)
+            false
+        }
     }
 
     private fun appInstalled(packageName: String) {
