@@ -421,6 +421,21 @@ open class LaunchInfo : Parcelable, StringableObject, Comparable<LaunchInfo?> {
     }
 }
 
+fun LaunchInfo.toLaunchable(): Launchable? {
+    return when (launcherType) {
+        LauncherType.APPLICATION -> {
+            if (componentName != null && activityName != null && publicLabel != null) {
+                AppLauncher(componentName!!.packageName, activityName!!, publicLabel!!)
+            } else null
+        }
+        LauncherType.WEB -> {
+            if (publicLabel != null && webUrl != null) {
+                WebLauncher(publicLabel!!, webUrl!!)
+            } else null
+        }
+    }
+}
+
 
 object AppUtils {
     fun findLaunchInfoWithComponent(appList: MutableList<LaunchInfo>, name: ComponentName?): LaunchInfo? {
@@ -981,7 +996,6 @@ class AppsManager(context: Context) : XMLPrefsElement {
         }
 
         // TODO:
-        // 4. test changes in personal phone
         // 5. Plan out replacement for LaunchInfo with Launchables and figure out next steps
         // 6. Plan out cleaner interfaces for AppsManager callers to better support loads
         // 7. Figure out how to link this with raw/apps.kt for instructions to link to
@@ -1160,33 +1174,8 @@ class AppsManager(context: Context) : XMLPrefsElement {
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
     }
 
-    fun performLaunch(info: LaunchInfo): Boolean {
-        val showAppHistory = XMLPrefsManager.getBoolean(Behavior.show_launch_history)
-        if (!showAppHistory) {
-            return true
-        }
-
-        when (info.launcherType) {
-            LauncherType.APPLICATION -> {
-                if (info.componentName != null && info.activityName != null && info.publicLabel != null) {
-                    val appLauncher = AppLauncher(
-                        info.componentName!!.packageName,
-                        info.activityName!!,
-                        info.publicLabel!!
-                    )
-                    appLauncher.launch(context!!)
-                }
-            }
-            LauncherType.WEB -> {
-                if (info.componentName != null && info.activityName != null && info.publicLabel != null && info.webUrl != null) {
-                    val webLauncher = WebLauncher(
-                        info.publicLabel!!,
-                        info.webUrl!!
-                    )
-                    webLauncher.launch(context!!)
-                }
-            }
-        }
+    fun performLaunch(launchable: Launchable): Boolean {
+        launchable.launch(context!!)
         return true
     }
 

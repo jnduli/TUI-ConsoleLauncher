@@ -147,7 +147,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         updateServices(input, wasMusicService)
 
         if (launchInfo.unspacedLowercaseLabel == Tuils.removeSpaces(input.lowercase(Locale.getDefault()))) {
-            appsManager.performLaunch(launchInfo)
+            launchInfo.toLaunchable()?.let { appsManager.performLaunch(it) }
         } else {
             onCommand(input, null as String?, wasMusicService)
         }
@@ -508,7 +508,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         ): Boolean {
             if (input == null || info == null) return false
             val i = appsManager.findLaunchInfoWithLabel(input, AppsManager.SHOWN_APPS)
-            return i != null && appsManager.performLaunch(i)
+            return i?.toLaunchable()?.let { appsManager.performLaunch(it) } ?: false
         }
     }
 
