@@ -31,8 +31,7 @@ class WebActivity : AppCompatActivity() {
         myWebView.settings.domStorageEnabled = true
         myWebView.webViewClient = WebViewClient()
 
-        val url = intent.getStringExtra(URL_EXTRA) ?: "https://google.com"
-        myWebView.loadUrl(url)
+        loadUrlFromIntent(intent)
 
         onBackPressedDispatcher.addCallback(this, object: OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -46,5 +45,15 @@ class WebActivity : AppCompatActivity() {
             }
 
         })
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        loadUrlFromIntent(intent)
+    }
+
+    private fun loadUrlFromIntent(intent: android.content.Intent) {
+        val url = intent.getStringExtra(URL_EXTRA) ?: "https://google.com"
+        myWebView.loadUrl(url)
     }
 }

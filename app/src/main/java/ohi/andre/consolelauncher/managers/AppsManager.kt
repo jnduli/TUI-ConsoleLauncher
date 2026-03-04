@@ -113,7 +113,7 @@ data class WebLauncher(val name: String, val url: String, override var launchTim
 
     override fun toIntent(context: Context): Intent {
         val intent = Intent(context, WebActivity::class.java)
-            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .apply {
                 putExtra(WebActivity.URL_EXTRA, url)
         }
@@ -278,6 +278,8 @@ open class LaunchInfo : Parcelable, StringableObject, Comparable<LaunchInfo?> {
     var shortcuts: MutableList<ShortcutInfo?>? = null
     @JvmField
     var activityName: String? = null
+    @JvmField
+    var webUrl: String? = null
 
     constructor(packageName: String, activityName: String, label: String, launcherType: LauncherType) {
         this.componentName = ComponentName(packageName, activityName)
@@ -286,11 +288,20 @@ open class LaunchInfo : Parcelable, StringableObject, Comparable<LaunchInfo?> {
         setLabel(label)
     }
 
+    constructor(packageName: String, activityName: String, label: String, launcherType: LauncherType, webUrl: String?) {
+        this.componentName = ComponentName(packageName, activityName)
+        this.activityName = activityName
+        this.launcherType = launcherType
+        this.webUrl = webUrl
+        setLabel(label)
+    }
+
     protected constructor(`in`: Parcel) {
         componentName =
             `in`.readParcelable<ComponentName?>(ComponentName::class.java.getClassLoader())
         setLabel(`in`.readString()!!)
         launchedTimes = `in`.readInt()
+        webUrl = `in`.readString()
     }
 
     fun setLabel(s: String) {
@@ -328,7 +339,11 @@ open class LaunchInfo : Parcelable, StringableObject, Comparable<LaunchInfo?> {
         if (other is LaunchInfo) {
             val i = other
             try {
-                return this.componentName == i.componentName
+                if (this.componentName != i.componentName) return false
+                if (launcherType == LauncherType.WEB || i.launcherType == LauncherType.WEB) {
+                    return webUrl == i.webUrl
+                }
+                return true
             } catch (e: Exception) {
                 return false
             }
@@ -341,7 +356,8 @@ open class LaunchInfo : Parcelable, StringableObject, Comparable<LaunchInfo?> {
     }
 
     override fun toString(): String {
-        return componentName!!.getPackageName() + " - " + componentName!!.getClassName() + " --> " + publicLabel + ", n=" + launchedTimes
+        val base = componentName!!.getPackageName() + " - " + componentName!!.getClassName() + " --> " + publicLabel + ", n=" + launchedTimes
+        return if (webUrl != null) "$base, url=$webUrl" else base
     }
 
     override fun getLowercaseString(): String? {
@@ -364,6 +380,7 @@ open class LaunchInfo : Parcelable, StringableObject, Comparable<LaunchInfo?> {
         dest.writeParcelable(componentName, flags)
         dest.writeString(publicLabel)
         dest.writeInt(launchedTimes)
+        dest.writeString(webUrl)
     }
 
     fun setShortcuts(s: MutableList<ShortcutInfo?>?) {
@@ -964,10 +981,6 @@ class AppsManager(context: Context) : XMLPrefsElement {
         }
 
         // TODO:
-        // 1. Fix bug with adding web launchable
-        // 1. adjust LaunchInfo to take in a website too for WEB LauncherType
-        // 2. adjust the performLaunch to consider LauncherType in this class
-        // 3. modify the caller in MainManager to remove the need for LauncherTypes
         // 4. test changes in personal phone
         // 5. Plan out replacement for LaunchInfo with Launchables and figure out next steps
         // 6. Plan out cleaner interfaces for AppsManager callers to better support loads
@@ -978,7 +991,8 @@ class AppsManager(context: Context) : XMLPrefsElement {
                 "ohi.andre.consolelauncher",
                 "WebActivity",
                 webApp.name,
-                LauncherType.WEB
+                LauncherType.WEB,
+                webApp.url
             )
             infos.add(launchInfo)
         }
@@ -1144,6 +1158,36 @@ class AppsManager(context: Context) : XMLPrefsElement {
             .addCategory(Intent.CATEGORY_LAUNCHER)
             .setComponent(info.componentName)
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+    }
+
+    fun performLaunch(info: LaunchInfo): Boolean {
+        val showAppHistory = XMLPrefsManager.getBoolean(Behavior.show_launch_history)
+        if (!showAppHistory) {
+            return true
+        }
+
+        when (info.launcherType) {
+            LauncherType.APPLICATION -> {
+                if (info.componentName != null && info.activityName != null && info.publicLabel != null) {
+                    val appLauncher = AppLauncher(
+                        info.componentName!!.packageName,
+                        info.activityName!!,
+                        info.publicLabel!!
+                    )
+                    appLauncher.launch(context!!)
+                }
+            }
+            LauncherType.WEB -> {
+                if (info.componentName != null && info.activityName != null && info.publicLabel != null && info.webUrl != null) {
+                    val webLauncher = WebLauncher(
+                        info.publicLabel!!,
+                        info.webUrl!!
+                    )
+                    webLauncher.launch(context!!)
+                }
+            }
+        }
+        return true
     }
 
     fun hideActivity(info: LaunchInfo): String? {

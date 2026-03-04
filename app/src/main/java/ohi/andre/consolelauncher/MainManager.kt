@@ -16,7 +16,6 @@ import ohi.andre.consolelauncher.commands.main.MainPack
 import ohi.andre.consolelauncher.commands.main.raw.location
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
 import ohi.andre.consolelauncher.managers.AliasManager
-import ohi.andre.consolelauncher.managers.AppLauncher
 import ohi.andre.consolelauncher.managers.AppUtils
 import ohi.andre.consolelauncher.managers.AppUtils.printApps
 import ohi.andre.consolelauncher.managers.AppsManager
@@ -24,14 +23,12 @@ import ohi.andre.consolelauncher.managers.ChangelogManager
 import ohi.andre.consolelauncher.managers.ContactManager
 import ohi.andre.consolelauncher.managers.HTMLExtractManager
 import ohi.andre.consolelauncher.managers.LaunchInfo
-import ohi.andre.consolelauncher.managers.LauncherType
 import ohi.andre.consolelauncher.managers.MessagesManager
 import ohi.andre.consolelauncher.managers.RssManager
 import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.ThemeManager
 import ohi.andre.consolelauncher.managers.TimeManager
 import ohi.andre.consolelauncher.managers.TuiLocationManager
-import ohi.andre.consolelauncher.managers.WebLauncher
 import ohi.andre.consolelauncher.managers.music.MusicManager2
 import ohi.andre.consolelauncher.managers.music.MusicService
 import ohi.andre.consolelauncher.managers.notifications.KeeperService
@@ -109,7 +106,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     val mainPack: MainPack
 
     private val showAliasValue: Boolean
-    private val showAppHistory: Boolean
     private val aliasContentColor: Int
 
     private val multipleCmdSeparator: String
@@ -151,7 +147,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         updateServices(input, wasMusicService)
 
         if (launchInfo.unspacedLowercaseLabel == Tuils.removeSpaces(input.lowercase(Locale.getDefault()))) {
-            performLaunch(mainPack, launchInfo, input)
+            appsManager.performLaunch(launchInfo)
         } else {
             onCommand(input, null as String?, wasMusicService)
         }
@@ -273,9 +269,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     }
 
     //
-    var appFormat: String? = null
-    var outputColor: Int = 0
-
     var pa: Pattern = Pattern.compile("%a", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
     var pp: Pattern = Pattern.compile("%p", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
     var pl: Pattern = Pattern.compile("%l", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
@@ -284,7 +277,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         keeperServiceRunning = XMLPrefsManager.getBoolean(Behavior.tui_notification)
 
         showAliasValue = XMLPrefsManager.getBoolean(Behavior.show_alias_content)
-        showAppHistory = XMLPrefsManager.getBoolean(Behavior.show_launch_history)
         aliasContentColor = XMLPrefsManager.getColor(Theme.alias_content_color)
 
         multipleCmdSeparator = XMLPrefsManager.get(Behavior.multiple_cmd_separator)
@@ -383,38 +375,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
             .registerReceiver(receiver, filter)
     }
 
-    fun performLaunch(mainPack: MainPack, i: LaunchInfo, input: String?): Boolean {
-
-        if (showAppHistory) {
-            if (appFormat == null) {
-                appFormat = XMLPrefsManager.get(Behavior.app_launch_format)
-                outputColor = XMLPrefsManager.getColor(Theme.output_color)
-            }
-
-            when (i.launcherType) {
-                LauncherType.APPLICATION -> {
-                    if (i.componentName != null && i.activityName != null && i.publicLabel != null) {
-                        val appLauncher =
-                            AppLauncher(i.componentName!!.packageName, i.activityName!!,
-                                i.publicLabel!!
-                            )
-                        appLauncher.launch(mainPack.context)
-                    }
-                }
-                LauncherType.WEB -> {
-                    if (i.componentName != null && i.activityName != null && i.publicLabel != null) {
-                        val webLauncher = WebLauncher(
-                            "orodha",
-                            "https://mlango.jnduli.co.ke/orodha"
-                        )
-                        webLauncher.launch(mainPack.context)
-                    }
-                }
-            }
-        }
-        return true
-    }
-
+    //
     //
     interface CmdTrigger {
         @Throws(Exception::class)
@@ -547,7 +508,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         ): Boolean {
             if (input == null || info == null) return false
             val i = appsManager.findLaunchInfoWithLabel(input, AppsManager.SHOWN_APPS)
-            return i != null && performLaunch(info, i, input)
+            return i != null && appsManager.performLaunch(i)
         }
     }
 
