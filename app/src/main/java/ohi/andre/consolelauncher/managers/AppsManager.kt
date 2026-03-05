@@ -82,6 +82,7 @@ sealed interface Launchable: Comparable<Launchable> {
     fun label(): String
     fun names(): Set<String>
     fun name(): String
+    fun write(): String
 
     override fun compareTo(other: Launchable): Int {
         return name().lowercase(Locale.getDefault()).compareTo(other.name().lowercase(Locale.getDefault()))
@@ -134,6 +135,8 @@ data class WebLauncher(val name: String, val url: String, override var launchTim
     override fun name(): String {
         return name
     }
+
+    override fun write(): String = name
 }
 
 @Parcelize
@@ -171,6 +174,8 @@ data class AppLauncher(val packageName: String, val activityName: String, val la
     override fun label() : String {
         return label
     }
+
+    override fun write(): String = "$packageName-$activityName"
 
 }
 
@@ -1137,17 +1142,6 @@ class AppsManager(context: Context) : XMLPrefsElement {
         for (i in infos) appsHolder!!.remove(i)
     }
 
-    fun findLaunchInfoWithLabel(label: String, type: Int): LaunchInfo? {
-        val launchable = findLaunchableWithLabel(label, type)
-        return launchable?.let {
-            when (it) {
-                is AppLauncher -> LaunchInfo(it.packageName, it.activityName, it.label, LauncherType.APPLICATION)
-                is WebLauncher -> LaunchInfo("ohi.andre.consolelauncher", "WebActivity", it.name, LauncherType.WEB, it.url)
-                else -> null
-            }
-        }
-    }
-
     fun findLaunchableWithLabel(label: String, type: Int): Launchable? {
         if (appsHolder == null) return null
 
@@ -1262,6 +1256,36 @@ class AppsManager(context: Context) : XMLPrefsElement {
         appsHolder!!.update(false)
 
         return info.publicLabel
+    }
+
+    fun shownApps(): MutableList<Launchable> {
+        return appsHolder?.launchables ?: mutableListOf()
+    }
+
+    fun hideActivity(launchable: Launchable): String? {
+        XMLPrefsManager.set(
+            file,
+            launchable.write(),
+            arrayOf(SHOW_ATTRIBUTE),
+            arrayOf("false")
+        )
+        appsHolder!!.remove(launchable)
+        appsHolder!!.update(true)
+        hiddenLaunchables!!.add(launchable)
+        return launchable.name()
+    }
+
+    fun showActivity(launchable: Launchable): String? {
+        XMLPrefsManager.set(
+            file,
+            launchable.write(),
+            arrayOf(SHOW_ATTRIBUTE),
+            arrayOf("true")
+        )
+        hiddenLaunchables!!.remove(launchable)
+        appsHolder!!.add(launchable)
+        appsHolder!!.update(false)
+        return launchable.name()
     }
 
     fun createGroup(name: String): String? {
@@ -1395,6 +1419,94 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
             val index = Tuils.find(group, groups)
             if (index != -1) groups.get(index).remove(app)
+        }
+
+        return null
+    }
+
+    fun addAppToGroup(group: String?, launchable: Launchable): String? {
+        val o: Array<Any?>?
+        try {
+            o = XMLPrefsManager.buildDocument(file, null)
+            if (o == null) {
+                Tuils.sendXMLParseError(context, PATH)
+                return null
+            }
+        } catch (e: Exception) {
+            return e.toString()
+        }
+
+        val d = o[0] as Document?
+        val root = o[1] as Element?
+
+        val node = XMLPrefsManager.findNode(root, group)
+        if (node == null) return context!!.getString(R.string.output_groupnotfound)
+
+        val e = node as Element
+        var apps = e.getAttribute(APPS_ATTRIBUTE)
+
+        val groupIndex = Tuils.find(group, groups)
+        if (groupIndex != -1) {
+            val existingApp = groups[groupIndex].apps.find { it.names().contains(launchable.name()) }
+            if (existingApp != null) return null
+        }
+
+        apps = apps + APPS_SEPARATOR + launchable.write()
+        if (apps.startsWith(APPS_SEPARATOR)) apps = apps.substring(1)
+
+        e.setAttribute(APPS_ATTRIBUTE, apps)
+
+        XMLPrefsManager.writeTo(d, file)
+
+        val index = Tuils.find(group, groups)
+        if (index != -1) groups.get(index).add(launchable, true)
+
+        return null
+    }
+
+    fun removeAppFromGroup(group: String?, launchable: Launchable): String? {
+        val o: Array<Any?>?
+        try {
+            o = XMLPrefsManager.buildDocument(file, null)
+            if (o == null) {
+                Tuils.sendXMLParseError(context, PATH)
+                return null
+            }
+        } catch (e: Exception) {
+            return e.toString()
+        }
+
+        val d = o[0] as Document?
+        val root = o[1] as Element?
+
+        val node = XMLPrefsManager.findNode(root, group)
+        if (node == null) return context!!.getString(R.string.output_groupnotfound)
+
+        val e = node as Element
+
+        var apps = e.getAttribute(APPS_ATTRIBUTE)
+        if (apps == null) return null
+
+        val writeKey = launchable.write()
+        val split = apps.split(APPS_SEPARATOR).filter { it.isNotEmpty() }
+        val found = split.any {
+            it == writeKey || (launchable is AppLauncher && it == launchable.packageName)
+        }
+        if (!found) return null
+
+        val temp = apps.replace(writeKey.toRegex(), Tuils.EMPTYSTRING)
+        if (temp.length < apps.length) {
+            apps = temp
+            apps = apps.replace((APPS_SEPARATOR + APPS_SEPARATOR).toRegex(), APPS_SEPARATOR)
+            if (apps.startsWith(APPS_SEPARATOR)) apps = apps.substring(1)
+            if (apps.endsWith(APPS_SEPARATOR)) apps = apps.substring(0, apps.length - 1)
+
+            e.setAttribute(APPS_ATTRIBUTE, apps)
+
+            XMLPrefsManager.writeTo(d, file)
+
+            val index = Tuils.find(group, groups)
+            if (index != -1) groups.get(index).remove(launchable)
         }
 
         return null
