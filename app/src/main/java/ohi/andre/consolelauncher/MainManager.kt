@@ -507,8 +507,8 @@ class MainManager constructor(private var mContext: LauncherActivity) {
             input: String?
         ): Boolean {
             if (input == null || info == null) return false
-            val i = appsManager.findLaunchInfoWithLabel(input, AppsManager.SHOWN_APPS)
-            return i?.toLaunchable()?.let { appsManager.performLaunch(it) } ?: false
+            val launchable = appsManager.findLaunchableWithLabel(input)
+            return launchable?.let { appsManager.performLaunch(it) } ?: false
         }
     }
 
