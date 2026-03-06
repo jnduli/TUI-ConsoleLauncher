@@ -13,7 +13,14 @@ import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.Param;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.AppsManager;
+import ohi.andre.consolelauncher.managers.ContactManager;
+import ohi.andre.consolelauncher.managers.FileManager;
+import ohi.andre.consolelauncher.managers.HTMLExtractManager;
 import ohi.andre.consolelauncher.managers.Launchable;
+import ohi.andre.consolelauncher.managers.RssManager;
+import ohi.andre.consolelauncher.managers.music.MusicManager2;
+import ohi.andre.consolelauncher.managers.notifications.NotificationManager;
+import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.managers.xml.options.Apps;
 import ohi.andre.consolelauncher.managers.xml.options.Notifications;
@@ -308,7 +315,7 @@ public class CommandTuils {
         for (int count = 0; count < strings.size(); count++) {
             toVerify = toVerify.concat(strings.get(count));
 
-            DirInfo info = CommandTuils.getFile(toVerify, cd);
+            FileManager.DirInfo info = CommandTuils.getFile(toVerify, cd);
             if (info.file != null && info.notFound == null) {
                 while (count-- >= 0)
                     strings.remove(0);
@@ -357,11 +364,11 @@ public class CommandTuils {
 //        return new ArgInfo(files, null, files.size() > 0, files.size());
 //    }
 
-    private static DirInfo getFile(String path, File cd) {
+    private static FileManager.DirInfo getFile(String path, File cd) {
         return FileManager.cd(cd, path);
     }
 
-    private static List<File> attemptWildcard(DirInfo dir) {
+    private static List<File> attemptWildcard(FileManager.DirInfo dir) {
         List<File> files;
 
         FileManager.WildcardInfo info = FileManager.wildcard(dir.notFound);

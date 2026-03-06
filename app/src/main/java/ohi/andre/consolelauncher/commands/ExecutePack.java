@@ -5,7 +5,6 @@ import android.content.Context;
 import java.util.ArrayList;
 
 import ohi.andre.consolelauncher.managers.AppsManager;
-import ohi.andre.consolelauncher.managers.LaunchInfo;
 import ohi.andre.consolelauncher.managers.Launchable;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 
@@ -55,10 +54,6 @@ public abstract class ExecutePack {
 
     public XMLPrefsSave getPrefsSave() {
         return (XMLPrefsSave) get();
-    }
-
-    public LaunchInfo getLaunchInfo() {
-        return (LaunchInfo) get();
     }
 
     public Launchable getLaunchable() {

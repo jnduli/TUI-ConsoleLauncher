@@ -30,7 +30,7 @@ import java.util.List;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.managers.AppsManager;
-import ohi.andre.consolelauncher.managers.LaunchInfo;
+import ohi.andre.consolelauncher.managers.Launchable;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Suggestions;
 
@@ -156,8 +156,8 @@ public class SuggestionRunnable implements Runnable {
 
                 if(s.type == SuggestionsManager.Suggestion.TYPE_APP || s.type == SuggestionsManager.Suggestion.TYPE_APPGP) {
                     Object o = s.object;
-                    if(o != null && o instanceof LaunchInfo) {
-                        LaunchInfo i = (LaunchInfo) o;
+                    if(o != null && o instanceof Launchable) {
+                        Launchable i = (Launchable) o;
 
                         for(AppsManager.Group g : pack.appsManager.groups) {
                             if(g.contains(i)) {

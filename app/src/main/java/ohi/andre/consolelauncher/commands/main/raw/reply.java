@@ -12,6 +12,7 @@ import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.specific.APICommand;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.notifications.reply.ReplyManager;
+import ohi.andre.consolelauncher.managers.AppLauncher;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 /**
@@ -47,7 +48,7 @@ public class reply extends ParamCommand implements APICommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                String output = ReplyManager.bind(pack.context, pack.getLaunchInfo().componentName.getPackageName());
+                String output = ReplyManager.bind(pack.context, ((AppLauncher)pack.getLaunchable()).getPackageName());
                 LocalBroadcastManager.getInstance(pack.context).sendBroadcast(new Intent(ReplyManager.ACTION_UPDATE));
                 return output;
             }
@@ -75,10 +76,10 @@ public class reply extends ParamCommand implements APICommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                String output = ReplyManager.unbind(pack.context, pack.getLaunchInfo().componentName.getPackageName());
+                String output = ReplyManager.unbind(pack.context, ((AppLauncher)pack.getLaunchable()).getPackageName());
                 LocalBroadcastManager.getInstance(pack.context).sendBroadcast(new Intent(ReplyManager.ACTION_UPDATE));
 
-                if(output != null && output.length() == 0) return pack.context.getString(R.string.reply_app_not_found) + pack.getLaunchInfo().componentName.getPackageName();
+                if(output != null && output.length() == 0) return pack.context.getString(R.string.reply_app_not_found) + ((AppLauncher)pack.getLaunchable()).getPackageName();
                 return output;
             }
         },

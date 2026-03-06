@@ -8,9 +8,10 @@ import ohi.andre.consolelauncher.R
 import ohi.andre.consolelauncher.commands.ExecutePack
 import ohi.andre.consolelauncher.commands.main.MainPack
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand
+import ohi.andre.consolelauncher.managers.AppLauncher
 import ohi.andre.consolelauncher.managers.AppUtils.format
 import ohi.andre.consolelauncher.managers.AppsManager
-import ohi.andre.consolelauncher.managers.LaunchInfo
+import ohi.andre.consolelauncher.managers.Launchable
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave
 import ohi.andre.consolelauncher.managers.xml.options.Apps
 import ohi.andre.consolelauncher.tuils.Tuils
@@ -57,7 +58,7 @@ class apps : ParamCommand() {
             }
 
             override fun exec(pack: ExecutePack): String? {
-                val i = pack.getLaunchInfo()
+                val i = pack.getLaunchable()
                 (pack as MainPack).appsManager.showActivity(i)
                 return null
             }
@@ -68,7 +69,7 @@ class apps : ParamCommand() {
             }
 
             override fun exec(pack: ExecutePack): String? {
-                val i = pack.getLaunchInfo()
+                val i = pack.getLaunchable()
                 (pack as MainPack).appsManager.hideActivity(i)
                 return null
             }
@@ -80,13 +81,13 @@ class apps : ParamCommand() {
 
             override fun exec(pack: ExecutePack): String {
                 try {
-                    val i = pack.getLaunchInfo()
+                val i = pack.getLaunchable()
 
                     val info = pack.context.getPackageManager().getPackageInfo(
                         i.componentName!!.getPackageName(),
                         PackageManager.GET_PERMISSIONS or PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES or PackageManager.GET_RECEIVERS
                     )
-                    return format(i, info)
+                    return format(i as AppLauncher, info)
                 } catch (e: PackageManager.NameNotFoundException) {
                     return e.toString()
                 }
@@ -98,7 +99,7 @@ class apps : ParamCommand() {
             }
 
             override fun exec(pack: ExecutePack): String? {
-                openPlaystore(pack.context, pack.getLaunchInfo().componentName!!.getPackageName())
+                openPlaystore(pack.context, pack.getLaunchable().componentName?.packageName)
                 return null
             }
         },
@@ -113,10 +114,9 @@ class apps : ParamCommand() {
                 val o = pack.get()
 
                 val marker: String?
-                if (o is LaunchInfo) {
+                if (o is Launchable) {
                     val i = o
-                    marker =
-                        i.componentName!!.getPackageName() + "-" + i.componentName!!.getClassName()
+                    marker = i.write()
                 } else {
                     marker = o as String?
                 }
@@ -144,7 +144,7 @@ class apps : ParamCommand() {
             }
 
             override fun exec(pack: ExecutePack): String? {
-                openSettings(pack.context, pack.getLaunchInfo().componentName!!.getPackageName())
+                openSettings(pack.context, pack.getLaunchable().componentName?.packageName)
                 return null
             }
         },
@@ -154,7 +154,7 @@ class apps : ParamCommand() {
             }
 
             override fun exec(pack: ExecutePack): String? {
-                val intent = (pack as MainPack).appsManager.getIntent(pack.getLaunchInfo())
+                val intent = (pack as MainPack).appsManager.getIntent(pack.getLaunchable())
                 pack.context.startActivity(intent)
 
                 return null
@@ -182,8 +182,8 @@ class apps : ParamCommand() {
             }
 
             override fun exec(pack: ExecutePack): String? {
-                val app = pack.getLaunchInfo()
-                app.launchedTimes = 0
+                val app = pack.getLaunchable()
+                app.launchTimes = 0
                 (pack as MainPack).appsManager.writeLaunchTimes(app)
 
                 return null
@@ -276,7 +276,7 @@ class apps : ParamCommand() {
 
             override fun exec(pack: ExecutePack): String? {
                 val name = pack.getString()
-                val app = pack.getLaunchInfo()
+                val app = pack.getLaunchable()
                 return (pack as MainPack).appsManager.addAppToGroup(name, app)
             }
         },
@@ -287,7 +287,7 @@ class apps : ParamCommand() {
 
             override fun exec(pack: ExecutePack): String? {
                 val name = pack.getString()
-                val app = pack.getLaunchInfo()
+                val app = pack.getLaunchable()
                 return (pack as MainPack).appsManager.removeAppFromGroup(name, app)
             }
         },

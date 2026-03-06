@@ -39,9 +39,9 @@ import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.commands.main.specific.PermanentSuggestionCommand;
 import ohi.andre.consolelauncher.managers.AliasManager;
 import ohi.andre.consolelauncher.managers.AppsManager;
+import ohi.andre.consolelauncher.managers.Launchable;
 import ohi.andre.consolelauncher.managers.ContactManager;
 import ohi.andre.consolelauncher.managers.FileManager;
-import ohi.andre.consolelauncher.managers.LaunchInfo;
 import ohi.andre.consolelauncher.managers.RssManager;
 import ohi.andre.consolelauncher.managers.TerminalManager;
 import ohi.andre.consolelauncher.managers.music.Song;
@@ -571,14 +571,14 @@ public class SuggestionsManager {
             if (beforeLastSpace .length() == 0) {
                 comparator.noInput = true;
 
-                LaunchInfo[] apps = pack.appsManager.getSuggestedApps();
+                Launchable[] apps = pack.appsManager.getSuggestedApps();
                 if (apps != null) {
                     for(int count = 0; count < apps.length && count < noInputCounts[Suggestion.TYPE_APP]; count++) {
                         if(apps[count] == null) {
                             continue;
                         }
 
-                        suggestionList.add(new Suggestion(beforeLastSpace , apps[count].publicLabel, clickToLaunch, Suggestion.TYPE_APP, apps[count]));
+                        suggestionList.add(new Suggestion(beforeLastSpace , apps[count].getPublicLabel(), clickToLaunch, Suggestion.TYPE_APP, apps[count]));
                     }
                 }
 
@@ -1061,7 +1061,7 @@ public class SuggestionsManager {
     }
 
     private void suggestAllPackages(MainPack info, List<Suggestion> suggestions, String afterLastSpace, String beforeLastSpace ) {
-        List<LaunchInfo> apps = new ArrayList<>(info.appsManager.shownApps());
+        List<Launchable> apps = new ArrayList<>(info.appsManager.shownApps());
         apps.addAll(info.appsManager.hiddenApps());
         suggestApp(apps, suggestions, afterLastSpace, beforeLastSpace, true);
     }
@@ -1073,31 +1073,31 @@ public class SuggestionsManager {
         suggestApp(info.appsManager.shownApps(), suggestions, afterLastSpace, beforeLastSpace, true);
     }
 
-    private void suggestApp(List<LaunchInfo> apps, List<Suggestion> suggestions, String afterLastSpace, String beforeLastSpace, boolean canClickToLaunch) {
+    private void suggestApp(List<Launchable> apps, List<Suggestion> suggestions, String afterLastSpace, String beforeLastSpace, boolean canClickToLaunch) {
         if(apps == null || apps.size() == 0) return;
 
         apps = new ArrayList<>(apps);
 
         int canInsert = counts[Suggestion.TYPE_APP];
         if (afterLastSpace == null || afterLastSpace.length() == 0) {
-            for (LaunchInfo l : apps) {
+            for (Launchable l : apps) {
                 if(canInsert == 0) return;
                 canInsert--;
 
-                suggestions.add(new Suggestion(beforeLastSpace , l.publicLabel, canClickToLaunch && clickToLaunch, Suggestion.TYPE_APP, l));
+                suggestions.add(new Suggestion(beforeLastSpace , l.getPublicLabel(), canClickToLaunch && clickToLaunch, Suggestion.TYPE_APP, l));
             }
         } else {
             int counter = quickCompare(afterLastSpace, apps, suggestions, beforeLastSpace, canInsert, canClickToLaunch && clickToLaunch, Suggestion.TYPE_APP, canClickToLaunch && clickToLaunch);
             if(canInsert - counter <= 0) return;
 
-            LaunchInfo[] infos = CompareObjects.topMatchesWithDeadline(LaunchInfo.class, afterLastSpace, apps.size(), apps, canInsert - counter, suggestionsDeadline, SPLITTERS, algInstance, alg);
-            for(LaunchInfo i : infos) {
+            Launchable[] infos = CompareObjects.topMatchesWithDeadline(Launchable.class, afterLastSpace, apps.size(), apps, canInsert - counter, suggestionsDeadline, SPLITTERS, algInstance, alg);
+            for(Launchable i : infos) {
                 if(i == null) break;
 
                 if(canInsert == 0) return;
                 canInsert--;
 
-                suggestions.add(new Suggestion(beforeLastSpace , i.publicLabel, canClickToLaunch && clickToLaunch, Suggestion.TYPE_APP, canClickToLaunch && clickToLaunch ? i : null));
+                suggestions.add(new Suggestion(beforeLastSpace , i.getPublicLabel(), canClickToLaunch && clickToLaunch, Suggestion.TYPE_APP, canClickToLaunch && clickToLaunch ? i : null));
             }
         }
     }
@@ -1227,21 +1227,21 @@ public class SuggestionsManager {
 
         AppsManager.Group g = pack.appsManager.groups.get(index);
 
-        List<AppsManager.Group.GroupLaunchInfo> apps = new ArrayList<>((List<AppsManager.Group.GroupLaunchInfo>) g.members());
+        List<Launchable> apps = new ArrayList<>((List<Launchable>) g.members());
         if(apps.size() > 0) {
             if (app == null || app.length() == 0) {
-                for (AppsManager.Group.GroupLaunchInfo o : apps) {
-                    suggestions.add(new Suggestion(beforeLastSpace , o.publicLabel, clickToLaunch, Suggestion.TYPE_APP, o));
+                for (Launchable o : apps) {
+                    suggestions.add(new Suggestion(beforeLastSpace , o.getPublicLabel(), clickToLaunch, Suggestion.TYPE_APP, o));
                 }
             }
             else {
                 int counter = quickCompare(app, apps, suggestions, beforeLastSpace, Integer.MAX_VALUE, clickToLaunch, Suggestion.TYPE_APP, true);
                 if(counter == apps.size()) return true;
 
-                AppsManager.Group.GroupLaunchInfo[] infos = CompareObjects.topMatchesWithDeadline(AppsManager.Group.GroupLaunchInfo.class, app, apps.size(), apps, apps.size(), suggestionsDeadline, SPLITTERS, algInstance, alg);
-                for(AppsManager.Group.GroupLaunchInfo gli : infos) {
+                Launchable[] infos = CompareObjects.topMatchesWithDeadline(Launchable.class, app, apps.size(), apps, apps.size(), suggestionsDeadline, SPLITTERS, algInstance, alg);
+                for(Launchable gli : infos) {
                     if(gli == null) break;
-                    suggestions.add(new Suggestion(beforeLastSpace, gli.publicLabel, clickToLaunch, Suggestion.TYPE_APP, gli));
+                    suggestions.add(new Suggestion(beforeLastSpace, gli.getPublicLabel(), clickToLaunch, Suggestion.TYPE_APP, gli));
                 }
             }
         }

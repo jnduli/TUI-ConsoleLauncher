@@ -22,7 +22,7 @@ import ohi.andre.consolelauncher.managers.AppsManager
 import ohi.andre.consolelauncher.managers.ChangelogManager
 import ohi.andre.consolelauncher.managers.ContactManager
 import ohi.andre.consolelauncher.managers.HTMLExtractManager
-import ohi.andre.consolelauncher.managers.LaunchInfo
+import ohi.andre.consolelauncher.managers.Launchable
 import ohi.andre.consolelauncher.managers.MessagesManager
 import ohi.andre.consolelauncher.managers.RssManager
 import ohi.andre.consolelauncher.managers.TerminalManager
@@ -138,16 +138,17 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         }
     }
 
-    fun onCommand(input: String, launchInfo: LaunchInfo?, wasMusicService: Boolean) {
-        if (launchInfo == null) {
+    fun onCommand(input: String, launchable: Launchable?, wasMusicService: Boolean) {
+        if (launchable == null) {
             onCommand(input, null as String?, wasMusicService)
             return
         }
 
         updateServices(input, wasMusicService)
 
-        if (launchInfo.unspacedLowercaseLabel == Tuils.removeSpaces(input.lowercase(Locale.getDefault()))) {
-            launchInfo.toLaunchable()?.let { appsManager.performLaunch(it) }
+        val unspacedLabel = Tuils.removeSpaces(launchable.name().lowercase(Locale.getDefault()))
+        if (unspacedLabel == Tuils.removeSpaces(input.lowercase(Locale.getDefault()))) {
+            appsManager.performLaunch(launchable)
         } else {
             onCommand(input, null as String?, wasMusicService)
         }
@@ -263,8 +264,8 @@ class MainManager constructor(private var mContext: LauncherActivity) {
 
     fun executer(): CommandExecuter {
         return CommandExecuter { input: String?, obj: Any? ->
-            val li = if (obj is LaunchInfo) obj else null
-            onCommand(input!!, li, false)
+            val launchable = if (obj is Launchable) obj else null
+            onCommand(input!!, launchable, false)
         }
     }
 
@@ -353,7 +354,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                             .sendBroadcast(i)
                     }
 
-                    if (p != null && p is LaunchInfo) {
+                    if (p != null && p is Launchable) {
                         onCommand(cmd, p, intent.getBooleanExtra(MUSIC_SERVICE, false))
                     } else {
                         onCommand(cmd, aliasName, intent.getBooleanExtra(MUSIC_SERVICE, false))
@@ -431,7 +432,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                                 mContext,
                                 printApps(
                                     AppUtils.labelList(
-                                        g.members() as MutableList<LaunchInfo?>? as MutableList<LaunchInfo>,
+                                        g.members() as MutableList<out Launchable>,
                                         false
                                     )
                                 )

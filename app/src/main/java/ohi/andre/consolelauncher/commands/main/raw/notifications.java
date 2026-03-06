@@ -11,6 +11,7 @@ import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.specific.APICommand;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.notifications.NotificationManager;
+import ohi.andre.consolelauncher.managers.AppLauncher;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
@@ -31,7 +32,7 @@ public class notifications extends ParamCommand implements APICommand {
         inc {
             @Override
             public String exec(ExecutePack pack) {
-                String output = NotificationManager.setState(pack.context, pack.getLaunchInfo().componentName.getPackageName(), true);
+                String output = NotificationManager.setState(pack.context, ((AppLauncher)pack.getLaunchable()).getPackageName(), true);
                 if(output == null || output.length() == 0) return null;
                 return output;
             }
@@ -49,7 +50,7 @@ public class notifications extends ParamCommand implements APICommand {
         exc {
             @Override
             public String exec(ExecutePack pack) {
-                String output = NotificationManager.setState(pack.context, pack.getLaunchInfo().componentName.getPackageName(), false);
+                String output = NotificationManager.setState(pack.context, ((AppLauncher)pack.getLaunchable()).getPackageName(), false);
                 if(output == null || output.length() == 0) return null;
                 return output;
             }
@@ -68,7 +69,7 @@ public class notifications extends ParamCommand implements APICommand {
             @Override
             public String exec(ExecutePack pack) {
                 String color = pack.getString();
-                String output = NotificationManager.setColor(pack.context, pack.getLaunchInfo().componentName.getPackageName(), color);
+                String output = NotificationManager.setColor(pack.context, ((AppLauncher)pack.getLaunchable()).getPackageName(), color);
                 if(output == null || output.length() == 0) return null;
                 return output;
             }
@@ -91,7 +92,7 @@ public class notifications extends ParamCommand implements APICommand {
             @Override
             public String exec(ExecutePack pack) {
                 String s = pack.getString();
-                String output = NotificationManager.setFormat(pack.context, pack.getLaunchInfo().componentName.getPackageName(), s);
+                String output = NotificationManager.setFormat(pack.context, ((AppLauncher)pack.getLaunchable()).getPackageName(), s);
                 if(output == null || output.length() == 0) return null;
                 return output;
             }
