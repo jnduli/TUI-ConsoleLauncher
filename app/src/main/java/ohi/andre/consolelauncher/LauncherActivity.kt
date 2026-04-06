@@ -102,11 +102,11 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
     private val `in`: Inputable = object : Inputable {
         override fun `in`(s: String?) {
-            if (ui != null) ui!!.setInput(s as java.lang.String?)
+            if (ui != null) ui!!.setInput(s)
         }
 
         override fun changeHint(s: String?) {
-            runOnUiThread(Runnable { ui!!.setHint(s as java.lang.String?) })
+            runOnUiThread(Runnable { ui!!.setHint(s) })
         }
 
         override fun resetHint() {

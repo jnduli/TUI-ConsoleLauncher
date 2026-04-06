@@ -57,7 +57,6 @@ import ohi.andre.consolelauncher.tuils.interfaces.OnTextChanged
 import ohi.andre.consolelauncher.tuils.stuff.PolicyReceiver
 import java.io.File
 import java.io.FileOutputStream
-import java.lang.String
 import java.util.Calendar
 import java.util.regex.Pattern
 import kotlin.Array
@@ -193,12 +192,12 @@ class UIManager(
     fun setInput(s: String?) {
         if (s == null) return
 
-        mTerminalAdapter?.input = s as kotlin.String?
+        mTerminalAdapter?.input = s
         mTerminalAdapter?.focusInputEnd()
     }
 
     fun setHint(hint: String?) {
-        mTerminalAdapter?.setHint(hint as kotlin.String?)
+        mTerminalAdapter?.setHint(hint)
     }
 
     fun resetHint() {
@@ -745,11 +744,13 @@ class UIManager(
             val suggestionsView =
                 rootView.findViewById<View?>(R.id.suggestions_group) as LinearLayout?
 
-            suggestionsManager = SuggestionsManager(suggestionsView, mainPack, mTerminalAdapter)
+            suggestionsManager = SuggestionsManager(suggestionsView!!, mainPack!!,
+                mTerminalAdapter!!
+            )
 
             inputView.addTextChangedListener(
                 SuggestionTextWatcher(
-                    suggestionsManager,
+                    suggestionsManager!!,
                     OnTextChanged { currentText: kotlin.String?, before: Int ->
                         if (!hideToolbarNoInput) return@OnTextChanged
                         if (currentText!!.isEmpty()) toolbarView!!.visibility = View.GONE
