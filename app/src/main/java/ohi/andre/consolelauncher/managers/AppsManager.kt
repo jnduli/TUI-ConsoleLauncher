@@ -828,6 +828,12 @@ class AppsManager(context: Context) : XMLPrefsElement {
         }
     }
 
+    fun listWebApps(fileName: String = "web_app.xml"): String {
+        val webApps = loadWebAppsForAppsManager(fileName)
+        if (webApps.isEmpty()) return "No web apps saved"
+        return webApps.joinToString("\n") { "${it.name} -> ${it.url}" }
+    }
+
     fun addWebApp(name: String, url: String, fileName: String = "web_app.xml"): Boolean {
         return try {
             val currentWebApps = loadWebAppsForAppsManager(fileName).toMutableList()

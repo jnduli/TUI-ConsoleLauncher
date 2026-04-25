@@ -303,6 +303,15 @@ class apps : ParamCommand() {
                 return if (success) "Web app '$name' saved" else "Error saving web app"
             }
         },
+        listweb {
+            override fun args(): IntArray? {
+                return IntArray(0)
+            }
+
+            override fun exec(pack: ExecutePack): String? {
+                return (pack as MainPack).appsManager.listWebApps()
+            }
+        },
         tutorial {
             override fun args(): IntArray? {
                 return IntArray(0)
