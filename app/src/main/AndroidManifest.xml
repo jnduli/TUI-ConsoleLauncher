@@ -96,7 +96,8 @@
         android:theme="@style/Custom.Solid">
         <activity
             android:name=".WebActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:launchMode="singleTop" />
 
         <provider
             android:name=".tuils.GenericFileProvider"

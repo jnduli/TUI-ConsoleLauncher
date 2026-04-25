@@ -1,6 +1,8 @@
 package ohi.andre.consolelauncher
 
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
@@ -45,6 +47,19 @@ class WebActivity : AppCompatActivity() {
             }
 
         })
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.web_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.refresh_page) {
+            myWebView.reload()
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     override fun onNewIntent(intent: android.content.Intent) {

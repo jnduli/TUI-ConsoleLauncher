@@ -33,6 +33,9 @@
     <string name="reply_id_not_found">No bound app found with ID:</string>
     <string name="reply_notification_not_found">0 notifications from this app</string>
 
+    <!-- web menu -->
+    <string name="refresh_page">Refresh</string>
+
     <!-- notifications menu -->
     <string name="exclude_notification">Exclude notification</string>
     <string name="exclude_app">Exclude app</string>
