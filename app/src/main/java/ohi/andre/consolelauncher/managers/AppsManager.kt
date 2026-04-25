@@ -15,6 +15,7 @@ import android.content.pm.ResolveInfo
 import android.content.pm.ShortcutInfo
 import android.graphics.Color
 import android.os.Build
+import android.net.Uri
 import android.os.Parcel
 import android.os.Parcelable
 import android.os.Parcelable.Creator
@@ -133,6 +134,15 @@ data class WebLauncher(val name: String, val url: String, override var launchTim
                 putExtra(WebActivity.URL_EXTRA, url)
         }
         return intent
+    }
+
+    fun launchWithQuery(context: Context, query: String) {
+        val resolvedUrl = url.replace("%s", Uri.encode(query))
+        context.startActivity(
+            Intent(context, WebActivity::class.java)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra(WebActivity.URL_EXTRA, resolvedUrl)
+        )
     }
 
     override fun label() : String {

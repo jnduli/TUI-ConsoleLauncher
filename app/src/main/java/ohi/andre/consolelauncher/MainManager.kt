@@ -19,6 +19,7 @@ import ohi.andre.consolelauncher.managers.AliasManager
 import ohi.andre.consolelauncher.managers.AppUtils
 import ohi.andre.consolelauncher.managers.AppUtils.printApps
 import ohi.andre.consolelauncher.managers.AppsManager
+import ohi.andre.consolelauncher.managers.WebLauncher
 import ohi.andre.consolelauncher.managers.ChangelogManager
 import ohi.andre.consolelauncher.managers.ContactManager
 import ohi.andre.consolelauncher.managers.HTMLExtractManager
@@ -150,10 +151,8 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     var colorExtractor: Pattern =
         Pattern.compile("(#[^(]{6})\\[([^\\)]*)\\]", Pattern.CASE_INSENSITIVE)
 
-    //    command manager
     fun onCommand(input: String?, alias: String?, wasMusicService: Boolean) {
-        var input = input
-        input = Tuils.removeUnncesarySpaces(input)
+        val input = Tuils.removeUnncesarySpaces(input)
 
         if (alias == null) updateServices(input, wasMusicService)
 
@@ -162,8 +161,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
             if (!currentRedirect.isWaitingPermission()) {
                 currentRedirect.afterObjects.add(input)
             }
-            val output = currentRedirect.onRedirect(mainPack)
-            Tuils.sendOutput(mContext, output)
+            Tuils.sendOutput(mContext, currentRedirect.onRedirect(mainPack))
             return
         }
 
@@ -171,47 +169,50 @@ class MainManager constructor(private var mContext: LauncherActivity) {
             Tuils.sendOutput(aliasContentColor, mContext, aliasManager.formatLabel(alias, input))
         }
 
-        val cmds: Array<String?>?
-        if (multipleCmdSeparator.length > 0) {
-            cmds = input.split(multipleCmdSeparator.toRegex()).dropLastWhile { it.isEmpty() }
-                .toTypedArray()
-        } else {
-            cmds = arrayOf<String>(input) as Array<String?>?
+        val (cmds, colors) = splitAndColorize(input ?: return)
+        for (c in cmds.indices) {
+            executeCmd(cmds[c], colors[c])
         }
+    }
 
-        val colors = IntArray(cmds?.size ?: 0)
-        for (c in colors.indices) {
-            val m = colorExtractor.matcher(cmds?.get(c))
+    private fun splitAndColorize(input: String): Pair<Array<String?>, IntArray> {
+        val cmds: Array<String?> = if (multipleCmdSeparator.isNotEmpty()) {
+            input.split(multipleCmdSeparator.toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+        } else {
+            arrayOf(input)
+        }
+        val colors = IntArray(cmds.size)
+        for (c in cmds.indices) {
+            val m = colorExtractor.matcher(cmds[c])
             if (m.matches()) {
                 try {
                     colors[c] = Color.parseColor(m.group(1))
-                    cmds?.set(c, m.group(2))
+                    cmds[c] = m.group(2)
                 } catch (e: Exception) {
                     colors[c] = TerminalManager.NO_COLOR
                 }
-            } else colors[c] = TerminalManager.NO_COLOR
+            } else {
+                colors[c] = TerminalManager.NO_COLOR
+            }
         }
+        return Pair(cmds, colors)
+    }
 
-        if (cmds == null) {
-            return
-        }
-
-        for (c in cmds.indices) {
-            mainPack.clear()
-            mainPack.commandColor = colors[c]
-
-            for (trigger in triggers) {
-                val r: Boolean
-                try {
-                    r = trigger.trigger(mainPack, cmds[c])
-                } catch (e: Exception) {
-                    Tuils.sendOutput(mContext, Tuils.getStackTrace(e))
-                    break
-                }
-                if (r) {
-                    messagesManager?.afterCmd()
-                    break
-                }
+    private fun executeCmd(cmd: String?, color: Int) {
+        if (cmd == null) return
+        mainPack.clear()
+        mainPack.commandColor = color
+        for (trigger in triggers) {
+            val triggered: Boolean
+            try {
+                triggered = trigger.trigger(cmd)
+            } catch (e: Exception) {
+                Tuils.sendOutput(mContext, Tuils.getStackTrace(e))
+                break
+            }
+            if (triggered) {
+                messagesManager?.afterCmd()
+                break
             }
         }
     }
@@ -373,11 +374,11 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     //
     interface CmdTrigger {
         @Throws(Exception::class)
-        fun trigger(info: MainPack?, input: String?): Boolean
+        fun trigger(input: String): Boolean
     }
 
     private inner class AliasTrigger : CmdTrigger {
-        override fun trigger(info: MainPack?, input: String?): Boolean {
+        override fun trigger(input: String): Boolean {
             val alias = aliasManager.getAlias(input, true) ?: return false
             val aliasValue = aliasManager.format(alias[0] ?: return false, alias[2])
             onCommand(aliasValue, alias[1], false)
@@ -388,39 +389,30 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     private inner class GroupTrigger : CmdTrigger {
 
         @Throws(Exception::class)
-        override fun trigger(
-            info: MainPack?,
-            input: String?
-        ): Boolean {
-
-            var input = input
-            val index = input!!.indexOf(Tuils.SPACE)
-            val name: String?
+        override fun trigger(input: String): Boolean {
+            val index = input.indexOf(Tuils.SPACE)
+            val name: String
+            val rest: String?
 
             if (index != -1) {
                 name = input.substring(0, index)
-                input = input.substring(index + 1)
+                rest = input.substring(index + 1)
             } else {
                 name = input
-                input = null
+                rest = null
             }
 
-            val appGroups = info?.appsManager?.groups ?: return false
+            val appGroups = mainPack.appsManager?.groups ?: return false
             for (g in appGroups) {
                 if (name == g.name()) {
-                    if (input == null) {
+                    if (rest == null) {
                         Tuils.sendOutput(
                             mContext,
-                            printApps(
-                                AppUtils.labelList(
-                                    g.members() as MutableList<out Launchable>,
-                                    false
-                                )
-                            )
+                            printApps(AppUtils.labelList(g.members() as MutableList<out Launchable>, false))
                         )
                         return true
                     } else {
-                        return g.use(mainPack, input)
+                        return g.use(mainPack, rest)
                     }
                 }
             }
@@ -457,57 +449,53 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         }
 
         @Throws(Exception::class)
-        override fun trigger(
-            info: MainPack?,
-            input: String?
-        ): Boolean {
+        override fun trigger(input: String): Boolean {
             object : StoppableThread() {
                 override fun run() {
-                    if (input?.trim { it <= ' ' }.equals("su", ignoreCase = true)) {
+                    if (input.trim { it <= ' ' }.equals("su", ignoreCase = true)) {
                         if (Shell.SU.available()) LocalBroadcastManager.getInstance(mContext.getApplicationContext())
-                            .sendBroadcast(
-                                Intent(
-                                    UIManager.ACTION_ROOT
-                                )
-                            )
+                            .sendBroadcast(Intent(UIManager.ACTION_ROOT))
                         interactive.addCommand("su")
-                    } else if (input?.contains("cd ") == true) {
+                    } else if (input.contains("cd ")) {
                         interactive.addCommand(input, CD_CODE, result)
-                    } else interactive.addCommand(input)
+                    } else {
+                        interactive.addCommand(input)
+                    }
                 }
             }.start()
-
             return true
         }
     }
 
     private inner class AppTrigger : CmdTrigger {
-        override fun trigger(
-            info: MainPack?,
-            input: String?
-        ): Boolean {
-            if (input == null || info == null) return false
+        override fun trigger(input: String): Boolean {
             val launchable = appsManager.findLaunchableWithLabel(input)
-            return launchable?.let { appsManager.performLaunch(it) } ?: false
+            if (launchable != null) return appsManager.performLaunch(launchable)
+
+            val spaceIdx = input.indexOf(' ')
+            if (spaceIdx != -1) {
+                val web = appsManager.findLaunchableWithLabel(input.substring(0, spaceIdx)) as? WebLauncher
+                if (web != null && web.url.contains("%s")) {
+                    web.launchWithQuery(mContext, input.substring(spaceIdx + 1).trim())
+                    return true
+                }
+            }
+            return false
         }
     }
 
     private inner class TuiCommandTrigger : CmdTrigger {
-        override fun trigger(
-            info: MainPack?,
-            input: String?
-        ): Boolean {
-            val command = CommandTuils.parse(input, info)
+        override fun trigger(input: String): Boolean {
+            val command = CommandTuils.parse(input, mainPack)
             if (command == null) return false
             mainPack.lastCommand = input
             object : StoppableThread() {
                 override fun run() {
                     super.run()
-
                     try {
-                        val output = command.exec(info)
+                        val output = command.exec(mainPack)
                         if (output != null) {
-                            Tuils.sendOutput(info, output, TerminalManager.CATEGORY_OUTPUT)
+                            Tuils.sendOutput(mainPack, output, TerminalManager.CATEGORY_OUTPUT)
                         }
                     } catch (e: Exception) {
                         Tuils.sendOutput(mContext, Tuils.getStackTrace(e))
