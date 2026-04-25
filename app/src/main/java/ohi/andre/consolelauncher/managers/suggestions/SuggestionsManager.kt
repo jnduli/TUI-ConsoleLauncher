@@ -93,12 +93,12 @@ class SuggestionsManager(
     private var lastFirst: Suggestion? = null
 
     private val clickListener = View.OnClickListener { v: View? ->
-        val suggestion = v!!.getTag(R.id.suggestion_id) as Suggestion
+        val suggestion = v?.getTag(R.id.suggestion_id) as? Suggestion ?: return@OnClickListener
         clickSuggestion(suggestion)
     }
 
     private var lastSuggestionThread: StoppableThread? = null
-    private val handler: Handler? = Handler()
+    private val handler = Handler()
 
     private val removeAllSuggestions: RemoverRunnable
 
@@ -142,7 +142,7 @@ class SuggestionsManager(
             19 -> alg = AlgMap.MetricDistAlg.METRICLCS
         }
 
-        algInstance = alg!!.buildAlg(id)
+        algInstance = alg?.buildAlg(id)
     }
 
     fun getSuggestionView(context: Context?): TextView {
@@ -165,8 +165,8 @@ class SuggestionsManager(
     }
 
     private fun stop() {
-        handler!!.removeCallbacksAndMessages(null)
-        if (lastSuggestionThread != null) lastSuggestionThread!!.interrupt()
+        handler.removeCallbacksAndMessages(null)
+        lastSuggestionThread?.interrupt()
     }
 
     fun dispose() {
@@ -384,31 +384,26 @@ class SuggestionsManager(
     fun requestSuggestion(input: String) {
         if (!enabled) return
 
-        if (suggestionViewParams == null) {
-            suggestionViewParams = LinearLayout.LayoutParams(
+        val params = suggestionViewParams ?: run {
+            LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            suggestionViewParams!!.setMargins(15, 0, 15, 0)
-            suggestionViewParams!!.gravity = Gravity.CENTER_VERTICAL
+            ).also {
+                it.setMargins(15, 0, 15, 0)
+                it.gravity = Gravity.CENTER_VERTICAL
+                suggestionViewParams = it
+            }
         }
 
         if (suggestionRunnable == null) {
-            suggestionRunnable = SuggestionRunnable(
-                pack,
-                suggestionsView,
-                suggestionViewParams!!,
-                (suggestionsView.getParent().getParent() as HorizontalScrollView?)!!,
-                spaces
-            )
+            val scrollView = suggestionsView.parent?.parent as? HorizontalScrollView ?: return
+            suggestionRunnable = SuggestionRunnable(pack, suggestionsView, params, scrollView, spaces)
         }
 
-        if (lastSuggestionThread != null) {
-            lastSuggestionThread!!.interrupt()
-            suggestionRunnable!!.interrupt()
-            if (handler != null) {
-                handler.removeCallbacks(suggestionRunnable!!)
-            }
+        lastSuggestionThread?.interrupt()
+        suggestionRunnable?.let {
+            it.interrupt()
+            handler.removeCallbacks(it)
         }
 
         try {
@@ -419,25 +414,23 @@ class SuggestionsManager(
                     if (lastFirst == null && suggestionsView.getChildCount() > 0) {
                         val s =
                             suggestionsView.getChildAt(0).getTag(R.id.suggestion_id) as Suggestion
-                        if (!input.trim { it <= ' ' }.endsWith(s.getText()!!)) lastFirst = s
+                        if (!input.trim { it <= ' ' }.endsWith(s.getText().orEmpty())) lastFirst = s
                     }
 
-                    if (lastFirst != null) {
-                        val s = lastFirst
+                    val lf = lastFirst
+                    if (lf != null) {
                         mTerminalAdapter.setInput(
-                            if (0 == l - 2) Tuils.EMPTYSTRING else input.substring(
-                                0,
-                                l - 2
-                            )
+                            if (0 == l - 2) Tuils.EMPTYSTRING else input.substring(0, l - 2)
                         )
-                        clickSuggestion(s!!)
+                        clickSuggestion(lf)
                         return
                     }
                 } else if (suggestionsView.getChildCount() > 0) {
 //                    single space
-                    lastFirst =
-                        suggestionsView.getChildAt(0).getTag(R.id.suggestion_id) as Suggestion?
-                    if (lastFirst!!.getText() == input.trim { it <= ' ' }) {
+                    val newFirst =
+                        suggestionsView.getChildAt(0).getTag(R.id.suggestion_id) as? Suggestion
+                    lastFirst = newFirst
+                    if (newFirst?.getText() == input.trim { it <= ' ' }) {
                         lastFirst = null
                     }
                 }
@@ -453,6 +446,8 @@ class SuggestionsManager(
         lastSuggestionThread = object : StoppableThread() {
             override fun run() {
                 super.run()
+
+                val runnable = suggestionRunnable ?: return
 
                 val before: String?
                 val lastWord: String?
@@ -503,7 +498,7 @@ class SuggestionsManager(
                 }
 
                 if (interrupted()) {
-                    suggestionRunnable!!.interrupt()
+                    runnable.interrupt()
                     return
                 }
 
@@ -513,7 +508,7 @@ class SuggestionsManager(
                 }
 
                 if (interrupted()) {
-                    suggestionRunnable!!.interrupt()
+                    runnable.interrupt()
                     return
                 }
 
@@ -536,21 +531,21 @@ class SuggestionsManager(
                 }
 
                 if (interrupted()) {
-                    suggestionRunnable!!.interrupt()
+                    runnable.interrupt()
                     return
                 }
 
-                suggestionRunnable!!.setN(n)
-                suggestionRunnable!!.setSuggestions(suggestions as MutableList<Suggestion>)
-                suggestionRunnable!!.setToAdd(toAdd!!)
-                suggestionRunnable!!.setToRecycle(toRecycle!!)
-                suggestionRunnable!!.reset()
-                (pack.context as Activity).runOnUiThread(suggestionRunnable)
+                runnable.setN(n)
+                runnable.setSuggestions(suggestions as MutableList<Suggestion>)
+                runnable.setToAdd(toAdd ?: emptyArray())
+                runnable.setToRecycle(toRecycle ?: emptyArray())
+                runnable.reset()
+                (pack.context as Activity).runOnUiThread(runnable)
             }
         }
 
         try {
-            lastSuggestionThread!!.start()
+            lastSuggestionThread?.start()
         } catch (e: InternalError) {
             Tuils.log(e)
             // Tuils.toFile(e);
@@ -576,8 +571,9 @@ class SuggestionsManager(
                 val apps = pack.appsManager.suggestedApps
                 if (apps != null) {
                     var count = 0
-                    while (count < apps.size && count < noInputCounts!![Suggestion.Companion.TYPE_APP]) {
-                        if (apps[count] == null) {
+                    while (count < apps.size && count < (noInputCounts?.get(Suggestion.Companion.TYPE_APP) ?: 0)) {
+                        val app = apps[count]
+                        if (app == null) {
                             count++
                             continue
                         }
@@ -585,10 +581,10 @@ class SuggestionsManager(
                         suggestionList.add(
                             Suggestion(
                                 beforeLastSpace,
-                                apps[count]!!.publicLabel,
+                                app.publicLabel,
                                 clickToLaunch,
                                 Suggestion.Companion.TYPE_APP,
-                                apps[count]
+                                app
                             )
                         )
                         count++
@@ -773,10 +769,11 @@ class SuggestionsManager(
         lastWord: String?
     ) {
         var canInsert =
-            if (lastWord == null || lastWord.length == 0) noInputCounts!![Suggestion.Companion.TYPE_ALIAS] else counts!![Suggestion.Companion.TYPE_ALIAS]
+            if (lastWord.isNullOrEmpty()) noInputCounts?.get(Suggestion.Companion.TYPE_ALIAS) ?: 0
+            else counts?.get(Suggestion.Companion.TYPE_ALIAS) ?: 0
 
         for (a in aliasManager.getAliases(true)) {
-            if (lastWord!!.length == 0 || a.name.startsWith(lastWord)) {
+            if (lastWord.isNullOrEmpty() || a.name.startsWith(lastWord)) {
                 if (canInsert == 0) return
                 canInsert--
 
@@ -1053,14 +1050,14 @@ class SuggestionsManager(
                     )
                 }
             } else {
-                val originalAfterLastSpace: String? = afterLastSpace
+                val originalAfterLastSpace: String = afterLastSpace
                 afterLastSpace = rmQuotes.matcher(afterLastSpace).replaceAll(Tuils.EMPTYSTRING)
 
                 val index = afterLastSpace.lastIndexOf(File.separator)
                 val dirInfo =
                     FileManager.cd(info.currentDirectory, afterLastSpace.substring(0, index))
 
-                val originalIndex = originalAfterLastSpace!!.lastIndexOf(File.separator)
+                val originalIndex = originalAfterLastSpace.lastIndexOf(File.separator)
 
                 val alsals = originalAfterLastSpace.substring(0, originalIndex + 1)
                 val als = originalAfterLastSpace.substring(originalIndex + 1)
@@ -1405,7 +1402,7 @@ class SuggestionsManager(
             val cmds = info.commandGroup.getCommandNames()
             if (cmds == null) return
 
-            var canInsert = counts!![Suggestion.Companion.TYPE_COMMAND]
+            var canInsert = counts?.get(Suggestion.Companion.TYPE_COMMAND) ?: 0
             for (s in cmds) {
                 if (canInsert == 0 || Thread.currentThread().isInterrupted()) return
 
@@ -1437,7 +1434,7 @@ class SuggestionsManager(
 
         //        if there's a beforelastspace -> help ...
         var canInsert =
-            if (beforeLastSpace != null && beforeLastSpace.length > 0) Int.Companion.MAX_VALUE else noInputCounts!![Suggestion.Companion.TYPE_COMMAND]
+            if (beforeLastSpace != null && beforeLastSpace.length > 0) Int.MAX_VALUE else noInputCounts?.get(Suggestion.Companion.TYPE_COMMAND) ?: 0
 
         for (cmd in cmds) {
             if (canInsert == 0 || Thread.currentThread().isInterrupted()) return
@@ -1552,7 +1549,7 @@ class SuggestionsManager(
 
         apps = ArrayList<Launchable?>(apps) as MutableList<Launchable>?
 
-        var canInsert = counts!![Suggestion.Companion.TYPE_APP]
+        var canInsert = counts?.get(Suggestion.Companion.TYPE_APP) ?: 0
         if (afterLastSpace == null || afterLastSpace.length == 0) {
             for (l in apps!!) {
                 if (canInsert == 0) return
@@ -1584,7 +1581,7 @@ class SuggestionsManager(
             val infos = CompareObjects.topMatchesWithDeadline<Launchable?>(
                 Launchable::class.java,
                 afterLastSpace,
-                apps.size,
+                apps!!.size,
                 apps,
                 canInsert - counter,
                 suggestionsDeadline,
@@ -1739,14 +1736,14 @@ class SuggestionsManager(
 
         var canInsert: Int
         if (afterLastSpace == null || afterLastSpace.length == 0) {
-            canInsert = noInputCounts!![Suggestion.Companion.TYPE_APPGP]
+            canInsert = noInputCounts?.get(Suggestion.Companion.TYPE_APPGP) ?: 0
             for (g in groups) {
                 if (canInsert == 0) return
                 canInsert--
 
                 val sg = Suggestion(
                     beforeLastSpace,
-                    g.name()!!,
+                    g.name() ?: continue,
                     false,
                     Suggestion.Companion.TYPE_APPGP,
                     g
@@ -1754,7 +1751,7 @@ class SuggestionsManager(
                 suggestions.add(sg)
             }
         } else {
-            canInsert = counts!![Suggestion.Companion.TYPE_APPGP]
+            canInsert = counts?.get(Suggestion.Companion.TYPE_APPGP) ?: 0
 
             val counter = quickCompare(
                 afterLastSpace,
@@ -1784,7 +1781,7 @@ class SuggestionsManager(
                 suggestions.add(
                     Suggestion(
                         beforeLastSpace,
-                        g.name()!!,
+                        g.name() ?: continue,
                         false,
                         Suggestion.Companion.TYPE_APPGP,
                         g
@@ -1831,7 +1828,7 @@ class SuggestionsManager(
                         count++
                     }
                     if (afterLastSpace != null) app = app + Tuils.SPACE + afterLastSpace
-                    app = app!!.trim { it <= ' ' }
+                    app = app?.trim { it <= ' ' }
 
                     break
                 }
@@ -2022,7 +2019,7 @@ class SuggestionsManager(
                         text
             }
 
-            if (textBefore == null || textBefore!!.length == 0) {
+            if (textBefore.isNullOrEmpty()) {
                 return text
             } else {
                 return textBefore + Tuils.SPACE + text
@@ -2030,7 +2027,7 @@ class SuggestionsManager(
         }
 
         override fun toString(): String {
-            return text!!
+            return text.orEmpty()
         }
 
         companion object {

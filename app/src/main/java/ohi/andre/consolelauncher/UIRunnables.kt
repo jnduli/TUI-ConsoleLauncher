@@ -198,7 +198,7 @@ class BlueToothViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun bluetooth(): CharSequence {
-        if (mBluetoothAdapter.isEnabled == true) {
+        if (mBluetoothAdapter.isEnabled) {
             return "on"
         }
         return "off"
@@ -293,14 +293,14 @@ class WeatherViewModel(application: Application): AndroidViewModel(application) 
 
     val weather: StateFlow<CharSequence> = callbackFlow {
         Tuils.sendOutput(application, "Found location", TerminalManager.CATEGORY_OUTPUT)
-        var listener = LocationListener { p0 ->
-            location = p0
-            Log.e(TAG, "Found location: $location")
-            Tuils.sendOutput(application, "Found location: $location", TerminalManager.CATEGORY_OUTPUT)
+        val listener = LocationListener { loc ->
+            location = loc
+            Log.e(TAG, "Found location: $loc")
+            Tuils.sendOutput(application, "Found location: $loc", TerminalManager.CATEGORY_OUTPUT)
             val url = weatherURL(
                 key,
-                location!!.latitude,
-                location!!.longitude,
+                loc.latitude,
+                loc.longitude,
                 XMLPrefsManager.get(Behavior.weather_temperature_measure)
             )
             weatherRepository.fetchWeather(url) { weatherData ->
@@ -483,7 +483,7 @@ class UnlockTimeViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private fun unregisterLockReceiver() {
-        if (lockReceiver != null) context.unregisterReceiver(lockReceiver)
+        lockReceiver?.let { context.unregisterReceiver(it) }
     }
 
     private fun onLock() {

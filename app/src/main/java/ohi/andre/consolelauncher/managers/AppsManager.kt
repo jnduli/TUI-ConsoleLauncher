@@ -123,7 +123,7 @@ data class LaunchableList(val launchables: List<Launchable>)
 @XmlSerialName("web", "", "")
 data class WebLauncher(val name: String, val url: String, override var launchTimes: Int = 0) : Launchable, Parcelable {
 
-    @Contextual
+    @kotlinx.serialization.Transient
     override var componentName: ComponentName? = ComponentName("ohi.andre.consolelauncher", "ohi.andre.consolelauncher.WebActivity")
 
     override fun toIntent(context: Context): Intent {

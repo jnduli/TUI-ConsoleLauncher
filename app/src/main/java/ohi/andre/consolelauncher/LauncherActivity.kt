@@ -84,7 +84,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
 
 
-    private var categories: MutableSet<ReloadMessageCategory>? = null
+    private lateinit var categories: MutableSet<ReloadMessageCategory>
     private val stopActivity = Runnable {
         dispose()
         finish()
@@ -93,7 +93,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         startMain.addCategory(Intent.CATEGORY_HOME)
 
         var reloadMessage: CharSequence? = Tuils.EMPTYSTRING
-        for (c in categories!!) {
+        for (c in categories) {
             reloadMessage = TextUtils.concat(reloadMessage, Tuils.NEWLINE, c.text())
         }
         startMain.putExtra(Reloadable.MESSAGE, reloadMessage)
@@ -102,15 +102,15 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
     private val `in`: Inputable = object : Inputable {
         override fun `in`(s: String?) {
-            if (ui != null) ui!!.setInput(s)
+            ui?.setInput(s)
         }
 
         override fun changeHint(s: String?) {
-            runOnUiThread(Runnable { ui!!.setHint(s) })
+            runOnUiThread { ui?.setHint(s) }
         }
 
         override fun resetHint() {
-            runOnUiThread(Runnable { ui!!.resetHint() })
+            runOnUiThread { ui?.resetHint() }
         }
     }
 
@@ -128,17 +128,17 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         var r: Runnable? = object : Runnable {
             override fun run() {
                 if (ui == null) {
-                    handler!!.postDelayed(this, DELAY.toLong())
+                    handler?.postDelayed(this, DELAY.toLong())
                     return
                 }
 
                 var sm: SimpleMutableEntry<CharSequence?, Int?>?
-                while ((textCategory!!.poll().also { sm = it }) != null) {
-                    ui!!.setOutput(sm!!.key, sm.value!!)
+                while ((textCategory?.poll().also { sm = it }) != null) {
+                    ui?.setOutput(sm!!.key, sm.value!!)
                 }
 
-                while ((textColor!!.poll().also { sm = it }) != null) {
-                    ui!!.setOutput(sm!!.value!!, sm.key)
+                while ((textColor?.poll().also { sm = it }) != null) {
+                    ui?.setOutput(sm!!.value!!, sm.key)
                 }
 
                 textCategory = null
@@ -149,48 +149,40 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         }
 
         override fun onOutput(output: CharSequence?) {
-            if (ui != null) ui!!.setOutput(output, TerminalManager.CATEGORY_OUTPUT)
+            if (ui != null) ui?.setOutput(output, TerminalManager.CATEGORY_OUTPUT)
             else {
-                textCategory!!.add(
-                    SimpleMutableEntry<CharSequence?, Int?>(
-                        output,
-                        TerminalManager.CATEGORY_OUTPUT
-                    )
-                )
-
+                textCategory?.add(SimpleMutableEntry(output, TerminalManager.CATEGORY_OUTPUT))
                 if (!charged) {
                     charged = true
-                    handler?.postDelayed(r!!, DELAY.toLong())
+                    r?.let { handler?.postDelayed(it, DELAY.toLong()) }
                 }
             }
         }
 
         override fun onOutput(output: CharSequence?, category: Int) {
-            if (ui != null) ui!!.setOutput(output, category)
+            if (ui != null) ui?.setOutput(output, category)
             else {
-                textCategory!!.add(SimpleMutableEntry<CharSequence?, Int?>(output, category))
-
+                textCategory?.add(SimpleMutableEntry(output, category))
                 if (!charged) {
                     charged = true
-                    handler!!.postDelayed(r!!, DELAY.toLong())
+                    r?.let { handler?.postDelayed(it, DELAY.toLong()) }
                 }
             }
         }
 
         override fun onOutput(color: Int, output: CharSequence?) {
-            if (ui != null) ui!!.setOutput(color, output)
+            if (ui != null) ui?.setOutput(color, output)
             else {
-                textColor!!.add(SimpleMutableEntry<CharSequence?, Int?>(output, color))
-
+                textColor?.add(SimpleMutableEntry(output, color))
                 if (!charged) {
                     charged = true
-                    handler!!.postDelayed(r!!, DELAY.toLong())
+                    r?.let { handler?.postDelayed(it, DELAY.toLong()) }
                 }
             }
         }
 
         override fun dispose() {
-            if (handler != null) handler!!.removeCallbacksAndMessages(null)
+            handler?.removeCallbacksAndMessages(null)
         }
     }
 
@@ -268,9 +260,10 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         filter.addAction(PrivateIOReceiver.ACTION_OUTPUT)
         filter.addAction(PrivateIOReceiver.ACTION_REPLY)
 
-        privateIOReceiver = PrivateIOReceiver(this, out, `in`)
-        LocalBroadcastManager.getInstance(getApplicationContext())
-            .registerReceiver(privateIOReceiver!!, filter)
+        val ioReceiver = PrivateIOReceiver(this, out, `in`)
+        privateIOReceiver = ioReceiver
+        LocalBroadcastManager.getInstance(applicationContext)
+            .registerReceiver(ioReceiver, filter)
 
         val filter1 = IntentFilter()
         filter1.addAction(PublicIOReceiver.ACTION_CMD)
@@ -381,9 +374,10 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
             )
         }
 
-        categories = HashSet<ReloadMessageCategory>()
+        categories = HashSet()
 
-        main = MainManager(this)
+        val mgr = MainManager(this)
+        main = mgr
 
         val mainView = findViewById<View?>(R.id.mainview) as ViewGroup
 
@@ -394,13 +388,14 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
             mainView.setSystemUiVisibility(mainView.getSystemUiVisibility() or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR)
         }
 
-        ui = UIManager(this, mainView, main!!.mainPack, canApplyTheme, main!!.executer())
+        val uiMgr = UIManager(this, mainView, mgr.mainPack, canApplyTheme, mgr.executer())
+        ui = uiMgr
 
-        main!!.setRedirectionListener(ui!!.buildRedirectionListener())
-        ui!!.pack = main!!.mainPack
+        mgr.setRedirectionListener(uiMgr.buildRedirectionListener())
+        uiMgr.pack = mgr.mainPack
 
         `in`.`in`(Tuils.EMPTYSTRING)
-        ui!!.focusTerminal()
+        uiMgr.focusTerminal()
 
         if (fullscreen) Assist.assistActivity(this)
 
@@ -410,7 +405,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
     override fun onStart() {
         super.onStart()
 
-        if (ui != null) ui!!.onStart(openKeyboardOnStart)
+        ui?.onStart(openKeyboardOnStart)
     }
 
     override fun onRestart() {
@@ -426,10 +421,8 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
     override fun onPause() {
         super.onPause()
 
-        if (ui != null && main != null) {
-            ui!!.pause()
-            main!!.dispose()
-        }
+        ui?.pause()
+        main?.dispose()
     }
 
     private var disposed = false
@@ -437,9 +430,10 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         if (disposed) return
 
         try {
-            LocalBroadcastManager.getInstance(this.getApplicationContext())
-                .unregisterReceiver(privateIOReceiver!!)
-            getApplicationContext().unregisterReceiver(publicIOReceiver)
+            privateIOReceiver?.let {
+                LocalBroadcastManager.getInstance(applicationContext).unregisterReceiver(it)
+            }
+            applicationContext.unregisterReceiver(publicIOReceiver)
         } catch (e: Exception) {
             Tuils.log(e)
         }
@@ -470,13 +464,11 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
         overridePendingTransition(0, 0)
 
-        if (main != null) main!!.destroy()
-        if (ui != null) ui!!.dispose()
+        main?.destroy()
+        ui?.dispose()
 
         XMLPrefsManager.dispose()
-        if (RegexManager.instance != null) {
-            RegexManager.instance.dispose()
-        }
+        RegexManager.instance?.dispose()
         TimeManager.instance.dispose()
 
         disposed = true
@@ -488,15 +480,13 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
     }
 
     override fun onBackPressed() {
-        if (backButtonEnabled && main != null) {
-            ui!!.onBackPressed()
-        }
+        if (backButtonEnabled) ui?.onBackPressed()
     }
 
     override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode != KeyEvent.KEYCODE_BACK) return super.onKeyLongPress(keyCode, event)
 
-        if (main != null) main!!.onLongBack()
+        main?.onLongBack()
         return true
     }
 
@@ -505,7 +495,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
     }
 
     override fun addMessage(header: String?, message: String?) {
-        for (cs in categories!!) {
+        for (cs in categories) {
             Tuils.log(cs.header, header)
             if (cs.header == header) {
                 cs.lines.add(message)
@@ -515,15 +505,13 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
         val c = ReloadMessageCategory(header)
         if (message != null) c.lines.add(message)
-        categories!!.add(c)
+        categories.add(c)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
 
-        if (hasFocus && ui != null) {
-            ui!!.focusTerminal()
-        }
+        if (hasFocus) ui?.focusTerminal()
     }
 
     var suggestion: Suggestion? = null
@@ -531,10 +519,9 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         super.onCreateContextMenu(menu, v, menuInfo)
 
         suggestion = v.getTag(R.id.suggestion_id) as Suggestion?
-
-        if (suggestion!!.type == Suggestion.TYPE_CONTACT) {
-            val contact = suggestion!!.`object` as Contact
-
+        val s = suggestion ?: return
+        if (s.type == Suggestion.TYPE_CONTACT) {
+            val contact = s.`object` as Contact
             menu.setHeaderTitle(contact.name)
             for (count in contact.numbers.indices) {
                 menu.add(0, count, count, contact.numbers[count])
@@ -543,17 +530,14 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
     }
 
     override fun onContextItemSelected(item: MenuItem): Boolean {
-        if (suggestion != null) {
-            if (suggestion!!.type == Suggestion.TYPE_CONTACT) {
-                val contact = suggestion!!.`object` as Contact
+        suggestion?.let { s ->
+            if (s.type == Suggestion.TYPE_CONTACT) {
+                val contact = s.`object` as Contact
                 contact.setSelectedNumber(item.getItemId())
-
-                Tuils.sendInput(this, suggestion!!.getText())
-
+                Tuils.sendInput(this, s.getText())
                 return true
             }
         }
-
         return false
     }
 
@@ -660,11 +644,10 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
                 Log.d(TAG, "Connectivity permissions granted, nothing more to do")
             }
             COMMAND_REQUEST_PERMISSION -> {
-                val info = main!!.mainPack
-                main!!.onCommand(info.lastCommand, null as String?, false)
+                main?.let { it.onCommand(it.mainPack.lastCommand, null as String?, false) }
             }
             COMMAND_SUGGESTION_REQUEST_PERMISSION -> {
-                ui!!.setOutput(
+                ui?.setOutput(
                     getString(R.string.output_nopermissions),
                     TerminalManager.CATEGORY_OUTPUT
                 )
@@ -721,11 +704,11 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
                 }
             }
             COMMAND_REQUEST_PERMISSION -> {
-                ui!!.setOutput(
+                ui?.setOutput(
                     getString(R.string.output_nopermissions),
                     TerminalManager.CATEGORY_OUTPUT
                 )
-                main!!.sendPermissionNotGrantedWarning()
+                main?.sendPermissionNotGrantedWarning()
             }
         }
     }

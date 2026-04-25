@@ -97,7 +97,8 @@
         <activity
             android:name=".WebActivity"
             android:exported="false"
-            android:launchMode="singleTop" />
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.AppCompat.Light" />
 
         <provider
             android:name=".tuils.GenericFileProvider"

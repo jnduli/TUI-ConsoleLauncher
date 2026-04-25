@@ -70,21 +70,14 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     private val redirectator: Redirectator = object : Redirectator {
         override fun prepareRedirection(cmd: RedirectCommand?) {
             redirect = cmd
-
-            if (redirectionListener != null) {
-                redirectionListener!!.onRedirectionRequest(cmd)
-            }
+            redirectionListener?.onRedirectionRequest(cmd)
         }
 
         override fun cleanup() {
-            if (redirect != null) {
-                redirect!!.beforeObjects.clear()
-                redirect!!.afterObjects.clear()
-
-                if (redirectionListener != null) {
-                    redirectionListener!!.onRedirectionEnd(redirect)
-                }
-
+            redirect?.let {
+                it.beforeObjects.clear()
+                it.afterObjects.clear()
+                redirectionListener?.onRedirectionEnd(it)
                 redirect = null
             }
         }
@@ -164,13 +157,13 @@ class MainManager constructor(private var mContext: LauncherActivity) {
 
         if (alias == null) updateServices(input, wasMusicService)
 
-        if (redirect != null) {
-            if (!redirect!!.isWaitingPermission()) {
-                redirect!!.afterObjects.add(input)
+        val currentRedirect = redirect
+        if (currentRedirect != null) {
+            if (!currentRedirect.isWaitingPermission()) {
+                currentRedirect.afterObjects.add(input)
             }
-            val output = redirect!!.onRedirect(mainPack)
+            val output = currentRedirect.onRedirect(mainPack)
             Tuils.sendOutput(mContext, output)
-
             return
         }
 
@@ -216,7 +209,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                     break
                 }
                 if (r) {
-                    if (messagesManager != null) messagesManager!!.afterCmd()
+                    messagesManager?.afterCmd()
                     break
                 }
             }
@@ -239,7 +232,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         mainPack.destroy()
         TuiLocationManager.disposeStatic()
 
-        if (messagesManager != null) messagesManager!!.onDestroy()
+        messagesManager?.onDestroy()
 
         themeManager.dispose()
         htmlExtractManager.dispose(mContext)
@@ -385,20 +378,9 @@ class MainManager constructor(private var mContext: LauncherActivity) {
 
     private inner class AliasTrigger : CmdTrigger {
         override fun trigger(info: MainPack?, input: String?): Boolean {
-            val alias = aliasManager.getAlias(input, true)
-
-            var aliasValue = alias!![0]
-            if (alias[0] == null) {
-                return false
-            }
-
-            val aliasName = alias[1]
-            val residual = alias[2]
-
-            aliasValue = aliasManager.format(aliasValue, residual)
-
-            onCommand(aliasValue, aliasName, false)
-
+            val alias = aliasManager.getAlias(input, true) ?: return false
+            val aliasValue = aliasManager.format(alias[0] ?: return false, alias[2])
+            onCommand(aliasValue, alias[1], false)
             return true
         }
     }
@@ -423,25 +405,22 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                 input = null
             }
 
-            val appGroups: MutableList<out Group> = (info?.appsManager?.groups ?: null)!!
-            if (appGroups != null) {
-                for (g in appGroups) {
-                    if (name == g.name()) {
-                        if (input == null) {
-                            Tuils.sendOutput(
-                                mContext,
-                                printApps(
-                                    AppUtils.labelList(
-                                        g.members() as MutableList<out Launchable>,
-                                        false
-                                    )
+            val appGroups = info?.appsManager?.groups ?: return false
+            for (g in appGroups) {
+                if (name == g.name()) {
+                    if (input == null) {
+                        Tuils.sendOutput(
+                            mContext,
+                            printApps(
+                                AppUtils.labelList(
+                                    g.members() as MutableList<out Launchable>,
+                                    false
                                 )
                             )
-                            // Tuils.sendOutput(mContext, AppsManager.AppUtils.printApps(AppsManager.AppUtils.labelList((List<AppsManager.LaunchInfo>) g.members(), false)));
-                            return true
-                        } else {
-                            return g.use(mainPack, input)
-                        }
+                        )
+                        return true
+                    } else {
+                        return g.use(mainPack, input)
                     }
                 }
             }
@@ -492,7 +471,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                                 )
                             )
                         interactive.addCommand("su")
-                    } else if (input?.contains("cd ") ?: false ) {
+                    } else if (input?.contains("cd ") == true) {
                         interactive.addCommand(input, CD_CODE, result)
                     } else interactive.addCommand(input)
                 }

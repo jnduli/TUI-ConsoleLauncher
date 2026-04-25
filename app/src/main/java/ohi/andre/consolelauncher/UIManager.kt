@@ -242,17 +242,17 @@ class UIManager(
     fun buildRedirectionListener(): OnRedirectionListener {
         return object : OnRedirectionListener {
             override fun onRedirectionRequest(cmd: RedirectCommand) {
-                (mContext as Activity).runOnUiThread(Runnable {
+                (mContext as Activity).runOnUiThread {
                     mTerminalAdapter?.setHint(mContext.getString(cmd.getHint()))
                     disableSuggestions()
-                })
+                }
             }
 
             override fun onRedirectionEnd(cmd: RedirectCommand?) {
-                (mContext as Activity).runOnUiThread(Runnable {
+                (mContext as Activity).runOnUiThread {
                     mTerminalAdapter?.setDefaultHint()
                     enableSuggestions()
-                })
+                }
             }
         }
     }
@@ -451,7 +451,7 @@ class UIManager(
                 }
 
                 override fun onDoubleTap(p0: MotionEvent): Boolean {
-                    if (doubleTapCmd != null && doubleTapCmd!!.isNotEmpty()) {
+                    if (doubleTapCmd?.isNotEmpty() == true) {
                         val input = mTerminalAdapter?.input
                         mTerminalAdapter?.input = doubleTapCmd as kotlin.String?
                         mTerminalAdapter?.simulateEnter()
@@ -459,17 +459,14 @@ class UIManager(
                     }
 
                     if (lockOnDbTap) {
-                        val admin = policy?.isAdminActive(component!!)
-
-                        admin?.let {
-                            if (!it) {
-                                val i = Tuils.requestAdmin(
-                                    component,
-                                    mContext.getString(R.string.admin_permission)
-                                )
+                        val pol = policy
+                        val comp = component
+                        if (pol != null && comp != null) {
+                            if (!pol.isAdminActive(comp)) {
+                                val i = Tuils.requestAdmin(comp, mContext.getString(R.string.admin_permission))
                                 mContext.startActivity(i)
                             } else {
-                                policy!!.lockNow()
+                                pol.lockNow()
                             }
                         }
                     }
@@ -631,15 +628,15 @@ class UIManager(
 
         Companion.applyBgRect(
             terminalView,
-            bgRectColors[OUTPUT_BGCOLOR_INDEX]!!.toString(),
+            bgRectColors[OUTPUT_BGCOLOR_INDEX] ?: "",
             bgColors[OUTPUT_BGCOLOR_INDEX].toString(),
-            margins[OUTPUT_MARGINS_INDEX]!!,
+            margins[OUTPUT_MARGINS_INDEX] ?: IntArray(4),
             strokeWidth,
             cornerRadius
         )
         Companion.applyShadow(
             terminalView,
-            outlineColors[OUTPUT_BGCOLOR_INDEX]!!.toString(),
+            outlineColors[OUTPUT_BGCOLOR_INDEX] ?: "",
             shadowXOffset,
             shadowYOffset,
             shadowRadius
@@ -649,35 +646,35 @@ class UIManager(
         val prefixView = inputOutputView.findViewById<View?>(R.id.prefix_view) as TextView
 
         Companion.applyBgRect(
-            inputOutputView.findViewById<View?>(R.id.input_group)!!,
-            bgRectColors[INPUT_BGCOLOR_INDEX]!!.toString(),
+            checkNotNull(inputOutputView.findViewById(R.id.input_group)),
+            bgRectColors[INPUT_BGCOLOR_INDEX] ?: "",
             bgColors[INPUT_BGCOLOR_INDEX].toString(),
-            margins[INPUTAREA_MARGINS_INDEX]!!,
+            margins[INPUTAREA_MARGINS_INDEX] ?: IntArray(4),
             strokeWidth,
             cornerRadius
         )
         Companion.applyShadow(
             inputView,
-            outlineColors[INPUT_BGCOLOR_INDEX]!!.toString(),
+            outlineColors[INPUT_BGCOLOR_INDEX] ?: "",
             shadowXOffset,
             shadowYOffset,
             shadowRadius
         )
         Companion.applyShadow(
             prefixView,
-            outlineColors[INPUT_BGCOLOR_INDEX]!!.toString(),
+            outlineColors[INPUT_BGCOLOR_INDEX] ?: "",
             shadowXOffset,
             shadowYOffset,
             shadowRadius
         )
 
-        Companion.applyMargins(inputView, margins[INPUTFIELD_MARGINS_INDEX]!!)
-        Companion.applyMargins(prefixView, margins[INPUTFIELD_MARGINS_INDEX]!!)
+        Companion.applyMargins(inputView, margins[INPUTFIELD_MARGINS_INDEX] ?: IntArray(4))
+        Companion.applyMargins(prefixView, margins[INPUTFIELD_MARGINS_INDEX] ?: IntArray(4))
 
         var submitView = inputOutputView.findViewById<View?>(R.id.submit_tv) as ImageView?
         val showSubmit = XMLPrefsManager.getBoolean(Ui.show_enter_button)
         if (!showSubmit) {
-            submitView!!.visibility = View.GONE
+            submitView?.visibility = View.GONE
             submitView = null
         }
 
@@ -696,17 +693,20 @@ class UIManager(
             deleteView = inputOutputView.findViewById<View?>(R.id.delete_view) as ImageButton?
             pasteView = inputOutputView.findViewById<View?>(R.id.paste_view) as ImageButton?
 
-            toolbarView = inputOutputView.findViewById<View?>(R.id.tools_view)
+            val tv = inputOutputView.findViewById<View?>(R.id.tools_view)
+            toolbarView = tv
             hideToolbarNoInput = XMLPrefsManager.getBoolean(Toolbar.hide_toolbar_no_input)
 
-            Companion.applyBgRect(
-                toolbarView!!,
-                bgRectColors[TOOLBAR_BGCOLOR_INDEX]!!.toString(),
-                bgColors[TOOLBAR_BGCOLOR_INDEX].toString(),
-                margins[TOOLBAR_MARGINS_INDEX]!!,
-                strokeWidth,
-                cornerRadius
-            )
+            if (tv != null) {
+                Companion.applyBgRect(
+                    tv,
+                    bgRectColors[TOOLBAR_BGCOLOR_INDEX] ?: "",
+                    bgColors[TOOLBAR_BGCOLOR_INDEX].toString(),
+                    margins[TOOLBAR_MARGINS_INDEX] ?: IntArray(4),
+                    strokeWidth,
+                    cornerRadius
+                )
+            }
         }
 
         mTerminalAdapter = TerminalManager(
@@ -728,15 +728,13 @@ class UIManager(
                 rootView.findViewById<View?>(R.id.suggestions_container) as HorizontalScrollView
             sv.setFocusable(false)
             sv.onFocusChangeListener = OnFocusChangeListener { v: View?, hasFocus: Boolean ->
-                if (hasFocus) {
-                    v!!.clearFocus()
-                }
+                if (hasFocus) v?.clearFocus()
             }
             Companion.applyBgRect(
                 sv,
-                bgRectColors[SUGGESTIONS_BGCOLOR_INDEX]!!.toString(),
+                bgRectColors[SUGGESTIONS_BGCOLOR_INDEX] ?: "",
                 bgColors[SUGGESTIONS_BGCOLOR_INDEX].toString(),
-                margins[SUGGESTIONS_MARGINS_INDEX]!!,
+                margins[SUGGESTIONS_MARGINS_INDEX] ?: IntArray(4),
                 strokeWidth,
                 cornerRadius
             )
@@ -744,17 +742,21 @@ class UIManager(
             val suggestionsView =
                 rootView.findViewById<View?>(R.id.suggestions_group) as LinearLayout?
 
-            suggestionsManager = SuggestionsManager(suggestionsView!!, mainPack!!,
-                mTerminalAdapter!!
+            val suggMgr = SuggestionsManager(
+                requireNotNull(suggestionsView),
+                requireNotNull(mainPack),
+                requireNotNull(mTerminalAdapter)
             )
+            suggestionsManager = suggMgr
 
+            val tbv = toolbarView
             inputView.addTextChangedListener(
                 SuggestionTextWatcher(
-                    suggestionsManager!!,
+                    suggMgr,
                     OnTextChanged { currentText: kotlin.String?, before: Int ->
                         if (!hideToolbarNoInput) return@OnTextChanged
-                        if (currentText!!.isEmpty()) toolbarView!!.visibility = View.GONE
-                        else if (before == 0) toolbarView!!.visibility = View.VISIBLE
+                        if (currentText.isNullOrEmpty()) tbv?.visibility = View.GONE
+                        else if (before == 0) tbv?.visibility = View.VISIBLE
                     })
             )
         } else {
@@ -807,12 +809,7 @@ class UIManager(
                 values.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
             var c = 0
             while (c < split.size) {
-                try {
-                    `is`[c] = split[c]?.toInt()!!
-                } catch (e: Exception) {
-                    Log.e(TAG, e.toString())
-                    `is`[c] = defaultValue
-                }
+                `is`[c] = split[c]?.toIntOrNull() ?: defaultValue
                 c++
             }
             while (c < split.size) `is`[c] = defaultValue
