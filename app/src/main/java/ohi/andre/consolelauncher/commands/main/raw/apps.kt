@@ -5,6 +5,16 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import ohi.andre.consolelauncher.R
+import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.ALL_PACKAGES
+import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.APP_GROUP
+import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.APP_INSIDE_GROUP
+import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.COLOR
+import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.DEFAULT_APP
+import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.HIDDEN_PACKAGE
+import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.INT
+import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.NO_SPACE_STRING
+import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.PLAIN_TEXT
+import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.VISIBLE_PACKAGE
 import ohi.andre.consolelauncher.commands.ExecutePack
 import ohi.andre.consolelauncher.commands.main.MainPack
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand
