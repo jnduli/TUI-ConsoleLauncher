@@ -318,22 +318,6 @@ public enum Theme implements XMLPrefsSave {
             return "The color of the session info";
         }
     },
-    status_lines_bgrectcolor {
-        @Override
-        public String defaultValue() {
-            return "#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000";
-        }
-
-        @Override
-        public String info() {
-            return "The color of the rect behind the nth status line";
-        }
-
-        @Override
-        public String[] invalidValues() {
-            return new String[] {"#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000"};
-        }
-    },
     input_bgrectcolor {
         @Override
         public String defaultValue() {
@@ -398,22 +382,6 @@ public enum Theme implements XMLPrefsSave {
             return new String[] {"#ff000000"};
         }
     },
-    status_lines_bg {
-        @Override
-        public String defaultValue() {
-            return "#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000";
-        }
-
-        @Override
-        public String info() {
-            return "The bg color of the nth line";
-        }
-
-        @Override
-        public String[] invalidValues() {
-            return new String[] {"#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000"};
-        }
-    },
     input_bg {
         @Override
         public String defaultValue() {
@@ -460,22 +428,6 @@ public enum Theme implements XMLPrefsSave {
         @Override
         public String[] invalidValues() {
             return new String[] {"#ff000000"};
-        }
-    },
-    status_lines_shadow_color {
-        @Override
-        public String defaultValue() {
-            return "#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000";
-        }
-
-        @Override
-        public String info() {
-            return "The outline color of the nth line";
-        }
-
-        @Override
-        public String[] invalidValues() {
-            return new String[] {"#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000"};
         }
     },
     input_shadow_color {

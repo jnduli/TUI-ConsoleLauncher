@@ -172,22 +172,6 @@ public enum Ui implements XMLPrefsSave {
             return "If false, the input field will be placed on top of the screen";
         }
     },
-    show_ram {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-
-        @Override
-        public String info() {
-            return "If false, the RAM label will be hidden";
-        }
-    },
     show_device_name {
         @Override
         public String defaultValue() {
@@ -202,86 +186,6 @@ public enum Ui implements XMLPrefsSave {
         @Override
         public String info() {
             return "If false, the device label will be hidden";
-        }
-    },
-    show_battery {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-
-        @Override
-        public String info() {
-            return "If false, the battery label will be hidden";
-        }
-    },
-    show_network_info {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-
-        @Override
-        public String info() {
-            return "If false, the network info label will be hidden";
-        }
-    },
-    show_storage_info {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-
-        @Override
-        public String info() {
-            return "If false, the time label will be hidden";
-        }
-    },
-    enable_battery_status {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-
-        @Override
-        public String info() {
-            return "If true, battery color will change when your battery level reach different percentages battery_color high, battery_color_medium, battery_color_low. If false, only battery_color_high is used";
-        }
-    },
-    show_time {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-
-        @Override
-        public String info() {
-            return "If false, the time label will be hidden";
         }
     },
     username {
@@ -346,118 +250,6 @@ public enum Ui implements XMLPrefsSave {
         @Override
         public String info() {
             return "If true, t-ui will run in fullscreen mode";
-        }
-    },
-    device_index {
-        @Override
-        public String defaultValue() {
-            return "0";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-
-        @Override
-        public String info() {
-            return "This is used to order the labels on top of the screen";
-        }
-    },
-    ram_index {
-        @Override
-        public String defaultValue() {
-            return "1";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-
-        @Override
-        public String info() {
-            return "This is used to order the labels on top of the screen";
-        }
-    },
-    battery_index {
-        @Override
-        public String defaultValue() {
-            return "2";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-
-        @Override
-        public String info() {
-            return "This is used to order the labels on top of the screen";
-        }
-    },
-    time_index {
-        @Override
-        public String defaultValue() {
-            return "3";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-
-        @Override
-        public String info() {
-            return "This is used to order the labels on top of the screen";
-        }
-    },
-    storage_index {
-        @Override
-        public String defaultValue() {
-            return "4";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-
-        @Override
-        public String info() {
-            return "This is used to order the labels on top of the screen";
-        }
-    },
-    network_index {
-        @Override
-        public String defaultValue() {
-            return "5";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-
-        @Override
-        public String info() {
-            return "This is used to order the labels on top of the screen";
-        }
-    },
-    status_lines_alignment {
-        @Override
-        public String defaultValue() {
-            return "0,-1,-1,-1,-1,-1,-1,-1,-1";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-
-        @Override
-        public String info() {
-            return "The alignment of the nth status line (<0 = left, =0 = center, >0 = right)";
         }
     },
     input_prefix {
@@ -604,22 +396,6 @@ public enum Ui implements XMLPrefsSave {
             return XMLPrefsSave.BOOLEAN;
         }
     },
-    weather_index {
-        @Override
-        public String defaultValue() {
-            return "7";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-
-        @Override
-        public String info() {
-            return "This is used to order the labels on top of the screen";
-        }
-    },
     weather_size {
         @Override
         public String defaultValue() {
@@ -634,38 +410,6 @@ public enum Ui implements XMLPrefsSave {
         @Override
         public String info() {
             return "Weather size";
-        }
-    },
-    show_unlock_counter {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-
-        @Override
-        public String info() {
-            return "If false, the unlock counter feature will be disabled";
-        }
-    },
-    unlock_index {
-        @Override
-        public String defaultValue() {
-            return "8";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-
-        @Override
-        public String info() {
-            return "This is used to order the labels on top of the screen";
         }
     },
     unlock_size {
@@ -732,22 +476,6 @@ public enum Ui implements XMLPrefsSave {
             return "[Shadow X offset],[Shadow Y offset],[Shadow radius]";
         }
     },
-    status_lines_margins {
-        @Override
-        public String defaultValue() {
-            return "3,3,0,0";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-
-        @Override
-        public String info() {
-            return "[horizontal_margin],[vertical_margin],[horizontal_padding],[vertical_padding]";
-        }
-    },
     output_field_margins {
         @Override
         public String defaultValue() {
@@ -762,22 +490,6 @@ public enum Ui implements XMLPrefsSave {
         @Override
         public String info() {
             return "[horizontal_margin],[vertical_margin],[horizontal_padding],[vertical_padding]";
-        }
-    },
-    input_field_margins {
-        @Override
-        public String defaultValue() {
-            return "3,3,0,0";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-
-        @Override
-        public String info() {
-            return "The dimension of the input field (where cmds are inserted). [horizontal_margin],[vertical_margin],[horizontal_padding],[vertical_padding]";
         }
     },
     input_area_margins {

@@ -24,7 +24,6 @@ import android.graphics.drawable.Drawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.net.Uri;
-import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Parcelable;
@@ -104,7 +103,6 @@ import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 import ohi.andre.consolelauncher.managers.xml.options.Ui;
-import ohi.andre.consolelauncher.tuils.interfaces.OnBatteryUpdate;
 import ohi.andre.consolelauncher.tuils.stuff.FakeLauncherActivity;
 
 public class Tuils {
@@ -255,47 +253,6 @@ public class Tuils {
         }
         initialReader.close();
         return buffer.toString();
-    }
-
-    private static OnBatteryUpdate batteryUpdate;
-    private static BroadcastReceiver batteryReceiver = null;
-
-    public static void registerBatteryReceiver(Context context, OnBatteryUpdate listener) {
-        try {
-            batteryReceiver = new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    if(batteryUpdate == null) return;
-
-                    switch (intent.getAction()) {
-                        case Intent.ACTION_BATTERY_CHANGED:
-                            int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0);
-                            batteryUpdate.update(level);
-                            break;
-                        case Intent.ACTION_POWER_CONNECTED:
-                            batteryUpdate.onCharging();
-                            break;
-                        case Intent.ACTION_POWER_DISCONNECTED:
-                            batteryUpdate.onNotCharging();
-                            break;
-                    }
-                }
-            };
-
-            IntentFilter iFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-            iFilter.addAction(Intent.ACTION_POWER_CONNECTED);
-            iFilter.addAction(Intent.ACTION_POWER_DISCONNECTED);
-
-            context.registerReceiver(batteryReceiver, iFilter);
-
-            batteryUpdate = listener;
-        } catch (Exception e) {
-            Tuils.toFile(e);
-        }
-    }
-
-    public static void unregisterBatteryReceiver(Context context) {
-        if(batteryReceiver != null) context.unregisterReceiver(batteryReceiver);
     }
 
     public static boolean containsExtension(String[] array, String value) {

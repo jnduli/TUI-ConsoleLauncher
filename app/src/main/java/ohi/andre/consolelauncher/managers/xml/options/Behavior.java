@@ -175,22 +175,6 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.BOOLEAN;
         }
     },
-    show_launch_history {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String info() {
-            return "If false, t-ui won't show the apps that you launch";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-    },
     clear_after_cmds {
         @Override
         public String defaultValue() {
@@ -303,86 +287,6 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.INTEGER;
         }
     },
-    device_format {
-        @Override
-        public String defaultValue() {
-            return "%d: %u";
-        }
-
-        @Override
-        public String info() {
-            return "Define the device format";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-    },
-    ram_format {
-        @Override
-        public String defaultValue() {
-            return "Available RAM: %avgb GB of %totgb GB (%av%%)";
-        }
-
-        @Override
-        public String info() {
-            return "Define the RAM format";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-    },
-    battery_format {
-        @Override
-        public String defaultValue() {
-            return "%(Charging: /)%v%";
-        }
-
-        @Override
-        public String info() {
-            return "Define the battery format";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-    },
-    storage_format {
-        @Override
-        public String defaultValue() {
-            return "Internal Storage: %iavgb GB / %itotgb GB (%iav%%)";
-        }
-
-        @Override
-        public String info() {
-            return "Define the storage format";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-    },
-    network_info_format {
-        @Override
-        public String defaultValue() {
-            return "%(WiFi - %wn/%[Mobile Data: %d3/No Internet access])";
-        }
-
-        @Override
-        public String info() {
-            return "Define the network format";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-    },
     input_format {
         @Override
         public String defaultValue() {
@@ -424,38 +328,6 @@ public enum Behavior implements XMLPrefsSave {
         @Override
         public String info() {
             return "Define the session info format";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-    },
-    enable_app_launch {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String info() {
-            return "If false, you won't be able to launch apps from t-ui, unless you use \"apps -frc\"";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-    },
-    app_launch_format {
-        @Override
-        public String defaultValue() {
-            return "--> %a";
-        }
-
-        @Override
-        public String info() {
-            return "Define app launch format ";
         }
 
         @Override
@@ -543,28 +415,6 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.TEXT;
         }
     },
-    external_storage_path {
-        @Override
-        public String defaultValue() {
-            String path = System.getenv("SECONDARY_STORAGE");
-            if(path == null) return Tuils.EMPTYSTRING;
-
-            File file = new File(path);
-            if(file != null && file.exists()) return file.getAbsolutePath();
-
-            return Tuils.EMPTYSTRING;
-        }
-
-        @Override
-        public String info() {
-            return "The path to your external storage (used to evaluate free/total space)";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-    },
     home_path {
         @Override
         public String defaultValue() {
@@ -638,22 +488,6 @@ public enum Behavior implements XMLPrefsSave {
         @Override
         public String info() {
             return "A value which is used to tell how deep t-ui can go in a nested optional value";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-    },
-    network_info_update_ms {
-        @Override
-        public String defaultValue() {
-            return "3500";
-        }
-
-        @Override
-        public String info() {
-            return "The time between two network info updates";
         }
 
         @Override
@@ -885,22 +719,6 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.TEXT;
         }
     },
-    htmlextractor_notfound_message {
-        @Override
-        public String defaultValue() {
-            return "Not found";
-        }
-
-        @Override
-        public String info() {
-            return "The message printed when there are no result inside your htmlextract query";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-    },
     tui_notification_time_color {
         @Override
         public String defaultValue() {
@@ -965,22 +783,6 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.TEXT;
         }
     },
-    weather_location {
-        @Override
-        public String defaultValue() {
-            return "null";
-        }
-
-        @Override
-        public String info() {
-            return "The ID of your country (check the wiki) or your coords separated by a comma (lat,lon)";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-    },
     weather_format {
         @Override
         public String defaultValue() {
@@ -995,70 +797,6 @@ public enum Behavior implements XMLPrefsSave {
         @Override
         public String type() {
             return XMLPrefsSave.TEXT;
-        }
-    },
-    clear_on_lock {
-        @Override
-        public String defaultValue() {
-            return "false";
-        }
-
-        @Override
-        public String info() {
-            return "If true, t-ui will clear the screen when you lock the phone";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-    },
-    unlock_counter_format {
-        @Override
-        public String defaultValue() {
-            return "Unlocked %c times (%a10/)%n%t(Unlock n. %i --> %w)3";
-        }
-
-        @Override
-        public String info() {
-            return "The format used to show the unlock counter";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-    },
-    unlock_time_divider {
-        @Override
-        public String defaultValue() {
-            return "%n";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-
-        @Override
-        public String info() {
-            return "The divider between the last unlock times";
-        }
-    },
-    unlock_time_order {
-        @Override
-        public String defaultValue() {
-            return "1";
-        }
-
-        @Override
-        public String info() {
-            return "1 = up-down. 2 = down-up";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
         }
     },
     unlock_counter_cycle_start {
@@ -1109,22 +847,6 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.BOOLEAN;
         }
     },
-    weather_update_time {
-        @Override
-        public String defaultValue() {
-            return "3600";
-        }
-
-        @Override
-        public String info() {
-            return "The weather update time in seconds. This can only be used if you\'re using a custom weather key";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-    },
     location_update_mintime {
         @Override
         public String defaultValue() {
@@ -1155,22 +877,6 @@ public enum Behavior implements XMLPrefsSave {
         @Override
         public String type() {
             return XMLPrefsSave.INTEGER;
-        }
-    },
-    show_weather_updates {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String info() {
-            return "If false, t-ui won't show information about the weather in the output field";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
         }
     };
 

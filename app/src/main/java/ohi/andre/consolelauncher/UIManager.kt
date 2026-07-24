@@ -66,7 +66,6 @@ class UIManager(
 
         LocalBroadcastManager.getInstance(mContext.applicationContext)
             .unregisterReceiver(receiver)
-        Tuils.unregisterBatteryReceiver(mContext)
 
         Tuils.cancelFont()
     }

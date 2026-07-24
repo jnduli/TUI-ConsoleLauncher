@@ -4,10 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FilenameFilter;
-import java.io.IOException;
 
 import ohi.andre.consolelauncher.tuils.Tuils;
 
@@ -19,20 +16,6 @@ public class FileManager {
 
     private static final String ASTERISK = "*";
     private static final String DOT = Tuils.DOT;
-
-    public static String writeOn(File file, String text) {
-        try {
-            FileOutputStream stream = new FileOutputStream(file);
-            stream.write(text.getBytes());
-            stream.flush();
-            stream.close();
-            return null;
-        } catch (FileNotFoundException e) {
-            return e.toString();
-        } catch (IOException e) {
-            return e.toString();
-        }
-    }
 
     public static int openFile(Context c, File file) {
         if (file == null) {
@@ -152,10 +135,6 @@ public class FileManager {
         public DirInfo(File f, String nF) {
             this.file = f;
             this.notFound = nF;
-        }
-
-        public String getCompletePath() {
-            return file.getAbsolutePath() + "/" + notFound;
         }
     }
 
