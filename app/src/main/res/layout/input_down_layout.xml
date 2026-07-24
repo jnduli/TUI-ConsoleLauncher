@@ -4,28 +4,11 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <HorizontalScrollView
-        android:id="@+id/suggestions_container"
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/suggestions_compose_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-
-        android:focusable="false">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
-
-            <LinearLayout
-                android:id="@+id/suggestions_group"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="start|center_vertical"
-                android:orientation="horizontal"></LinearLayout>
-
-        </LinearLayout>
-
-    </HorizontalScrollView>
+        android:layout_alignParentBottom="true" />
 
     <LinearLayout android:id="@+id/tools_view"
         android:layout_width="match_parent"
@@ -34,7 +17,7 @@
 
         android:weightSum="@integer/tools_view_weightsum"
 
-        android:layout_above="@id/suggestions_container">
+        android:layout_above="@id/suggestions_compose_view">
 
         <ImageButton android:id="@+id/delete_view"
             style="@style/ToolsBar"

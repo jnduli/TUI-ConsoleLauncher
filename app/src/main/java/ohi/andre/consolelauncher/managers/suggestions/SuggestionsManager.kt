@@ -1,24 +1,16 @@
 package ohi.andre.consolelauncher.managers.suggestions
 
-import android.app.Activity
-import android.content.Context
 import android.graphics.Color
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import android.view.Gravity
-import android.view.View
-import android.view.ViewGroup
-import android.widget.HorizontalScrollView
-import android.widget.LinearLayout
-import android.widget.TextView
 import it.andreuzzi.comparestring2.AlgMap
 import it.andreuzzi.comparestring2.AlgMap.Alg
 import it.andreuzzi.comparestring2.CompareObjects
 import it.andreuzzi.comparestring2.CompareStrings
 import it.andreuzzi.comparestring2.StringableObject
 import it.andreuzzi.comparestring2.algs.interfaces.Algorithm
-import ohi.andre.consolelauncher.R
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import ohi.andre.consolelauncher.UIManager.Companion.getListOfIntValues
 import ohi.andre.consolelauncher.commands.Command
 import ohi.andre.consolelauncher.commands.CommandAbstraction
@@ -67,7 +59,6 @@ import kotlin.math.max
  * Created by francescoandreuzzi on 25/12/15.
  */
 class SuggestionsManager(
-    private val suggestionsView: LinearLayout,
     private var pack: MainPack,
     private val mTerminalAdapter: TerminalManager
 ) {
@@ -88,21 +79,70 @@ class SuggestionsManager(
     private val multipleCmdSeparator: String
 
     private val doubleSpaceFirstSuggestion: Boolean
-    private var suggestionRunnable: SuggestionRunnable? = null
-    private var suggestionViewParams: LinearLayout.LayoutParams? = null
     private var lastFirst: Suggestion? = null
 
-    private val clickListener = View.OnClickListener { v: View? ->
-        val suggestion = v?.getTag(R.id.suggestion_id) as? Suggestion ?: return@OnClickListener
-        clickSuggestion(suggestion)
-    }
+    private val _suggestions = MutableStateFlow<List<Suggestion>>(emptyList())
+    val suggestions: StateFlow<List<Suggestion>> = _suggestions.asStateFlow()
+
+    private val _visible = MutableStateFlow(true)
+    val visible: StateFlow<Boolean> = _visible.asStateFlow()
 
     private var lastSuggestionThread: StoppableThread? = null
-    private val handler = Handler()
 
-    private val removeAllSuggestions: RemoverRunnable
+    data class SuggestionColors(val background: Int, val foreground: Int)
 
-    private val spaces: IntArray
+    private val transparentSuggestions: Boolean = XMLPrefsManager.getBoolean(Suggestions.transparent_suggestions)
+    private val suggBg: Map<Int, Int> = if (transparentSuggestions) emptyMap() else mapOf(
+        Suggestion.TYPE_APP to XMLPrefsManager.getColor(Suggestions.apps_bg_color),
+        Suggestion.TYPE_APPGP to XMLPrefsManager.getColor(Suggestions.apps_bg_color),
+        Suggestion.TYPE_ALIAS to XMLPrefsManager.getColor(Suggestions.alias_bg_color),
+        Suggestion.TYPE_COMMAND to XMLPrefsManager.getColor(Suggestions.cmd_bg_color),
+        Suggestion.TYPE_CONTACT to XMLPrefsManager.getColor(Suggestions.contact_bg_color),
+        Suggestion.TYPE_FILE to XMLPrefsManager.getColor(Suggestions.file_bg_color),
+        Suggestion.TYPE_CONFIGFILE to XMLPrefsManager.getColor(Suggestions.file_bg_color),
+        Suggestion.TYPE_SONG to XMLPrefsManager.getColor(Suggestions.song_bg_color),
+    )
+    private val suggDefaultBg: Int = if (transparentSuggestions) Color.TRANSPARENT else XMLPrefsManager.getColor(Suggestions.default_bg_color)
+    private val suggText: Map<Int, Int> = mapOf(
+        Suggestion.TYPE_APP to XMLPrefsManager.getColor(Suggestions.apps_text_color),
+        Suggestion.TYPE_APPGP to XMLPrefsManager.getColor(Suggestions.apps_text_color),
+        Suggestion.TYPE_ALIAS to XMLPrefsManager.getColor(Suggestions.alias_text_color),
+        Suggestion.TYPE_COMMAND to XMLPrefsManager.getColor(Suggestions.cmd_text_color),
+        Suggestion.TYPE_CONTACT to XMLPrefsManager.getColor(Suggestions.contact_text_color),
+        Suggestion.TYPE_FILE to XMLPrefsManager.getColor(Suggestions.file_text_color),
+        Suggestion.TYPE_CONFIGFILE to XMLPrefsManager.getColor(Suggestions.file_text_color),
+        Suggestion.TYPE_SONG to XMLPrefsManager.getColor(Suggestions.song_text_color),
+    )
+    private val suggDefaultText: Int = XMLPrefsManager.getColor(Suggestions.default_text_color)
+
+    /** Background/foreground for a suggestion chip - an app/app-group suggestion belonging to a
+     * user-defined [AppsManager.Group] uses the group's colors instead of the type default. */
+    fun colorsFor(suggestion: Suggestion): SuggestionColors {
+        if (suggestion.type == Suggestion.TYPE_APP || suggestion.type == Suggestion.TYPE_APPGP) {
+            var o = suggestion.`object`
+            if (o is Launchable) {
+                for (g in pack.appsManager.groups) {
+                    if (g.contains(o as Launchable)) {
+                        o = g
+                        break
+                    }
+                }
+            }
+            if (o is AppsManager.Group) {
+                return SuggestionColors(o.bgColor, o.foreColor)
+            }
+        }
+
+        return SuggestionColors(
+            background = suggBg[suggestion.type] ?: suggDefaultBg,
+            foreground = suggText[suggestion.type] ?: suggDefaultText,
+        )
+    }
+
+    /** [Suggestions.suggestions_spaces]: "[margin horizontal],[margin vertical],[padding horizontal],[padding vertical]" (pixels). */
+    data class ChipSpacing(val marginH: Int, val marginV: Int, val paddingH: Int, val paddingV: Int)
+    val chipSpacing: ChipSpacing
+    val chipTextSizeSp: Int = XMLPrefsManager.getInt(Suggestions.suggestions_size)
 
     var counts: IntArray?
     var noInputCounts: IntArray?
@@ -145,27 +185,7 @@ class SuggestionsManager(
         algInstance = alg?.buildAlg(id)
     }
 
-    fun getSuggestionView(context: Context?): TextView {
-        val textView = TextView(context)
-        textView.setOnClickListener(clickListener)
-
-        textView.setFocusable(false)
-        textView.setLongClickable(false)
-        textView.setClickable(true)
-
-        textView.setTypeface(Tuils.getTypeface(context))
-        textView.setTextSize(XMLPrefsManager.getInt(Suggestions.suggestions_size).toFloat())
-
-        textView.setPadding(spaces[2], spaces[3], spaces[2], spaces[3])
-
-        textView.setLines(1)
-        textView.setMaxLines(1)
-
-        return textView
-    }
-
     private fun stop() {
-        handler.removeCallbacksAndMessages(null)
         lastSuggestionThread?.interrupt()
     }
 
@@ -175,29 +195,12 @@ class SuggestionsManager(
 
     fun clear() {
         stop()
-        suggestionsView.removeAllViews()
-    }
-
-    var hideRunnable: Runnable = object : Runnable {
-        override fun run() {
-            suggestionsView.setVisibility(View.GONE)
-
-            stop()
-        }
+        _suggestions.value = emptyList()
     }
 
     fun hide() {
-        if (Looper.getMainLooper() == Looper.myLooper()) {
-            hideRunnable.run()
-        } else {
-            (mTerminalAdapter.mContext as Activity).runOnUiThread(hideRunnable)
-        }
-    }
-
-    var showRunnable: Runnable = object : Runnable {
-        override fun run() {
-            suggestionsView.setVisibility(View.VISIBLE)
-        }
+        _visible.value = false
+        stop()
     }
 
     init {
@@ -207,8 +210,6 @@ class SuggestionsManager(
 
         this.suggestionsPerCategory = XMLPrefsManager.getInt(Suggestions.suggestions_per_category)
         this.suggestionsDeadline = XMLPrefsManager.get(Suggestions.suggestions_deadline).toFloat()
-
-        this.removeAllSuggestions = RemoverRunnable(suggestionsView)
 
         doubleSpaceFirstSuggestion =
             XMLPrefsManager.getBoolean(Suggestions.double_space_click_first_suggestion)
@@ -224,7 +225,13 @@ class SuggestionsManager(
 
         minCmdPriority = XMLPrefsManager.getInt(Suggestions.noinput_min_command_priority)
 
-        spaces = getListOfIntValues(XMLPrefsManager.get(Suggestions.suggestions_spaces), 4, 0)
+        val spaces = getListOfIntValues(XMLPrefsManager.get(Suggestions.suggestions_spaces), 4, 0)
+        chipSpacing = ChipSpacing(
+            marginH = spaces.getOrElse(0) { 0 },
+            marginV = spaces.getOrElse(1) { 0 },
+            paddingH = spaces.getOrElse(2) { 0 },
+            paddingV = spaces.getOrElse(3) { 0 },
+        )
 
         try {
             hideViewValue = HideSuggestionViewValues.valueOf(
@@ -297,25 +304,10 @@ class SuggestionsManager(
         }
 
         comparator = CustomComparator(noInputIndexes!!, indexes!!)
-
-        val uselessView = getSuggestionView(pack.context)
-        uselessView.setVisibility(View.INVISIBLE)
-
-        val params = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        params.setMargins(spaces[0], spaces[1], spaces[2], spaces[3])
-
-        (suggestionsView.getParent() as LinearLayout).addView(uselessView, params)
     }
 
     fun show() {
-        if (Looper.getMainLooper() == Looper.myLooper()) {
-            showRunnable.run()
-        } else {
-            (mTerminalAdapter.mContext as Activity).runOnUiThread(showRunnable)
-        }
+        _visible.value = true
     }
 
     fun enable() {
@@ -384,37 +376,16 @@ class SuggestionsManager(
     fun requestSuggestion(input: String) {
         if (!enabled) return
 
-        val params = suggestionViewParams ?: run {
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).also {
-                it.setMargins(15, 0, 15, 0)
-                it.gravity = Gravity.CENTER_VERTICAL
-                suggestionViewParams = it
-            }
-        }
-
-        if (suggestionRunnable == null) {
-            val scrollView = suggestionsView.parent?.parent as? HorizontalScrollView ?: return
-            suggestionRunnable = SuggestionRunnable(pack, suggestionsView, params, scrollView, spaces)
-        }
-
         lastSuggestionThread?.interrupt()
-        suggestionRunnable?.let {
-            it.interrupt()
-            handler.removeCallbacks(it)
-        }
 
         try {
             val l = input.length
             if (doubleSpaceFirstSuggestion && l > 0 && input.get(l - 1) == ' ') {
                 if (input.get(l - 2) == ' ') {
 //                    double space
-                    if (lastFirst == null && suggestionsView.getChildCount() > 0) {
-                        val s =
-                            suggestionsView.getChildAt(0).getTag(R.id.suggestion_id) as Suggestion
-                        if (!input.trim { it <= ' ' }.endsWith(s.getText().orEmpty())) lastFirst = s
+                    if (lastFirst == null) {
+                        val s = _suggestions.value.firstOrNull()
+                        if (s != null && !input.trim { it <= ' ' }.endsWith(s.getText().orEmpty())) lastFirst = s
                     }
 
                     val lf = lastFirst
@@ -425,10 +396,9 @@ class SuggestionsManager(
                         clickSuggestion(lf)
                         return
                     }
-                } else if (suggestionsView.getChildCount() > 0) {
+                } else {
 //                    single space
-                    val newFirst =
-                        suggestionsView.getChildAt(0).getTag(R.id.suggestion_id) as? Suggestion
+                    val newFirst = _suggestions.value.firstOrNull()
                     lastFirst = newFirst
                     if (newFirst?.getText() == input.trim { it <= ' ' }) {
                         lastFirst = null
@@ -446,8 +416,6 @@ class SuggestionsManager(
         lastSuggestionThread = object : StoppableThread() {
             override fun run() {
                 super.run()
-
-                val runnable = suggestionRunnable ?: return
 
                 val before: String?
                 val lastWord: String?
@@ -480,67 +448,23 @@ class SuggestionsManager(
                     return
                 }
 
+                if (interrupted()) return
+
                 if (suggestions.size == 0) {
-                    (pack.context as Activity).runOnUiThread(removeAllSuggestions)
-                    removeAllSuggestions.isGoingToRun = true
+                    _suggestions.value = emptyList()
 
                     if (hideViewValue == HideSuggestionViewValues.ALWAYS || (hideViewValue == HideSuggestionViewValues.TRUE && input.length == 0)) {
                         hide()
                     }
 
                     return
-                } else {
-                    if (removeAllSuggestions.isGoingToRun) {
-                        removeAllSuggestions.stop = true
-                    }
-
-                    show()
                 }
 
-                if (interrupted()) {
-                    runnable.interrupt()
-                    return
-                }
+                show()
 
-                val existingViews = arrayOfNulls<TextView>(suggestionsView.getChildCount())
-                for (count in existingViews.indices) {
-                    existingViews[count] = suggestionsView.getChildAt(count) as TextView?
-                }
+                if (interrupted()) return
 
-                if (interrupted()) {
-                    runnable.interrupt()
-                    return
-                }
-
-                val n = suggestions.size - existingViews.size
-                var toAdd: Array<TextView?>? = null
-                var toRecycle: Array<TextView?>? = null
-                if (n == 0) {
-                    toRecycle = existingViews
-                    toAdd = null
-                } else if (n > 0) {
-                    toRecycle = existingViews
-                    toAdd = arrayOfNulls<TextView>(n)
-                    for (count in toAdd.indices) {
-                        toAdd[count] = getSuggestionView(pack.context)
-                    }
-                } else if (n < 0) {
-                    toAdd = null
-                    toRecycle = arrayOfNulls<TextView>(suggestions.size)
-                    System.arraycopy(existingViews, 0, toRecycle, 0, toRecycle.size)
-                }
-
-                if (interrupted()) {
-                    runnable.interrupt()
-                    return
-                }
-
-                runnable.setN(n)
-                runnable.setSuggestions(suggestions as MutableList<Suggestion>)
-                runnable.setToAdd(toAdd ?: emptyArray())
-                runnable.setToRecycle(toRecycle ?: emptyArray())
-                runnable.reset()
-                (pack.context as Activity).runOnUiThread(runnable)
+                _suggestions.value = suggestions.filterNotNull()
             }
         }
 

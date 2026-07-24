@@ -17,22 +17,26 @@ import android.view.GestureDetector.OnDoubleTapListener
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import android.view.View.OnFocusChangeListener
 import android.view.View.OnTouchListener
 import android.view.ViewGroup
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
-import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.GestureDetectorCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import ohi.andre.consolelauncher.commands.main.MainPack
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
+import ohi.andre.consolelauncher.compose.SuggestionsRow
+import ohi.andre.consolelauncher.compose.ThemeSlot
+import ohi.andre.consolelauncher.compose.buildTerminalTheme
+import ohi.andre.consolelauncher.compose.themed
 import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.suggestions.SuggestionTextWatcher
 import ohi.andre.consolelauncher.managers.suggestions.SuggestionsManager
@@ -620,30 +624,13 @@ class UIManager(
         )
 
         if (XMLPrefsManager.getBoolean(Suggestions.show_suggestions)) {
-            val sv =
-                rootView.findViewById<View?>(R.id.suggestions_container) as HorizontalScrollView
-            sv.setFocusable(false)
-            sv.onFocusChangeListener = OnFocusChangeListener { v: View?, hasFocus: Boolean ->
-                if (hasFocus) v?.clearFocus()
-            }
-            Companion.applyBgRect(
-                sv,
-                bgRectColors[SUGGESTIONS_BGCOLOR_INDEX] ?: "",
-                bgColors[SUGGESTIONS_BGCOLOR_INDEX].toString(),
-                margins[SUGGESTIONS_MARGINS_INDEX] ?: IntArray(4),
-                strokeWidth,
-                cornerRadius
-            )
-
-            val suggestionsView =
-                rootView.findViewById<View?>(R.id.suggestions_group) as LinearLayout?
-
             val suggMgr = SuggestionsManager(
-                requireNotNull(suggestionsView),
                 requireNotNull(mainPack),
                 requireNotNull(mTerminalAdapter)
             )
             suggestionsManager = suggMgr
+
+            setupSuggestionsCompose(rootView.findViewById(R.id.suggestions_compose_view), suggMgr)
 
             val tbv = toolbarView
             inputView.addTextChangedListener(
@@ -656,7 +643,7 @@ class UIManager(
                     })
             )
         } else {
-            rootView.findViewById<View?>(R.id.suggestions_group)?.visibility = View.GONE
+            rootView.findViewById<View?>(R.id.suggestions_compose_view)?.visibility = View.GONE
         }
 
         var drawTimes = XMLPrefsManager.getInt(Ui.text_redraw_times)
@@ -664,6 +651,17 @@ class UIManager(
         OutlineTextView.redrawTimes = drawTimes
     }
 
+    // Kept as a regular member function (not inlined into the constructor above) because the Kotlin/
+    // Compose compiler fails to generate code for a composable lambda that captures a local val
+    // declared directly inside a constructor/init block ("No mapping for symbol" IR codegen crash).
+    private fun setupSuggestionsCompose(composeView: ComposeView, suggMgr: SuggestionsManager) {
+        composeView.setContent {
+            SuggestionsRow(
+                manager = suggMgr,
+                modifier = Modifier.themed(buildTerminalTheme(ThemeSlot.SUGGESTIONS)),
+            )
+        }
+    }
 
     companion object {
 

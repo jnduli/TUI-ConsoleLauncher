@@ -16,10 +16,7 @@ import android.os.Handler
 import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
-import android.view.ContextMenu
-import android.view.ContextMenu.ContextMenuInfo
 import android.view.KeyEvent
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -39,7 +36,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import ohi.andre.consolelauncher.commands.tuixt.TuixtActivity
 import ohi.andre.consolelauncher.compose.StatusLabelsScreen
-import ohi.andre.consolelauncher.managers.ContactManager.Contact
 import ohi.andre.consolelauncher.managers.RegexManager
 import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.TimeManager
@@ -48,7 +44,6 @@ import ohi.andre.consolelauncher.managers.notifications.KeeperService
 import ohi.andre.consolelauncher.managers.notifications.NotificationManager
 import ohi.andre.consolelauncher.managers.notifications.NotificationMonitorService
 import ohi.andre.consolelauncher.managers.notifications.NotificationService
-import ohi.andre.consolelauncher.managers.suggestions.SuggestionsManager.Suggestion
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Notifications
@@ -511,33 +506,6 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         super.onWindowFocusChanged(hasFocus)
 
         if (hasFocus) ui?.focusTerminal()
-    }
-
-    var suggestion: Suggestion? = null
-    override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenuInfo?) {
-        super.onCreateContextMenu(menu, v, menuInfo)
-
-        suggestion = v.getTag(R.id.suggestion_id) as Suggestion?
-        val s = suggestion ?: return
-        if (s.type == Suggestion.TYPE_CONTACT) {
-            val contact = s.`object` as Contact
-            menu.setHeaderTitle(contact.name)
-            for (count in contact.numbers.indices) {
-                menu.add(0, count, count, contact.numbers[count])
-            }
-        }
-    }
-
-    override fun onContextItemSelected(item: MenuItem): Boolean {
-        suggestion?.let { s ->
-            if (s.type == Suggestion.TYPE_CONTACT) {
-                val contact = s.`object` as Contact
-                contact.setSelectedNumber(item.getItemId())
-                Tuils.sendInput(this, s.getText())
-                return true
-            }
-        }
-        return false
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
