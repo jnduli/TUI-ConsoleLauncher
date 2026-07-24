@@ -24,12 +24,8 @@ import android.os.StatFs
 import android.telephony.TelephonyManager
 import android.text.SpannableString
 import android.text.Spanned
-import android.text.TextUtils
-import android.text.method.LinkMovementMethod
 import android.text.style.ForegroundColorSpan
 import android.util.Log
-import android.view.ViewTreeObserver.OnGlobalLayoutListener
-import android.widget.TextView
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.awaitClose
@@ -43,14 +39,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ohi.andre.consolelauncher.UIManager.Companion.NEXT_UNLOCK_CYCLE_RESTART
 import ohi.andre.consolelauncher.UIManager.Companion.UNLOCK_KEY
-import ohi.andre.consolelauncher.managers.NotesManager
 import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.WeatherRepository
 import ohi.andre.consolelauncher.managers.weatherURL
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Theme
-import ohi.andre.consolelauncher.managers.xml.options.Ui
 import ohi.andre.consolelauncher.tuils.Tuils
 import ohi.andre.consolelauncher.utils.ByteFormatter
 import java.io.File
@@ -491,53 +485,5 @@ class UnlockTimeViewModel(application: Application) : AndroidViewModel(applicati
         // if (clearOnLock) {
         //     mTerminalAdapter?.clear()
         // }
-    }
-}
-
-class NotesViewModel(application: Application): AndroidViewModel(application) {
-    val context: Context by lazy { application.applicationContext }
-    val notesManager = NotesManager(context)
-    val notesMaxLines = XMLPrefsManager.getInt(Ui.notes_max_lines)
-    val showScrollNotes = XMLPrefsManager.getBoolean( Ui.show_scroll_notes_message )
-    var updateTime: Long = 2000
-
-    private val _currentText = MutableStateFlow(notesManager.getOldNotesString())
-    val currentText: StateFlow<CharSequence> = _currentText.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            while(true) {
-                if (notesManager.hasChanged) {
-                    _currentText.value = notesManager.getOldNotesString()
-                }
-                delay(updateTime)
-
-            }
-        }
-    }
-
-    fun updateTextView(tv: TextView) {
-        val allowLink = XMLPrefsManager.getBoolean(Behavior.notes_allow_link)
-        if (allowLink) {
-            tv.movementMethod = LinkMovementMethod()
-        }
-        tv.maxLines = notesMaxLines
-        tv.ellipsize = TextUtils.TruncateAt.MARQUEE
-        if (!showScrollNotes) return
-        tv.viewTreeObserver
-            ?.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
-                var linesBefore: Int = Int.Companion.MIN_VALUE
-                override fun onGlobalLayout() {
-                    if (tv.lineCount > notesMaxLines && linesBefore <= notesMaxLines) {
-                        Tuils.sendOutput(Color.RED, context, ohi.andre.consolelauncher.R.string.note_max_reached)
-                    }
-                    linesBefore = tv.lineCount
-                }
-            })
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        notesManager.dispose(context)
     }
 }

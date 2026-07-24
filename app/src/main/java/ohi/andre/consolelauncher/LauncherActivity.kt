@@ -24,18 +24,21 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import ohi.andre.consolelauncher.commands.tuixt.TuixtActivity
+import ohi.andre.consolelauncher.compose.StatusLabelsScreen
 import ohi.andre.consolelauncher.managers.ContactManager.Contact
 import ohi.andre.consolelauncher.managers.RegexManager
 import ohi.andre.consolelauncher.managers.TerminalManager
@@ -196,7 +199,6 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
     private val batteryViewModel by viewModels<BatteryViewModel>()
     private val weatherViewModel by viewModels<WeatherViewModel>()
     private val unlockTimeViewModel by viewModels<UnlockTimeViewModel>()
-    private val notesViewModel by viewModels<NotesViewModel>()
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -208,23 +210,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         // checkAndRequestStoragePermissions()
         finishOnCreate()
 
-        val mainView = findViewById<View?>(R.id.mainview) as ViewGroup
-        val timeTextView = mainView.findViewById<TextView>(R.id.tv0)
-        val memoryTextView = mainView.findViewById<TextView>(R.id.tv1)
-        val storageTextView = mainView.findViewById<TextView>(R.id.tv3)
-        val networkTextView = mainView.findViewById<TextView>(R.id.tv4)
-        val batteryTextView = mainView.findViewById<TextView>(R.id.tv2)
-        val weatherTextView = mainView.findViewById<TextView>(R.id.tv7)
-        val unlockTimeTextView = mainView.findViewById<TextView>(R.id.tv8)
-        val notesTextView = mainView.findViewById<TextView>(R.id.tv5)
-
-        notesViewModel.updateTextView(notesTextView)
-
         checkAndRequestPermissions(REQUIRED_LOCATION_PERMISSIONS, LOCATION_REQUEST_PERMISSION)
-
-        lifecycle.addObserver(TextUpdateManager(timeTextView, timeViewModel.currentText))
-        lifecycle.addObserver(TextUpdateManager(memoryTextView, memoryViewModel.currentText))
-        lifecycle.addObserver(TextUpdateManager(storageTextView, storageViewModel.currentText))
 
         val combinedNetworkFlow = combine(
             networkViewModel.connectionStatus, wifiViewModel.ssid, mobileViewModel.status,
@@ -232,12 +218,25 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         ) { ntwk, wifi, mobile, bth -> colorString("$ntwk | Wifi: $wifi | Mob: $mobile | Bth: $bth",
             XMLPrefsManager.getColor(Theme.network_info_color))}.stateIn(lifecycleScope,
             SharingStarted.WhileSubscribed(5000), "Loading...")
-        lifecycle.addObserver(TextUpdateManager(networkTextView, combinedNetworkFlow))
-        lifecycle.addObserver(TextUpdateManager(batteryTextView, batteryViewModel.batteryStatus))
-        lifecycle.addObserver(TextUpdateManager(weatherTextView, weatherViewModel.weather))
-        lifecycle.addObserver(TextUpdateManager(unlockTimeTextView, unlockTimeViewModel.currentText))
-        lifecycle.addObserver(TextUpdateManager(notesTextView, notesViewModel.currentText))
 
+        val username = XMLPrefsManager.get(Ui.username)
+        val deviceName = XMLPrefsManager.get(Ui.deviceName) ?: Build.DEVICE
+        val deviceText = if (XMLPrefsManager.getBoolean(Ui.show_device_name)) "$username: $deviceName" else null
+        val deviceColor = ComposeColor(XMLPrefsManager.getColor(Theme.device_color))
+
+        findViewById<ComposeView>(R.id.status_labels_compose_view).setContent {
+            StatusLabelsScreen(
+                time = timeViewModel.currentText.collectAsStateWithLifecycle(),
+                memory = memoryViewModel.currentText.collectAsStateWithLifecycle(),
+                battery = batteryViewModel.batteryStatus.collectAsStateWithLifecycle(),
+                storage = storageViewModel.currentText.collectAsStateWithLifecycle(),
+                network = combinedNetworkFlow.collectAsStateWithLifecycle(),
+                deviceText = deviceText,
+                deviceColor = deviceColor,
+                weather = weatherViewModel.weather.collectAsStateWithLifecycle(),
+                unlockTime = unlockTimeViewModel.currentText.collectAsStateWithLifecycle(),
+            )
+        }
     }
 
     private fun setOrientation() {

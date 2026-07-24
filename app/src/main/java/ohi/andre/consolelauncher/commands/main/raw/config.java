@@ -259,7 +259,6 @@ public class config extends ParamCommand {
                 parent.write(pack.context, Ui.network_size, String.valueOf(size));
                 parent.write(pack.context, Ui.storage_size, String.valueOf(size));
                 parent.write(pack.context, Ui.battery_size, String.valueOf(size));
-                parent.write(pack.context, Ui.notes_size, String.valueOf(size));
                 parent.write(pack.context, Ui.time_size, String.valueOf(size));
                 parent.write(pack.context, Ui.weather_size, String.valueOf(size));
                 parent.write(pack.context, Ui.unlock_size, String.valueOf(size));

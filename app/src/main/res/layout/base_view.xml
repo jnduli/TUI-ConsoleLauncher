@@ -5,8 +5,8 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <include
-        layout="@layout/about_device_view"
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/status_labels_compose_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 

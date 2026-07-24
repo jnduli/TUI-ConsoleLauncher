@@ -140,22 +140,6 @@ public enum Ui implements XMLPrefsSave {
             return "The network label font size";
         }
     },
-    notes_size {
-        @Override
-        public String defaultValue() {
-            return "13";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-
-        @Override
-        public String info() {
-            return "Notes size";
-        }
-    },
     input_output_size {
         @Override
         public String defaultValue() {
@@ -266,22 +250,6 @@ public enum Ui implements XMLPrefsSave {
         @Override
         public String info() {
             return "If false, the time label will be hidden";
-        }
-    },
-    show_notes {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-
-        @Override
-        public String info() {
-            return "If false, the notes label will be hidden";
         }
     },
     enable_battery_status {
@@ -476,22 +444,6 @@ public enum Ui implements XMLPrefsSave {
             return "This is used to order the labels on top of the screen";
         }
     },
-    notes_index {
-        @Override
-        public String defaultValue() {
-            return "6";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-
-        @Override
-        public String info() {
-            return "This is used to order the labels on top of the screen";
-        }
-    },
     status_lines_alignment {
         @Override
         public String defaultValue() {
@@ -620,54 +572,6 @@ public enum Ui implements XMLPrefsSave {
             return "If true, when your input field is empty there will be a short line containing some information about the current session";
         }
     },
-    notes_header {
-        @Override
-        public String defaultValue() {
-            return "%( --- Notes : %c ---%n/No notes)";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-
-        @Override
-        public String info() {
-            return "The header above your notes";
-        }
-    },
-    notes_footer {
-        @Override
-        public String defaultValue() {
-            return "%(%n --- ----- ---/)";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-
-        @Override
-        public String info() {
-            return "The footer below your notes";
-        }
-    },
-    notes_divider {
-        @Override
-        public String defaultValue() {
-            return "%n";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-
-        @Override
-        public String info() {
-            return "The divider between two notes";
-        }
-    },
     show_restart_message {
         @Override
         public String defaultValue() {
@@ -677,38 +581,6 @@ public enum Ui implements XMLPrefsSave {
         @Override
         public String info() {
             return "If false, the restart message won\'t be shown";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-    },
-    notes_max_lines {
-        @Override
-        public String defaultValue() {
-            return "10";
-        }
-
-        @Override
-        public String info() {
-            return "The max number of lines of notes (-1 to disable)";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-    },
-    show_scroll_notes_message {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String info() {
-            return "If true, you will get a message when your notes reach the value set in notes_max_lines";
         }
 
         @Override

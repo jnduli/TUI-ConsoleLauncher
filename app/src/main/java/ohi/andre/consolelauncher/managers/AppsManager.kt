@@ -872,7 +872,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
                 cp = pp!!.matcher(cp).replaceAll(packageName)
                 if (packageInfo != null) {
-                    val sequence = packageInfo.applicationInfo.loadLabel(manager)
+                    val sequence = packageInfo.applicationInfo?.loadLabel(manager)
                     if (sequence != null) cp = pl!!.matcher(cp).replaceAll(sequence.toString())
                 } else {
                     val index = packageName.lastIndexOf(Tuils.DOT)

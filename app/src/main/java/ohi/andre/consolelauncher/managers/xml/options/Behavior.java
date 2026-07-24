@@ -869,38 +869,6 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.TEXT;
         }
     },
-    notes_sorting {
-        @Override
-        public String defaultValue() {
-            return "0";
-        }
-
-        @Override
-        public String info() {
-            return "0 = time up->down; 1 = time down->up; 2 = alphabetical up->down; 3 = alphabetical down->up; 4 = locked before; 5 = unlocked before";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-    },
-    notes_allow_link {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String info() {
-            return "If false, adding links to notes will be disallowed (may slightly increase performance)";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-    },
     orientation {
         @Override
         public String defaultValue() {

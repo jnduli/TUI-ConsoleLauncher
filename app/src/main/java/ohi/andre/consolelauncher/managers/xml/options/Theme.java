@@ -263,28 +263,6 @@ public enum Theme implements XMLPrefsSave {
             return "The background color that will be used as marker";
         }
     },
-    notes_color {
-        @Override
-        public String defaultValue() {
-            return "#8BC34A";
-        }
-
-        @Override
-        public String info() {
-            return "The default color of your notes";
-        }
-    },
-    notes_locked_color {
-        @Override
-        public String defaultValue() {
-            return "#3D5AFE";
-        }
-
-        @Override
-        public String info() {
-            return "The color of your locked notes";
-        }
-    },
     link_color {
         @Override
         public String defaultValue() {

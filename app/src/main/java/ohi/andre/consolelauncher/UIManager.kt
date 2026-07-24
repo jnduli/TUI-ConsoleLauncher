@@ -10,7 +10,6 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
-import android.os.Build
 import android.os.Handler
 import android.util.Log
 import android.view.GestureDetector
@@ -31,13 +30,7 @@ import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.core.view.GestureDetectorCompat
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import ohi.andre.consolelauncher.commands.main.MainPack
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
 import ohi.andre.consolelauncher.managers.TerminalManager
@@ -72,21 +65,6 @@ import kotlin.math.min
 import kotlin.toString
 
 
-class TextUpdateManager(private val textView: TextView, private val dataFlow: StateFlow<CharSequence>) : DefaultLifecycleObserver {
-    private var job: Job? = null
-    override fun onStart(owner: LifecycleOwner) {
-        job = owner.lifecycleScope.launch {
-            dataFlow.collect {value ->
-                textView.text = value
-            }
-        }
-        super.onStart(owner)
-    }
-    override fun onStop(owner: LifecycleOwner) {
-        job?.cancel()
-    }
-}
-
 class UIManager(
     context: Context,
     rootView: ViewGroup,
@@ -94,18 +72,6 @@ class UIManager(
     canApplyTheme: Boolean,
     executer: CommandExecuter?,
 ) : OnTouchListener {
-    public enum class Label {
-        ram,
-        device,
-        time,
-        battery,
-        storage,
-        network,
-        notes,
-        weather,
-        unlock
-    }
-
     public lateinit var mContext: Context
 
     private var handler = Handler()
@@ -121,36 +87,6 @@ class UIManager(
 
     var hideToolbarNoInput: Boolean = false
     var toolbarView: View? = null
-
-    //    never access this directly, use getLabelView
-    // TODO: change this to a map to enable easier modification and access
-    val mapLabelViews = loadTextViews(rootView)
-
-
-    data class LabelView(val textView: TextView, val size: Int, val color: Int, val show: Boolean)
-
-    private fun loadTextViews(rootView: ViewGroup): Map<Label, LabelView?> {
-       return  mapOf(
-           Label.device to LabelView(
-               rootView.findViewById<View?>(R.id.tv6) as TextView,
-               XMLPrefsManager.getInt(Ui.device_size),
-               XMLPrefsManager.getColor(Theme.device_color),
-               XMLPrefsManager.getBoolean(Ui.show_device_name),
-           ),
-        )
-    }
-
-    public fun updateText(l: Label, s: CharSequence) {
-        val dataLabel = mapLabelViews[l]
-        if (dataLabel?.show == false || s.isEmpty()) {
-            dataLabel?.textView?.visibility = View.GONE
-            return
-        }
-        val color = dataLabel?.color?: Color.RED
-        val coloredSpan = Tuils.span(s, color)
-        dataLabel?.textView?.visibility = View.VISIBLE
-        dataLabel?.textView?.text = coloredSpan
-    }
 
     private var suggestionsManager: SuggestionsManager? = null
 
@@ -572,46 +508,6 @@ class UIManager(
         margins[5] = getListOfIntValues(XMLPrefsManager.get(Ui.suggestions_area_margin), 4, 0)
 
 
-
-        for ((label, view) in  mapLabelViews) {
-            val tv = view?.textView ?: continue
-            tv.setOnTouchListener(this)
-            tv.setTypeface(Tuils.getTypeface(context))
-            if (view?.show == false) {
-                val viewParent = tv.parent as LinearLayout
-                viewParent.removeView(tv)
-            }
-            if (label != Label.notes) {
-                tv.isVerticalScrollBarEnabled = false
-            }
-            val strokeColor = XMLPrefsManager.get(Theme.output_bgrectcolor).toString()
-            val bgColor = XMLPrefsManager.get(Theme.output_bg).toString()
-            val spaces = getListOfIntValues(XMLPrefsManager.get(Ui.output_field_margins), 4, 0)
-            Companion.applyBgRect(tv, strokeColor, bgColor, spaces, strokeWidth, cornerRadius )
-            val outlineColor = XMLPrefsManager.get(Theme.output_shadow_color).toString()
-            Companion.applyShadow(tv, outlineColor, shadowXOffset, shadowYOffset, shadowRadius)
-
-            // val p = statusLineAlignments[ec]
-            // if (p >= 0) labelViews[count]?.setGravity(if (p == 0) Gravity.CENTER_HORIZONTAL else Gravity.RIGHT)
-
-            when (label) {
-                Label.device -> {
-                    val username = XMLPrefsManager.get(Ui.username)
-                    var deviceName = XMLPrefsManager.get(Ui.deviceName)?: Build.DEVICE
-                    val content = "$username: $deviceName"
-                    val span = Tuils.span(content, XMLPrefsManager.getColor(Theme.device_color))
-                    updateText(label, span)
-                }
-                Label.battery -> TODO()
-                Label.network -> TODO()
-                Label.notes -> TODO()
-                Label.weather -> TODO()
-                Label.unlock -> TODO()
-                Label.ram -> TODO()
-                Label.time -> TODO()
-                Label.storage -> TODO()
-            }
-        }
 
         var effectiveCount = 0
 
