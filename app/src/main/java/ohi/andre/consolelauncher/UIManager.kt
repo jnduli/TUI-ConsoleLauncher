@@ -9,36 +9,16 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
-import android.os.Handler
 import android.util.Log
-import android.view.GestureDetector
-import android.view.GestureDetector.OnDoubleTapListener
-import android.view.LayoutInflater
-import android.view.MotionEvent
-import android.view.View
-import android.view.View.OnTouchListener
 import android.view.ViewGroup
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
-import android.view.inputmethod.InputMethodManager
-import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.RelativeLayout
-import android.widget.TextView
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
-import androidx.core.view.GestureDetectorCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import ohi.andre.consolelauncher.commands.main.MainPack
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
-import ohi.andre.consolelauncher.compose.SuggestionsRow
-import ohi.andre.consolelauncher.compose.ThemeSlot
-import ohi.andre.consolelauncher.compose.buildTerminalTheme
-import ohi.andre.consolelauncher.compose.themed
+import ohi.andre.consolelauncher.compose.TerminalScreen
 import ohi.andre.consolelauncher.managers.TerminalManager
-import ohi.andre.consolelauncher.managers.suggestions.SuggestionTextWatcher
 import ohi.andre.consolelauncher.managers.suggestions.SuggestionsManager
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
@@ -46,28 +26,14 @@ import ohi.andre.consolelauncher.managers.xml.options.Suggestions
 import ohi.andre.consolelauncher.managers.xml.options.Theme
 import ohi.andre.consolelauncher.managers.xml.options.Toolbar
 import ohi.andre.consolelauncher.managers.xml.options.Ui
-import ohi.andre.consolelauncher.tuils.OutlineTextView
 import ohi.andre.consolelauncher.tuils.Tuils
 import ohi.andre.consolelauncher.tuils.interfaces.CommandExecuter
 import ohi.andre.consolelauncher.tuils.interfaces.OnRedirectionListener
-import ohi.andre.consolelauncher.tuils.interfaces.OnTextChanged
 import ohi.andre.consolelauncher.tuils.stuff.PolicyReceiver
 import java.io.File
 import java.io.FileOutputStream
-import java.util.Calendar
 import java.util.regex.Pattern
-import kotlin.Array
-import kotlin.Boolean
-import kotlin.CharSequence
-import kotlin.Exception
-import kotlin.Float
-import kotlin.Int
-import kotlin.IntArray
-import kotlin.arrayOf
-import kotlin.arrayOfNulls
 import kotlin.math.min
-import kotlin.toString
-
 
 class UIManager(
     context: Context,
@@ -75,26 +41,16 @@ class UIManager(
     mainPack: MainPack?,
     canApplyTheme: Boolean,
     executer: CommandExecuter?,
-) : OnTouchListener {
+) {
     public lateinit var mContext: Context
-
-    private var handler = Handler()
 
     private var policy: DevicePolicyManager?
     private var component: ComponentName?
-    private var gestureDetector: GestureDetectorCompat? = null
 
     var preferences: SharedPreferences
 
-    private val imm: InputMethodManager
-    private var mTerminalAdapter: TerminalManager?
-
-    var hideToolbarNoInput: Boolean = false
-    var toolbarView: View? = null
-
-    private var suggestionsManager: SuggestionsManager? = null
-
-    private val terminalView: TextView
+    private val mTerminalAdapter: TerminalManager
+    private val suggestionsManager: SuggestionsManager?
 
     private var doubleTapCmd: String?
     private var lockOnDbTap: Boolean
@@ -105,7 +61,7 @@ class UIManager(
     var pack: MainPack? = null
 
     fun dispose() {
-        handler.removeCallbacksAndMessages(null)
+        mTerminalAdapter.dispose()
         suggestionsManager?.dispose()
 
         LocalBroadcastManager.getInstance(mContext.applicationContext)
@@ -116,13 +72,11 @@ class UIManager(
     }
 
     fun openKeyboard() {
-        mTerminalAdapter?.requestInputFocus()
-        imm.showSoftInput(mTerminalAdapter?.inputView, InputMethodManager.SHOW_IMPLICIT)
-        //        mTerminalAdapter.scrollToEnd();
+        mTerminalAdapter.showKeyboard()
     }
 
     fun closeKeyboard() {
-        imm.hideSoftInputFromWindow(mTerminalAdapter?.inputWindowToken, 0)
+        mTerminalAdapter.hideKeyboard()
     }
 
     fun onStart(openKeyboardOnStart: Boolean) {
@@ -132,24 +86,24 @@ class UIManager(
     fun setInput(s: String?) {
         if (s == null) return
 
-        mTerminalAdapter?.input = s
-        mTerminalAdapter?.focusInputEnd()
+        mTerminalAdapter.input = s
+        mTerminalAdapter.focusInputEnd()
     }
 
     fun setHint(hint: String?) {
-        mTerminalAdapter?.setHint(hint)
+        mTerminalAdapter.setHint(hint)
     }
 
     fun resetHint() {
-        mTerminalAdapter?.setDefaultHint()
+        mTerminalAdapter.setDefaultHint()
     }
 
     fun setOutput(s: CharSequence?, category: Int) {
-        mTerminalAdapter?.setOutput(s, category)
+        mTerminalAdapter.setOutput(s, category)
     }
 
     fun setOutput(color: Int, output: CharSequence?) {
-        mTerminalAdapter?.setOutput(color, output)
+        mTerminalAdapter.setOutput(color, output)
     }
 
     fun disableSuggestions() {
@@ -161,36 +115,51 @@ class UIManager(
     }
 
     fun onBackPressed() {
-        mTerminalAdapter?.onBackPressed()
+        mTerminalAdapter.onBackPressed()
     }
 
     fun focusTerminal() {
-        mTerminalAdapter?.requestInputFocus()
+        mTerminalAdapter.requestInputFocus()
     }
 
     fun pause() {
         closeKeyboard()
     }
 
-    override fun onTouch(v: View, event: MotionEvent?): Boolean {
-        if (event != null) {
-            gestureDetector?.onTouchEvent(event)
+    private fun handleDoubleTapOutput() {
+        if (doubleTapCmd?.isNotEmpty() == true) {
+            val previousInput = mTerminalAdapter.input
+            mTerminalAdapter.input = doubleTapCmd as String
+            mTerminalAdapter.simulateEnter()
+            mTerminalAdapter.input = previousInput
         }
-        return v.onTouchEvent(event)
+
+        if (lockOnDbTap) {
+            val pol = policy
+            val comp = component
+            if (pol != null && comp != null) {
+                if (!pol.isAdminActive(comp)) {
+                    val i = Tuils.requestAdmin(comp, mContext.getString(R.string.admin_permission))
+                    mContext.startActivity(i)
+                } else {
+                    pol.lockNow()
+                }
+            }
+        }
     }
 
     fun buildRedirectionListener(): OnRedirectionListener {
         return object : OnRedirectionListener {
             override fun onRedirectionRequest(cmd: RedirectCommand) {
                 (mContext as Activity).runOnUiThread {
-                    mTerminalAdapter?.setHint(mContext.getString(cmd.getHint()))
+                    mTerminalAdapter.setHint(mContext.getString(cmd.getHint()))
                     disableSuggestions()
                 }
             }
 
             override fun onRedirectionEnd(cmd: RedirectCommand?) {
                 (mContext as Activity).runOnUiThread {
-                    mTerminalAdapter?.setDefaultHint()
+                    mTerminalAdapter.setDefaultHint()
                     enableSuggestions()
                 }
             }
@@ -203,7 +172,6 @@ class UIManager(
         filter.addAction(ACTION_UPDATE_HINT)
         filter.addAction(ACTION_ROOT)
         filter.addAction(ACTION_NOROOT)
-        //        filter.addAction(ACTION_CLEAR_SUGGESTIONS);
         filter.addAction(ACTION_LOGTOFILE)
         filter.addAction(ACTION_CLEAR)
         filter.addAction(ACTION_WEATHER)
@@ -218,13 +186,11 @@ class UIManager(
                 if (action == ACTION_UPDATE_SUGGESTIONS) {
                     suggestionsManager?.requestSuggestion(Tuils.EMPTYSTRING)
                 } else if (action == ACTION_UPDATE_HINT) {
-                    mTerminalAdapter?.setDefaultHint()
+                    mTerminalAdapter.setDefaultHint()
                 } else if (action == ACTION_ROOT) {
-                    mTerminalAdapter?.onRoot()
+                    mTerminalAdapter.onRoot()
                 } else if (action == ACTION_NOROOT) {
-                    mTerminalAdapter?.onStandard()
-                    //                } else if(action.equals(ACTION_CLEAR_SUGGESTIONS)) {
-//                    if(suggestionsManager != null) suggestionsManager.clear();
+                    mTerminalAdapter.onStandard()
                 } else if (action == ACTION_LOGTOFILE) {
                     val fileName = intent.getStringExtra(FILE_NAME)
                     if (fileName == null || fileName.contains(File.separator)) return
@@ -235,73 +201,15 @@ class UIManager(
                     try {
                         file.createNewFile()
                         val fos = FileOutputStream(file)
-                        fos.write(mTerminalAdapter?.terminalText?.toByteArray())
+                        fos.write(mTerminalAdapter.getTerminalText().toByteArray())
                         Tuils.sendOutput(context, "Logged to " + file.absolutePath)
                     } catch (e: Exception) {
                         Log.e(TAG, e.toString())
                         Tuils.sendOutput(Color.RED, context, e.toString())
                     }
                 } else if (action == ACTION_CLEAR) {
-                    mTerminalAdapter?.clear()
+                    mTerminalAdapter.clear()
                     suggestionsManager?.requestSuggestion(Tuils.EMPTYSTRING)
-                } else if (action == ACTION_WEATHER) {
-                    val c = Calendar.getInstance()
-
-                    var s = intent.getCharSequenceExtra(XMLPrefsManager.VALUE_ATTRIBUTE)
-                    if (s == null) s = intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE)
-                    if (s == null) return
-                    // weatherRunnable?.set_weather(s)
-
-                    /**
-                    if (showWeatherUpdate) {
-                        val message =
-                            context.getString(R.string.weather_updated) + Tuils.SPACE + c.get(
-                                Calendar.HOUR_OF_DAY
-                            ) + "." + c.get(Calendar.MINUTE) + Tuils.SPACE + "(" + lastLatitude + ", " + lastLongitude + ")" + " to: " + s
-                        Tuils.sendOutput(context, message, TerminalManager.CATEGORY_OUTPUT)
-                    }
-                    */
-                } else if (action == ACTION_WEATHER_GOT_LOCATION) {
-                    /**
-                    if (intent.getBooleanExtra(TuiLocationManager.FAIL, false)) {
-                        weatherRunnable?.disable()
-                        weatherRunnable?.set_weather(context.getString(R.string.location_error))
-                    } else {
-                        lastLatitude = intent.getDoubleExtra(TuiLocationManager.LATITUDE, 0.0)
-                        lastLongitude = intent.getDoubleExtra(TuiLocationManager.LONGITUDE, 0.0)
-                        location = Tuils.locationName(context, lastLatitude, lastLongitude) as String?
-
-                        if (!weatherPerformedStartupRun || XMLPrefsManager.wasChanged(
-                                Behavior.weather_key,
-                                false
-                            )
-                        ) {
-                            if (weatherRunnable != null) {
-                                handler.removeCallbacks(weatherRunnable!!)
-                                handler.post(weatherRunnable!!)
-                            }
-                        }
-                    }
-                    */
-                } else if (action == ACTION_WEATHER_DELAY) {
-                    val c = Calendar.getInstance()
-                    c.timeInMillis = System.currentTimeMillis() + 1000 * 10
-                    /**
-
-                    if (showWeatherUpdate) {
-                        val message =
-                            context.getString(R.string.weather_error) + Tuils.SPACE + c.get(
-                                Calendar.HOUR_OF_DAY
-                            ) + "." + c.get(Calendar.MINUTE)
-                        Tuils.sendOutput(context, message, TerminalManager.CATEGORY_OUTPUT)
-                    }
-
-                    if (weatherRunnable != null) {
-                        handler.removeCallbacks(weatherRunnable!!)
-                        handler.postDelayed(weatherRunnable!!, (1000 * 60).toLong())
-                    }
-                    */
-                } else if (action == ACTION_WEATHER_MANUAL_UPDATE) {
                 }
             }
         }
@@ -316,104 +224,26 @@ class UIManager(
 
         preferences = mContext.getSharedPreferences(PREFS_NAME, 0)
 
-
-        imm = mContext.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-
         if (!XMLPrefsManager.getBoolean(Ui.system_wallpaper) || !canApplyTheme) {
             rootView.setBackgroundColor(XMLPrefsManager.getColor(Theme.bg_color))
         } else {
             rootView.setBackgroundColor(XMLPrefsManager.getColor(Theme.overlay_color))
         }
 
-        //        scrolllllll
         if (XMLPrefsManager.getBoolean(Behavior.auto_scroll)) {
             rootView.viewTreeObserver.addOnGlobalLayoutListener(OnGlobalLayoutListener {
                 val heightDiff = rootView.rootView.height - rootView.height
-                if (heightDiff > Tuils.dpToPx(
-                        context,
-                        200
-                    )
-                ) { // if more than 200 dp, it's probably a keyboard...
-                    mTerminalAdapter?.scrollToEnd()
+                if (heightDiff > Tuils.dpToPx(context, 200)) { // if more than 200 dp, it's probably a keyboard...
+                    mTerminalAdapter.scrollToEnd()
                 }
             })
         }
-
 
         lockOnDbTap = XMLPrefsManager.getBoolean(Behavior.double_tap_lock)
         doubleTapCmd = XMLPrefsManager.get(Behavior.double_tap_cmd) as String?
         if (!lockOnDbTap && doubleTapCmd == null) {
             policy = null
             component = null
-            gestureDetector = null
-        } else {
-            gestureDetector =
-                GestureDetectorCompat(mContext, object : GestureDetector.OnGestureListener {
-                    override fun onDown(p0: MotionEvent): Boolean {
-                        return false
-                    }
-
-                    override fun onShowPress(p0: MotionEvent) {}
-
-                    override fun onSingleTapUp(p0: MotionEvent): Boolean {
-                        return false
-                    }
-
-                    override fun onScroll(
-                        p0: MotionEvent?,
-                        p1: MotionEvent,
-                        p2: Float,
-                        p3: Float
-                    ): Boolean {
-                        return false
-                    }
-
-
-                    override fun onLongPress(p0: MotionEvent) {}
-
-                    override fun onFling(
-                        p0: MotionEvent?,
-                        p1: MotionEvent,
-                        p2: Float,
-                        p3: Float
-                    ): Boolean {
-                        return false
-                    }
-                })
-
-            gestureDetector?.setOnDoubleTapListener(object : OnDoubleTapListener {
-                override fun onSingleTapConfirmed(p0: MotionEvent): Boolean {
-                    return false
-                }
-
-                override fun onDoubleTapEvent(p0: MotionEvent): Boolean {
-                    return true
-                }
-
-                override fun onDoubleTap(p0: MotionEvent): Boolean {
-                    if (doubleTapCmd?.isNotEmpty() == true) {
-                        val input = mTerminalAdapter?.input
-                        mTerminalAdapter?.input = doubleTapCmd as kotlin.String?
-                        mTerminalAdapter?.simulateEnter()
-                        mTerminalAdapter?.input = input
-                    }
-
-                    if (lockOnDbTap) {
-                        val pol = policy
-                        val comp = component
-                        if (pol != null && comp != null) {
-                            if (!pol.isAdminActive(comp)) {
-                                val i = Tuils.requestAdmin(comp, mContext.getString(R.string.admin_permission))
-                                mContext.startActivity(i)
-                            } else {
-                                pol.lockNow()
-                            }
-                        }
-                    }
-
-                    return true
-                }
-            })
         }
 
         val displayMargins: IntArray =
@@ -426,239 +256,49 @@ class UIManager(
             Tuils.mmToPx(metrics, displayMargins[3])
         )
 
+        mTerminalAdapter = TerminalManager(context, requireNotNull(mainPack), requireNotNull(executer))
 
-        val statusLineAlignments: IntArray =
-            getListOfIntValues(XMLPrefsManager.get(Ui.status_lines_alignment), 9, -1)
-
-        val statusLinesBgRectColors: Array<kotlin.String?> = getListOfStringValues(
-            XMLPrefsManager.get(
-                Theme.status_lines_bgrectcolor
-            ), 9, "#ff000000"
-        )
-        val otherBgRectColors = arrayOf<String?>(
-            XMLPrefsManager.get(Theme.input_bgrectcolor) as String?,
-            XMLPrefsManager.get(Theme.output_bgrectcolor) as String?,
-            XMLPrefsManager.get(Theme.suggestions_bgrectcolor) as String?,
-            XMLPrefsManager.get(Theme.toolbar_bgrectcolor) as String?
-        )
-        val bgRectColors =
-            arrayOfNulls<String>(statusLinesBgRectColors.size + otherBgRectColors.size)
-        System.arraycopy(statusLinesBgRectColors, 0, bgRectColors, 0, statusLinesBgRectColors.size)
-        System.arraycopy(
-            otherBgRectColors,
-            0,
-            bgRectColors,
-            statusLinesBgRectColors.size,
-            otherBgRectColors.size
-        )
-
-        val statusLineBgColors: Array<kotlin.String?> =
-            getListOfStringValues(XMLPrefsManager.get(Theme.status_lines_bg), 9, "#00000000")
-        val otherBgColors = arrayOf<String?>(
-            XMLPrefsManager.get(Theme.input_bg) as String?,
-            XMLPrefsManager.get(Theme.output_bg) as String?,
-            XMLPrefsManager.get(Theme.suggestions_bg) as String?,
-            XMLPrefsManager.get(Theme.toolbar_bg) as String?
-        )
-        val bgColors = arrayOfNulls<String>(statusLineBgColors.size + otherBgColors.size)
-        System.arraycopy(statusLineBgColors, 0, bgColors, 0, statusLineBgColors.size)
-        System.arraycopy(otherBgColors, 0, bgColors, statusLineBgColors.size, otherBgColors.size)
-
-        val statusLineOutlineColors: Array<kotlin.String?> = getListOfStringValues(
-            XMLPrefsManager.get(
-                Theme.status_lines_shadow_color
-            ), 9, "#00000000"
-        )
-        val otherOutlineColors = arrayOf<kotlin.String?>(
-            XMLPrefsManager.get(Theme.input_shadow_color),
-            XMLPrefsManager.get(Theme.output_shadow_color),
-        )
-        val outlineColors =
-            arrayOfNulls<String>(statusLineOutlineColors.size + otherOutlineColors.size)
-        System.arraycopy(statusLineOutlineColors, 0, outlineColors, 0, statusLineOutlineColors.size)
-        System.arraycopy(otherOutlineColors, 0, outlineColors, 9, otherOutlineColors.size)
-
-        val shadowXOffset: Int
-        val shadowYOffset: Int
-        val shadowRadius: Float
-        val shadowParams: Array<kotlin.String?> =
-            getListOfStringValues(XMLPrefsManager.get(Ui.shadow_params), 3, "0")
-        shadowXOffset = shadowParams[0]?.toInt() ?: 0
-        shadowYOffset = shadowParams[1]?.toInt() ?: 0
-        shadowRadius = (shadowParams[2]?.toFloat() ?: 0.0) as Float
-
-        val INPUT_BGCOLOR_INDEX = 9
-        val OUTPUT_BGCOLOR_INDEX = 10
-        val SUGGESTIONS_BGCOLOR_INDEX = 11
-        val TOOLBAR_BGCOLOR_INDEX = 12
-
-        val rectParams: Array<kotlin.String?> =
-            getListOfStringValues(XMLPrefsManager.get(Ui.bgrect_params), 2, "0")
-        val strokeWidth = rectParams[0]?.toInt() ?: 0
-        val cornerRadius = rectParams[1]?.toInt() ?: 0
-
-        val OUTPUT_MARGINS_INDEX = 1
-        val INPUTAREA_MARGINS_INDEX = 2
-        val INPUTFIELD_MARGINS_INDEX = 3
-        val TOOLBAR_MARGINS_INDEX = 4
-        val SUGGESTIONS_MARGINS_INDEX = 5
-
-        val margins = Array<IntArray?>(6) { IntArray(4) }
-        margins[0] = getListOfIntValues(XMLPrefsManager.get(Ui.status_lines_margins), 4, 0)
-        margins[1] = getListOfIntValues(XMLPrefsManager.get(Ui.output_field_margins), 4, 0)
-        margins[2] = getListOfIntValues(XMLPrefsManager.get(Ui.input_area_margins), 4, 0)
-        margins[3] = getListOfIntValues(XMLPrefsManager.get(Ui.input_field_margins), 4, 0)
-        margins[4] = getListOfIntValues(XMLPrefsManager.get(Ui.toolbar_margins), 4, 0)
-        margins[5] = getListOfIntValues(XMLPrefsManager.get(Ui.suggestions_area_margin), 4, 0)
-
-
-
-        var effectiveCount = 0
-
-        val inputBottom = XMLPrefsManager.getBoolean(Ui.input_bottom)
-        val layoutId = if (inputBottom) R.layout.input_down_layout else R.layout.input_up_layout
-
-        val inflater = mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-        val inputOutputView = inflater.inflate(layoutId, null)
-        rootView.addView(inputOutputView)
-
-        terminalView = inputOutputView.findViewById<View?>(R.id.terminal_view) as TextView
-        terminalView.setOnTouchListener(this)
-        (terminalView.parent.parent as View).setOnTouchListener(this)
-
-        Companion.applyBgRect(
-            terminalView,
-            bgRectColors[OUTPUT_BGCOLOR_INDEX] ?: "",
-            bgColors[OUTPUT_BGCOLOR_INDEX].toString(),
-            margins[OUTPUT_MARGINS_INDEX] ?: IntArray(4),
-            strokeWidth,
-            cornerRadius
-        )
-        Companion.applyShadow(
-            terminalView,
-            outlineColors[OUTPUT_BGCOLOR_INDEX] ?: "",
-            shadowXOffset,
-            shadowYOffset,
-            shadowRadius
-        )
-
-        val inputView = inputOutputView.findViewById<View?>(R.id.input_view) as EditText
-        val prefixView = inputOutputView.findViewById<View?>(R.id.prefix_view) as TextView
-
-        Companion.applyBgRect(
-            checkNotNull(inputOutputView.findViewById(R.id.input_group)),
-            bgRectColors[INPUT_BGCOLOR_INDEX] ?: "",
-            bgColors[INPUT_BGCOLOR_INDEX].toString(),
-            margins[INPUTAREA_MARGINS_INDEX] ?: IntArray(4),
-            strokeWidth,
-            cornerRadius
-        )
-        Companion.applyShadow(
-            inputView,
-            outlineColors[INPUT_BGCOLOR_INDEX] ?: "",
-            shadowXOffset,
-            shadowYOffset,
-            shadowRadius
-        )
-        Companion.applyShadow(
-            prefixView,
-            outlineColors[INPUT_BGCOLOR_INDEX] ?: "",
-            shadowXOffset,
-            shadowYOffset,
-            shadowRadius
-        )
-
-        Companion.applyMargins(inputView, margins[INPUTFIELD_MARGINS_INDEX] ?: IntArray(4))
-        Companion.applyMargins(prefixView, margins[INPUTFIELD_MARGINS_INDEX] ?: IntArray(4))
-
-        var submitView = inputOutputView.findViewById<View?>(R.id.submit_tv) as ImageView?
-        val showSubmit = XMLPrefsManager.getBoolean(Ui.show_enter_button)
-        if (!showSubmit) {
-            submitView?.visibility = View.GONE
-            submitView = null
+        suggestionsManager = if (XMLPrefsManager.getBoolean(Suggestions.show_suggestions)) {
+            SuggestionsManager(requireNotNull(mainPack), mTerminalAdapter)
+        } else {
+            null
         }
 
+        val inputAtBottom = XMLPrefsManager.getBoolean(Ui.input_bottom)
         val showToolbar = XMLPrefsManager.getBoolean(Toolbar.show_toolbar)
-        var backView: ImageButton? = null
-        var nextView: ImageButton? = null
-        var deleteView: ImageButton? = null
-        var pasteView: ImageButton? = null
+        val hideToolbarNoInput = showToolbar && XMLPrefsManager.getBoolean(Toolbar.hide_toolbar_no_input)
+        val showSubmitButton = XMLPrefsManager.getBoolean(Ui.show_enter_button)
 
-        if (!showToolbar) {
-            inputOutputView.findViewById<View?>(R.id.tools_view)?.visibility = View.GONE
-            toolbarView = null
-        } else {
-            backView = inputOutputView.findViewById<View?>(R.id.back_view) as ImageButton?
-            nextView = inputOutputView.findViewById<View?>(R.id.next_view) as ImageButton?
-            deleteView = inputOutputView.findViewById<View?>(R.id.delete_view) as ImageButton?
-            pasteView = inputOutputView.findViewById<View?>(R.id.paste_view) as ImageButton?
-
-            val tv = inputOutputView.findViewById<View?>(R.id.tools_view)
-            toolbarView = tv
-            hideToolbarNoInput = XMLPrefsManager.getBoolean(Toolbar.hide_toolbar_no_input)
-
-            if (tv != null) {
-                Companion.applyBgRect(
-                    tv,
-                    bgRectColors[TOOLBAR_BGCOLOR_INDEX] ?: "",
-                    bgColors[TOOLBAR_BGCOLOR_INDEX].toString(),
-                    margins[TOOLBAR_MARGINS_INDEX] ?: IntArray(4),
-                    strokeWidth,
-                    cornerRadius
-                )
-            }
-        }
-
-        mTerminalAdapter = TerminalManager(
-            terminalView,
-            inputView,
-            prefixView,
-            submitView,
-            backView,
-            nextView,
-            deleteView,
-            pasteView,
-            context,
-            mainPack,
-            executer
+        val composeView = ComposeView(mContext)
+        rootView.addView(composeView)
+        setupTerminalCompose(
+            composeView, mTerminalAdapter, suggestionsManager,
+            inputAtBottom, showToolbar, hideToolbarNoInput, showSubmitButton,
         )
-
-        if (XMLPrefsManager.getBoolean(Suggestions.show_suggestions)) {
-            val suggMgr = SuggestionsManager(
-                requireNotNull(mainPack),
-                requireNotNull(mTerminalAdapter)
-            )
-            suggestionsManager = suggMgr
-
-            setupSuggestionsCompose(rootView.findViewById(R.id.suggestions_compose_view), suggMgr)
-
-            val tbv = toolbarView
-            inputView.addTextChangedListener(
-                SuggestionTextWatcher(
-                    suggMgr,
-                    OnTextChanged { currentText: kotlin.String?, before: Int ->
-                        if (!hideToolbarNoInput) return@OnTextChanged
-                        if (currentText.isNullOrEmpty()) tbv?.visibility = View.GONE
-                        else if (before == 0) tbv?.visibility = View.VISIBLE
-                    })
-            )
-        } else {
-            rootView.findViewById<View?>(R.id.suggestions_compose_view)?.visibility = View.GONE
-        }
-
-        var drawTimes = XMLPrefsManager.getInt(Ui.text_redraw_times)
-        if (drawTimes <= 0) drawTimes = 1
-        OutlineTextView.redrawTimes = drawTimes
     }
 
     // Kept as a regular member function (not inlined into the constructor above) because the Kotlin/
     // Compose compiler fails to generate code for a composable lambda that captures a local val
     // declared directly inside a constructor/init block ("No mapping for symbol" IR codegen crash).
-    private fun setupSuggestionsCompose(composeView: ComposeView, suggMgr: SuggestionsManager) {
+    private fun setupTerminalCompose(
+        composeView: ComposeView,
+        terminalManager: TerminalManager,
+        suggMgr: SuggestionsManager?,
+        inputAtBottom: Boolean,
+        showToolbar: Boolean,
+        hideToolbarNoInput: Boolean,
+        showSubmitButton: Boolean,
+    ) {
         composeView.setContent {
-            SuggestionsRow(
-                manager = suggMgr,
-                modifier = Modifier.themed(buildTerminalTheme(ThemeSlot.SUGGESTIONS)),
+            TerminalScreen(
+                terminalManager = terminalManager,
+                suggestionsManager = suggMgr,
+                inputAtBottom = inputAtBottom,
+                showToolbar = showToolbar,
+                hideToolbarNoInput = hideToolbarNoInput,
+                showSubmitButton = showSubmitButton,
+                onDoubleTapOutput = { handleDoubleTapOutput() },
+                modifier = Modifier,
             )
         }
     }
@@ -733,59 +373,9 @@ class UIManager(
             return sbPattern.matcher(s).replaceAll(Tuils.EMPTYSTRING)
         }
 
-        //    0 = ext hor
-        //    1 = ext ver
-        //    2 = int hor
-        //    3 = int ver
-        private fun applyBgRect(
-            v: View,
-            strokeColor: kotlin.String,
-            bgColor: kotlin.String?,
-            spaces: IntArray,
-            strokeWidth: Int,
-            cornerRadius: Int
-        ) {
-            try {
-                val d = GradientDrawable()
-                d.shape = GradientDrawable.RECTANGLE
-                d.cornerRadius = cornerRadius.toFloat()
-
-                if (!(strokeColor.startsWith("#00") && strokeColor.length == 9)) {
-                    d.setStroke(strokeWidth, Color.parseColor(strokeColor))
-                }
-
-                applyMargins(v, spaces)
-
-                d.setColor(Color.parseColor(bgColor))
-                v.setBackgroundDrawable(d)
-            } catch (e: Exception) {
-                Log.e(TAG, e.toString())
-                Tuils.toFile(v.context, e)
-            }
-        }
-
-        private fun applyMargins(v: View, margins: IntArray) {
-            v.setPadding(margins[2], margins[3], margins[2], margins[3])
-
-            val params = v.layoutParams
-            if (params is RelativeLayout.LayoutParams) {
-                params.setMargins(margins[0], margins[1], margins[0], margins[1])
-            } else if (params is LinearLayout.LayoutParams) {
-                params.setMargins(margins[0], margins[1], margins[0], margins[1])
-            }
-        }
-
-        private fun applyShadow(v: TextView, color: kotlin.String, x: Int, y: Int, radius: Float) {
-            if (!(color.startsWith("#00") && color.length == 9)) {
-                v.setShadowLayer(radius, x.toFloat(), y.toFloat(), Color.parseColor(color))
-                v.tag = OutlineTextView.SHADOW_TAG
-            }
-        }
-
         @kotlin.jvm.JvmField
         var UNLOCK_KEY: kotlin.String = "unlockTimes"
         @kotlin.jvm.JvmField
         var NEXT_UNLOCK_CYCLE_RESTART: kotlin.String = "nextUnlockRestart"
     }
 }
-

@@ -326,10 +326,10 @@ class SuggestionsManager(
         val execOnClick = suggestion.exec
 
         val text = suggestion.getText()
-        val input = mTerminalAdapter.getInput()
+        val input = mTerminalAdapter.input
 
         if (suggestion.type == Suggestion.Companion.TYPE_PERMANENT) {
-            mTerminalAdapter.setInput(input + text)
+            mTerminalAdapter.input = input + text
         } else {
             val addSpace =
                 suggestion.type != Suggestion.Companion.TYPE_FILE && suggestion.type != Suggestion.Companion.TYPE_COLOR
@@ -390,9 +390,8 @@ class SuggestionsManager(
 
                     val lf = lastFirst
                     if (lf != null) {
-                        mTerminalAdapter.setInput(
+                        mTerminalAdapter.input =
                             if (0 == l - 2) Tuils.EMPTYSTRING else input.substring(0, l - 2)
-                        )
                         clickSuggestion(lf)
                         return
                     }
