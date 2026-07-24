@@ -732,22 +732,6 @@ public enum Ui implements XMLPrefsSave {
             return "[Shadow X offset],[Shadow Y offset],[Shadow radius]";
         }
     },
-    text_redraw_times {
-        @Override
-        public String defaultValue() {
-            return "1";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-
-        @Override
-        public String info() {
-            return "A greater value will produce a bigger outline";
-        }
-    },
     status_lines_margins {
         @Override
         public String defaultValue() {

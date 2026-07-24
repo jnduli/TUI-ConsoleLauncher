@@ -34,7 +34,6 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import ohi.andre.consolelauncher.commands.tuixt.TuixtActivity
 import ohi.andre.consolelauncher.compose.StatusLabelsScreen
 import ohi.andre.consolelauncher.managers.RegexManager
 import ohi.andre.consolelauncher.managers.TerminalManager
@@ -508,18 +507,6 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         if (hasFocus) ui?.focusTerminal()
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (requestCode == TUIXT_REQUEST && resultCode != 0) {
-            if (resultCode == TuixtActivity.BACK_PRESSED) {
-                Tuils.sendOutput(this, R.string.tuixt_back_pressed)
-            } else {
-                Tuils.sendOutput(this, data?.getStringExtra(TuixtActivity.ERROR_KEY))
-            }
-        }
-    }
-
     /**
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -745,8 +732,6 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         const val COMMAND_SUGGESTION_REQUEST_PERMISSION: Int = 12
         const val LOCATION_REQUEST_PERMISSION: Int = 13
         const val CONNECTIVITY_PERMISSION: Int = 14
-
-        const val TUIXT_REQUEST: Int = 10
 
         val REQUIRED_CONNECTIVITY_PERMISSIONS = arrayOf(
             Manifest.permission.READ_PHONE_STATE,

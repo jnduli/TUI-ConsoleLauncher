@@ -161,21 +161,6 @@
     <string name="output_notaddingalias2">is equal to its value. This may lead to bad behaviors, so it has been excluded. You should edit the name to use it</string>
     <string name="output_notaddingalias3">is equal to the part of its value before the first space (i.e. aliasName=play ; aliasValue = play store). This may lead to crashes and freezes, so it has been excluded. You should edit the name to use it</string>
 
-    <!-- tuixt -->
-    <string name="help_tuixt_help">Print the list of commands, or info about a command
-        \n\nUsage:
-        \nhelp [command]
-        \n\nExample:
-        \n$ help exit
-    </string>
-    <string name="help_tuixt_exit">Exit from tuixt</string>
-    <string name="help_tuixt_save">Save changes</string>
-    <string name="tuixt_back_pressed">You pressed the back key</string>
-    <string name="tuixt_saved">Saved</string>
-    <string name="tuixt_reading">Reading</string>
-    <string name="tuixt_label">TUIXT</string>
-    <string name="tuixt_error">This file is too big, consider opening it with an other text editor</string>
-
     <!-- phone -->
     <string name="output_wifi">WiFi active:</string>
     <string name="output_data">Mobile Data active:</string>
@@ -329,10 +314,6 @@
         \n\nUsage
         \n$ timer 5s/5m/5h (5s is 5 seconds, 5m is 5 minutes, 5h is 5 hours)
         \n $ timer 5s title_of_timer
-    </string>
-    <string name="help_tuixt">Open the text editor.
-        \n\nUsage:
-        \n$ tuixt [textFile]
     </string>
     <string name="help_tui">-rm -> uninstall t-ui
         \n-about -> show info about the developer and the current version

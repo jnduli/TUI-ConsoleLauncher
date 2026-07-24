@@ -789,22 +789,6 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.INTEGER;
         }
     },
-    long_click_duration {
-        @Override
-        public String defaultValue() {
-            return "700";
-        }
-
-        @Override
-        public String info() {
-            return "The minimum duration of the long click on a notification or an RSS item";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.INTEGER;
-        }
-    },
     click_commands {
         @Override
         public String defaultValue() {
