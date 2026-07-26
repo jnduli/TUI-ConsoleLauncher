@@ -283,6 +283,35 @@ public class config extends ParamCommand {
                 return null;
             }
         },
+        factory {
+            @Override
+            public int[] args() {
+                return new int[0];
+            }
+
+            @Override
+            public String exec(ExecutePack pack) {
+                File folder = Tuils.getFolder(pack.context);
+
+                for(XMLPrefsManager.XMLPrefsRoot root : XMLPrefsManager.XMLPrefsRoot.values()) {
+                    File file = new File(folder, root.path);
+                    Tuils.insertOld(pack.context, file);
+                    XMLPrefsManager.resetFile(file, root.name());
+                }
+
+                for(XMLPrefsSave save : Notifications.values()) {
+                    save.parent().write(pack.context, save, save.defaultValue());
+                }
+                for(XMLPrefsSave save : Rss.values()) {
+                    save.parent().write(pack.context, save, save.defaultValue());
+                }
+
+                ((Reloadable) pack.context).addMessage("config", "factory reset");
+                ((Reloadable) pack.context).reload();
+
+                return null;
+            }
+        },
         apply {
             @Override
             public int[] args() {

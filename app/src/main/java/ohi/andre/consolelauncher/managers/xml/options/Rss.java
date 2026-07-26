@@ -13,12 +13,12 @@ public enum Rss implements XMLPrefsSave {
     rss_default_color {
         @Override
         public String defaultValue() {
-            return "#f44336";
+            return "bright_red";
         }
 
         @Override
         public String type() {
-            return XMLPrefsSave.COLOR;
+            return XMLPrefsSave.PALETTE_REF;
         }
 
         @Override
@@ -50,7 +50,7 @@ public enum Rss implements XMLPrefsSave {
 
         @Override
         public String type() {
-            return XMLPrefsSave.COLOR;
+            return XMLPrefsSave.BOOLEAN;
         }
 
         @Override
@@ -98,7 +98,7 @@ public enum Rss implements XMLPrefsSave {
 
         @Override
         public String type() {
-            return XMLPrefsSave.COLOR;
+            return XMLPrefsSave.BOOLEAN;
         }
 
         @Override
@@ -125,12 +125,12 @@ public enum Rss implements XMLPrefsSave {
     rss_download_message_color {
         @Override
         public String defaultValue() {
-            return "aqua";
+            return "cyan";
         }
 
         @Override
         public String type() {
-            return XMLPrefsSave.COLOR;
+            return XMLPrefsSave.PALETTE_REF;
         }
 
         @Override
@@ -146,7 +146,7 @@ public enum Rss implements XMLPrefsSave {
 
         @Override
         public String type() {
-            return XMLPrefsSave.COLOR;
+            return XMLPrefsSave.BOOLEAN;
         }
 
         @Override

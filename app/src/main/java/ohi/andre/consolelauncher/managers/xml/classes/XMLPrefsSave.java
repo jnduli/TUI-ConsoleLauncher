@@ -7,7 +7,7 @@ import it.andreuzzi.comparestring2.StringableObject;
  */
 
 public interface XMLPrefsSave extends StringableObject {
-    String APP = "app", INTEGER = "int", BOOLEAN = "boolean", TEXT = "text", COLOR = "color";
+    String APP = "app", INTEGER = "int", BOOLEAN = "boolean", TEXT = "text", COLOR = "color", PALETTE_REF = "palette_ref";
 
     String defaultValue();
     String type();

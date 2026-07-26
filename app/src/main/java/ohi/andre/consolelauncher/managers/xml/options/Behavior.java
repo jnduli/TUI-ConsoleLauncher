@@ -732,7 +732,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String type() {
-            return XMLPrefsSave.COLOR;
+            return XMLPrefsSave.PALETTE_REF;
         }
     },
     tui_notification_input_color {
@@ -748,7 +748,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String type() {
-            return XMLPrefsSave.COLOR;
+            return XMLPrefsSave.PALETTE_REF;
         }
     },
     weather_key {

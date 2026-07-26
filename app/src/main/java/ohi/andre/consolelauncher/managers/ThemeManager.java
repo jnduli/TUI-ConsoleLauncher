@@ -209,6 +209,7 @@ public class ThemeManager {
         oldSuggestions.delete();
 
         reloadable.addMessage(context.getString(R.string.theme_applied) + Tuils.SPACE + "standard", null);
+        reloadable.reload();
     }
 
 //    rgba(255,87,34,1)

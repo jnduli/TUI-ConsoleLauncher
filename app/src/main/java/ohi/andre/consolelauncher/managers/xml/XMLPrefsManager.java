@@ -31,6 +31,7 @@ import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsList;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 import ohi.andre.consolelauncher.managers.xml.options.Cmd;
+import ohi.andre.consolelauncher.managers.xml.options.Palette;
 import ohi.andre.consolelauncher.managers.xml.options.Suggestions;
 import ohi.andre.consolelauncher.managers.xml.options.Theme;
 import ohi.andre.consolelauncher.managers.xml.options.Toolbar;
@@ -88,6 +89,12 @@ public class XMLPrefsManager {
             @Override
             public String[] delete() {
                 return new String[] {"app_suggestions_minrate", "contact_suggestions_minrate", "song_suggestions_minrate", "file_suggestions_minrate"};
+            }
+        },
+        PALETTE(Palette.values()) {
+            @Override
+            public String[] delete() {
+                return new String[] {};
             }
         };
 
@@ -290,6 +297,10 @@ public class XMLPrefsManager {
     public static int getColor(XMLPrefsSave prefsSave) {
         if(prefsSave.parent() == null) return Integer.MAX_VALUE;
 
+        if(XMLPrefsSave.PALETTE_REF.equals(prefsSave.type())) {
+            return getPaletteRefColor(prefsSave);
+        }
+
         try {
             return (int) transform(prefsSave.parent().getValues().get(prefsSave).value, Color.class);
         } catch (Exception e) {
@@ -300,6 +311,55 @@ public class XMLPrefsManager {
 
             try {
                 return (int) transform(def, Color.class);
+            } catch (Exception e1) {
+                return Integer.MAX_VALUE;
+            }
+        }
+    }
+
+    /**
+     * Resolves a {@link XMLPrefsSave#PALETTE_REF} slot. Its stored/default value is either a
+     * bare {@link Palette} role name (e.g. "green" - fully opaque), or "role,opacity" (e.g.
+     * "background,0") for slots that need alpha control a flat palette role can't express, where
+     * opacity is a 0-100 percentage overriding the role's alpha channel. Empty string means
+     * "unset" (mirrors the pre-palette behaviour of empty-default color slots). If the role isn't
+     * recognised - e.g. a pre-existing prefs file still has a raw hex saved under a key that used
+     * to be type COLOR - fall back to parsing the whole stored string directly as hex, so old
+     * installs keep their custom color instead of silently resetting.
+     */
+    private static int getPaletteRefColor(XMLPrefsSave prefsSave) {
+        String stored;
+        try {
+            stored = prefsSave.parent().getValues().get(prefsSave).value;
+        } catch (Exception e) {
+            stored = prefsSave.defaultValue();
+        }
+
+        if(stored == null || stored.length() == 0) return Integer.MAX_VALUE;
+
+        String role = stored;
+        Integer opacityPercent = null;
+        int comma = stored.indexOf(',');
+        if(comma >= 0) {
+            role = stored.substring(0, comma).trim();
+            try {
+                opacityPercent = Integer.parseInt(stored.substring(comma + 1).trim());
+            } catch (Exception e) {
+                opacityPercent = null;
+            }
+        }
+
+        try {
+            int base = getColor(Palette.valueOf(role.toLowerCase()));
+            if(opacityPercent != null) {
+                int clamped = Math.max(0, Math.min(100, opacityPercent));
+                int alpha = Math.round(clamped / 100f * 255f);
+                base = (alpha << 24) | (base & 0x00FFFFFF);
+            }
+            return base;
+        } catch (Exception e) {
+            try {
+                return (int) transform(stored, Color.class);
             } catch (Exception e1) {
                 return Integer.MAX_VALUE;
             }

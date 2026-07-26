@@ -66,6 +66,11 @@ class SuggestionsManager(
 
     private val FIRST_INTERVAL = 6
 
+    /** [Alg.NormSimAlg.JAROWRINKLER]'s id - was user-configurable via Suggestions.suggestions_algorithm. */
+    private val DEFAULT_ALGORITHM = 13
+    private val DEFAULT_QUICKCOMPARE_N = 3
+    private val DEFAULT_DEADLINE = 0.45f
+
     private val SPLITTERS = arrayOf<String?>(Tuils.SPACE)
     private val FILE_SPLITTERS = arrayOf<String?>(Tuils.SPACE, "-", "_")
     private val XML_PREFS_SPLITTERS = arrayOf<String?>("_")
@@ -91,8 +96,7 @@ class SuggestionsManager(
 
     data class SuggestionColors(val background: Int, val foreground: Int)
 
-    private val transparentSuggestions: Boolean = XMLPrefsManager.getBoolean(Suggestions.transparent_suggestions)
-    private val suggBg: Map<Int, Int> = if (transparentSuggestions) emptyMap() else mapOf(
+    private val suggBg: Map<Int, Int> = mapOf(
         Suggestion.TYPE_APP to XMLPrefsManager.getColor(Suggestions.apps_bg_color),
         Suggestion.TYPE_APPGP to XMLPrefsManager.getColor(Suggestions.apps_bg_color),
         Suggestion.TYPE_ALIAS to XMLPrefsManager.getColor(Suggestions.alias_bg_color),
@@ -102,7 +106,7 @@ class SuggestionsManager(
         Suggestion.TYPE_CONFIGFILE to XMLPrefsManager.getColor(Suggestions.file_bg_color),
         Suggestion.TYPE_SONG to XMLPrefsManager.getColor(Suggestions.song_bg_color),
     )
-    private val suggDefaultBg: Int = if (transparentSuggestions) Color.TRANSPARENT else XMLPrefsManager.getColor(Suggestions.default_bg_color)
+    private val suggDefaultBg: Int = XMLPrefsManager.getColor(Suggestions.default_bg_color)
     private val suggText: Map<Int, Int> = mapOf(
         Suggestion.TYPE_APP to XMLPrefsManager.getColor(Suggestions.apps_text_color),
         Suggestion.TYPE_APPGP to XMLPrefsManager.getColor(Suggestions.apps_text_color),
@@ -204,12 +208,12 @@ class SuggestionsManager(
     }
 
     init {
-        setAlgorithm(XMLPrefsManager.getInt(Suggestions.suggestions_algorithm))
+        setAlgorithm(DEFAULT_ALGORITHM)
 
-        quickCompare = XMLPrefsManager.getInt(Suggestions.suggestions_quickcompare_n)
+        quickCompare = DEFAULT_QUICKCOMPARE_N
 
         this.suggestionsPerCategory = XMLPrefsManager.getInt(Suggestions.suggestions_per_category)
-        this.suggestionsDeadline = XMLPrefsManager.get(Suggestions.suggestions_deadline).toFloat()
+        this.suggestionsDeadline = DEFAULT_DEADLINE
 
         doubleSpaceFirstSuggestion =
             XMLPrefsManager.getBoolean(Suggestions.double_space_click_first_suggestion)

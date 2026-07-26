@@ -249,6 +249,7 @@
         \n-get [option] -> get the value of an option
         \n-fontsize [value] -> change the global font size
         \n-reset [option] -> reset the value of an option
+        \n-factory -> reset every config file to its defaults (restarts t-ui automatically)
         \n-info [option] -> request info about the given option
         \n-apply [file] -> move a file to the t-ui directory
         \n-tutorial -> open the tutorial page

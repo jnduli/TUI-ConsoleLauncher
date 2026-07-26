@@ -35,12 +35,12 @@ public enum Notifications implements XMLPrefsSave {
     default_notification_color {
         @Override
         public String defaultValue() {
-            return "#00FF00";
+            return "bright_green";
         }
 
         @Override
         public String type() {
-            return XMLPrefsSave.COLOR;
+            return XMLPrefsSave.PALETTE_REF;
         }
 
         @Override
