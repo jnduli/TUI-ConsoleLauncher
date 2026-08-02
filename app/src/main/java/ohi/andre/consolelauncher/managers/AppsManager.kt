@@ -15,26 +15,23 @@ import android.content.pm.ResolveInfo
 import android.content.pm.ShortcutInfo
 import android.graphics.Color
 import android.os.Build
-import android.net.Uri
 import android.os.Parcel
 import android.os.Parcelable
 import android.os.Parcelable.Creator
 import android.os.Process
-import android.text.SpannableString
-import android.text.Spanned
 import android.text.TextUtils
-import android.text.style.ForegroundColorSpan
 import android.util.Log
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import it.andreuzzi.comparestring2.StringableObject
 import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.RawValue
-import kotlinx.serialization.Contextual
 import ohi.andre.consolelauncher.MainManager
 import ohi.andre.consolelauncher.R
 import ohi.andre.consolelauncher.UIManager
-import ohi.andre.consolelauncher.WebActivity
 import ohi.andre.consolelauncher.commands.main.MainPack
+import ohi.andre.consolelauncher.managers.launchable.AppLauncher
+import ohi.andre.consolelauncher.managers.launchable.Launchable
+import ohi.andre.consolelauncher.managers.launchable.WebLauncher
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsElement
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsList
@@ -45,8 +42,6 @@ import ohi.andre.consolelauncher.managers.xml.options.Theme
 import ohi.andre.consolelauncher.managers.xml.options.Ui
 import ohi.andre.consolelauncher.tuils.StoppableThread
 import ohi.andre.consolelauncher.tuils.Tuils
-import ohi.andre.consolelauncher.managers.TimeManager
-import ohi.andre.consolelauncher.managers.TerminalManager
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -57,388 +52,9 @@ import java.util.Collections
 import java.util.Locale
 import java.util.regex.Matcher
 import java.util.regex.Pattern
-import kotlinx.serialization.Serializable
-import nl.adaptivity.xmlutil.serialization.XML
-import nl.adaptivity.xmlutil.serialization.XmlSerialName
 
 
 private val APP_TAG: String = "AppsManager"
-
-enum class LauncherType {
-    APPLICATION, WEB
-}
-
-enum class Visibility {
-    SHOWN, HIDDEN
-}
-
-@Serializable
-sealed interface Launchable: Comparable<Launchable>, StringableObject, Parcelable {
-    var launchTimes: Int
-    var componentName: ComponentName?
-
-    val publicLabel: String
-        get() = name()
-
-    fun launch(context: Context) {
-        launchTimes++
-        val intent = toIntent(context)
-        context.startActivity(intent)
-    }
-
-    fun toIntent(context: Context): Intent
-    fun label(): String
-    fun names(): Set<String>
-    fun name(): String
-    fun write(): String
-
-    override fun getString(): String = name()
-    override fun getLowercaseString(): String = name().lowercase(Locale.getDefault())
-
-    override fun compareTo(other: Launchable): Int {
-        return name().lowercase(Locale.getDefault()).compareTo(other.name().lowercase(Locale.getDefault()))
-    }
-
-    companion object {
-        fun listFromXml(xml: String): List<Launchable> {
-            return try {
-                XML.decodeFromString<LaunchableList>(xml).launchables
-            } catch (e: Exception) {
-                Log.e(APP_TAG, "Error decoding launchables list", e)
-                emptyList()
-            }
-        }
-
-        fun listToXml(launchables: List<Launchable>): String {
-            return XML.encodeToString(LaunchableList(launchables))
-        }
-    }
-}
-
-@Serializable
-@XmlSerialName("launchables", "", "")
-data class LaunchableList(val launchables: List<Launchable>)
-
-@Parcelize
-@Serializable
-@XmlSerialName("web", "", "")
-data class WebLauncher(val name: String, val url: String, override var launchTimes: Int = 0) : Launchable, Parcelable {
-
-    @kotlinx.serialization.Transient
-    override var componentName: ComponentName? = ComponentName("ohi.andre.consolelauncher", "ohi.andre.consolelauncher.WebActivity")
-
-    override fun toIntent(context: Context): Intent {
-        val intent = Intent(context, WebActivity::class.java)
-            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .apply {
-                putExtra(WebActivity.URL_EXTRA, url)
-        }
-        return intent
-    }
-
-    fun launchWithQuery(context: Context, query: String) {
-        val resolvedUrl = url.replace("%s", Uri.encode(query))
-        context.startActivity(
-            Intent(context, WebActivity::class.java)
-                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                .putExtra(WebActivity.URL_EXTRA, resolvedUrl)
-        )
-    }
-
-    override fun label() : String {
-        return name
-    }
-
-    override fun names() : Set<String>{
-        return setOf(name)
-    }
-
-    override fun name(): String {
-        return name
-    }
-
-    override fun write(): String = name
-}
-
-@Parcelize
-@Serializable
-@XmlSerialName("app", "", "")
-data class AppLauncher(val packageName: String, val activityName: String, val label: String, var shortcut: String = "", override var launchTimes: Int = 0): Launchable, Parcelable {
-
-    @Contextual
-    override var componentName: ComponentName? = ComponentName(packageName, activityName)
-
-    override fun toIntent(context: Context): Intent {
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(componentName).setFlags(
-            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-        val msg = "--> $packageName:$activityName:$label\n"
-        val text = SpannableString(msg)
-        val outputColor = XMLPrefsManager.getColor(Theme.output_color)
-        text.setSpan(
-            ForegroundColorSpan(outputColor),
-            0,
-            text.length,
-            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-        )
-        val s = TimeManager.instance.replace(text)
-        Tuils.sendOutput(context, s, TerminalManager.CATEGORY_OUTPUT)
-        return intent
-    }
-
-    override fun name(): String {
-        return label
-    }
-
-    override fun names(): Set<String> {
-        return setOf(label, packageName)
-    }
-
-    override fun label() : String {
-        return label
-    }
-
-    override fun write(): String = "$packageName-$activityName"
-
-}
-
-class LauncherManager(val context: Context, val mgr: PackageManager) {
-
-    // TODO: handle hidden here too
-    fun findLauncher(label: String, visibility: Visibility): Launchable? {
-        val launchables = createLaunchablesList(context, mgr)
-        val stripLabel = label.filter { !it.isWhitespace() }
-        launchables.forEach {
-            val appLabels = it.names()
-            if (appLabels.contains(stripLabel)) {
-                return it
-            }
-        }
-        return null
-    }
-
-    fun hide(launchable: Launchable) {
-        val root = Tuils.getFolder(context)
-        val file = File(root, "apps.xml")
-        
-        val name = when(launchable) {
-            is AppLauncher -> launchable.packageName + "-" + launchable.activityName
-            is WebLauncher -> launchable.name
-        }
-        
-        XMLPrefsManager.set(file, name, arrayOf("show"), arrayOf("false"))
-    }
-
-    fun saveLaunchables(launchables: List<Launchable>, fileName: String = "launchables.xml") {
-        try {
-            val file = File(Tuils.getFolder(context), fileName)
-            val xmlString = Launchable.listToXml(launchables)
-            file.writeText(xmlString)
-        } catch (e: Exception) {
-            Log.e(APP_TAG, "Error saving launchables", e)
-        }
-    }
-
-    fun loadLaunchables(fileName: String = "launchables.xml"): List<Launchable> {
-        return try {
-            val file = File(Tuils.getFolder(context), fileName)
-            if (file.exists()) {
-                val xmlString = file.readText()
-                Launchable.listFromXml(xmlString)
-            } else {
-                emptyList()
-            }
-        } catch (e: Exception) {
-            Log.e(APP_TAG, "Error loading launchables", e)
-            emptyList()
-        }
-    }
-
-
-    fun createLaunchablesList(context: Context, mgr: PackageManager): List<Launchable> {
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val main = mgr.queryIntentActivities(intent, 0 )
-        val apps: MutableList<Launchable> = ArrayList<Launchable>()
-
-        for (app in main) {
-            val activityInfo = app.activityInfo
-            val appLauncher = AppLauncher(activityInfo.packageName, activityInfo.name,
-                app.loadLabel(mgr) as String, "")
-            // Note: For SIM TOolkit, the name 'SIM Toolkit' is defined as one of the shortcuts so not the actual app name found by
-            // resovleinfo.loadLabel(mgr), so ensure T-UI is the default for this to work
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-                try {
-                    val launcherApps =
-                        context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
-                    val query = ShortcutQuery()
-                    query.setQueryFlags(ShortcutQuery.FLAG_MATCH_MANIFEST or ShortcutQuery.FLAG_MATCH_DYNAMIC)
-                    query.setPackage(appLauncher.packageName)
-                    val shortcuts = launcherApps.getShortcuts(query, Process.myUserHandle())
-                    if (shortcuts != null && shortcuts.isNotEmpty()) {
-                        appLauncher.shortcut = shortcuts[0].id
-                    }
-                } catch (e: SecurityException) {
-                    Log.e(APP_TAG, e.toString())
-                } catch (e: Throwable) {
-                    // t-ui is not the default launcher
-                    Log.e(APP_TAG, e.toString())
-                }
-            }
-            apps.add(appLauncher)
-        }
-        // TODO: jnduli fix this with generic implementation
-        // val webApps = loadWebApps()
-        // apps.addAll(webApps)
-        return apps
-    }
-}
-
-
-object AppUtils {
-    fun findLaunchableWithComponent(appList: MutableList<Launchable>, name: ComponentName?): Launchable? {
-        if (name == null) return null
-        return appList.find { it.componentName == name }
-    }
-
-    var activityPattern: Pattern =
-        Pattern.compile("activity", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
-
-    fun insertActivityName(oldLabel: String?, activityName: String): String {
-        var name: String?
-
-        val lastDot = activityName.lastIndexOf(".")
-        if (lastDot == -1) {
-            name = activityName
-        } else {
-            name = activityName.substring(lastDot + 1)
-        }
-
-        name = activityPattern.matcher(name).replaceAll(Tuils.EMPTYSTRING)
-        name = name.substring(0, 1).uppercase(Locale.getDefault()) + name.substring(1)
-        return oldLabel + Tuils.SPACE + "-" + Tuils.SPACE + name
-    }
-
-    fun getNewLabel(oldLabel: String?, packageName: String): String? {
-        try {
-            var firstDot = packageName.indexOf(Tuils.DOT)
-            if (firstDot == -1) {
-//                    no dots in package name (nearly impossible)
-                return packageName
-            }
-            firstDot++
-
-            val secondDot = packageName.substring(firstDot).indexOf(Tuils.DOT)
-            var prefix: String?
-            if (secondDot == -1) {
-//                    only one dot, so two words. The first is most likely to be the company name
-//                    facebook.messenger
-//                    is better than
-//                    messenger.facebook
-                prefix = packageName.substring(0, firstDot - 1)
-                prefix =
-                    prefix.substring(0, 1).uppercase(Locale.getDefault()) + prefix.substring(1)
-                        .lowercase(
-                            Locale.getDefault()
-                        )
-                return prefix + Tuils.SPACE + oldLabel
-            } else {
-//                    two dots or more, the second word is the company name
-                prefix = packageName.substring(firstDot, secondDot + firstDot)
-                prefix =
-                    prefix.substring(0, 1).uppercase(Locale.getDefault()) + prefix.substring(1)
-                        .lowercase(
-                            Locale.getDefault()
-                        )
-                return prefix + Tuils.SPACE + oldLabel
-            }
-        } catch (e: Exception) {
-            return packageName
-        }
-    }
-
-    @JvmStatic
-    fun format(app: AppLauncher, info: PackageInfo): String {
-        val builder = StringBuilder()
-
-        builder.append(info.packageName).append(Tuils.NEWLINE)
-        builder.append("vrs: ").append(info.versionCode).append(" - ").append(info.versionName)
-            .append(Tuils.NEWLINE).append(Tuils.NEWLINE)
-        builder.append("launched_times: ").append(app.launchTimes).append(Tuils.NEWLINE)
-            .append(Tuils.NEWLINE)
-
-        builder.append("Install: ").append(
-            TimeManager.instance.replace(
-                "%t0",
-                info.firstInstallTime,
-                Int.MAX_VALUE
-            )
-        ).append(Tuils.NEWLINE).append(Tuils.NEWLINE)
-
-        val a = info.activities
-        if (a != null && a.size > 0) {
-            val `as`: MutableList<String?> = ArrayList<String?>()
-            for (i in a) `as`.add(i.name.replace(info.packageName, Tuils.EMPTYSTRING))
-            builder.append("Activities: ").append(Tuils.NEWLINE)
-                .append(Tuils.toPlanString(`as`, Tuils.NEWLINE)).append(Tuils.NEWLINE)
-                .append(Tuils.NEWLINE)
-        }
-
-        val s = info.services
-        if (s != null && s.size > 0) {
-            val ss: MutableList<String?> = ArrayList<String?>()
-            for (i in s) ss.add(i.name.replace(info.packageName, Tuils.EMPTYSTRING))
-            builder.append("Services: ").append(Tuils.NEWLINE)
-                .append(Tuils.toPlanString(ss, Tuils.NEWLINE)).append(Tuils.NEWLINE)
-                .append(Tuils.NEWLINE)
-        }
-
-        val r = info.receivers
-        if (r != null && r.size > 0) {
-            val rs: MutableList<String?> = ArrayList<String?>()
-            for (i in r) rs.add(i.name.replace(info.packageName, Tuils.EMPTYSTRING))
-            builder.append("Receivers: ").append(Tuils.NEWLINE)
-                .append(Tuils.toPlanString(rs, Tuils.NEWLINE)).append(Tuils.NEWLINE)
-                .append(Tuils.NEWLINE)
-        }
-
-        val p = info.requestedPermissions
-        if (p != null && p.size > 0) {
-            val ps: MutableList<String?> = ArrayList<String?>()
-            for (i in p) ps.add(i.substring(i.lastIndexOf(".") + 1))
-            builder.append("Permissions: ").append(Tuils.NEWLINE)
-                .append(Tuils.toPlanString(ps, ", "))
-        }
-
-        return builder.toString()
-    }
-
-    @JvmStatic
-    fun printApps(apps: MutableList<String>): String? {
-        if (apps.size == 0) {
-            return apps.toString()
-        }
-
-        val list: MutableList<String?> = ArrayList<String?>(apps)
-
-        Collections.sort<String?>(
-            list,
-            Comparator { s1: String?, s2: String? -> Tuils.alphabeticCompare(s1, s2) })
-
-        Tuils.addPrefix(list, Tuils.DOUBLE_SPACE)
-        Tuils.insertHeaders(list, false)
-        return Tuils.toPlanString(list)
-    }
-
-
-    @JvmStatic
-    fun labelList(infos: MutableList<out Launchable>, sort: Boolean): MutableList<String> {
-        val labels: MutableList<String> = ArrayList<String>()
-        for (info in infos) {
-            labels.add(info.name())
-        }
-        if (sort) Collections.sort<String>(labels)
-        return labels
-    }
-}
 
 class AppsManager(context: Context) : XMLPrefsElement {
     private val NAME = "APPS"
@@ -684,13 +300,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         val isShown = !element.hasAttribute(SHOW_ATTRIBUTE) || element.getAttribute(SHOW_ATTRIBUTE).toBoolean()
         if (!isShown) {
             val key = element.nodeName
-            val match = allApps.find { launchable ->
-                val launchableKey = when (launchable) {
-                    is AppLauncher -> "${launchable.packageName}-${launchable.activityName}"
-                    is WebLauncher -> launchable.name
-                }
-                launchableKey == key
-            }
+            val match = allApps.find { launchable -> launchable.storageKey() == key }
             if (match != null) {
                 allApps.remove(match)
                 hiddenLaunchables.add(match)
@@ -701,13 +311,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     private fun syncLaunchCounts(allApps: List<Launchable>) {
         preferences.all.forEach { (key, value) ->
             if (value is Int) {
-                val match = allApps.find { launchable ->
-                    val launchableKey = when (launchable) {
-                        is AppLauncher -> "${launchable.packageName}-${launchable.activityName}"
-                        is WebLauncher -> launchable.name
-                    }
-                    launchableKey == key
-                }
+                val match = allApps.find { launchable -> launchable.storageKey() == key }
                 match?.launchTimes = value
             }
         }
@@ -716,7 +320,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     private fun finalizeGroups() {
         Group.sorting = XMLPrefsManager.getInt(Apps.app_groups_sorting)
         groups.forEach { it.sort() }
-        groups.sortWith { o1, o2 -> Tuils.alphabeticCompare(o1.name(), o2.name()) }
+        groups.sortWith { o1, o2 -> Tuils.alphabeticCompare(o1.name()!!, o2.name()!!) }
     }
 
     // Helper to extract color parsing logic
@@ -733,7 +337,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         return null
     }
 
-    // Helper to centralize the ComponentName search logic
+// Helper to centralize the ComponentName search logic
     private fun findComponent(key: String, allApps: List<Launchable>): ComponentName? {
         val split = key.split("-").filter { it.isNotEmpty() }
         return when {
@@ -954,10 +558,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     }
 
     fun writeLaunchTimes(launchable: Launchable) {
-        val key = when (launchable) {
-            is AppLauncher -> "${launchable.packageName}-${launchable.activityName}"
-            is WebLauncher -> launchable.name
-        }
+        val key = launchable.storageKey()
         editor.putInt(key, launchable.launchTimes)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
             editor.apply()
@@ -988,7 +589,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     fun hideActivity(launchable: Launchable): String? {
         XMLPrefsManager.set(
             file,
-            launchable.write(),
+            launchable.storageKey(),
             arrayOf(SHOW_ATTRIBUTE),
             arrayOf("false")
         )
@@ -1001,7 +602,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     fun showActivity(launchable: Launchable): String? {
         XMLPrefsManager.set(
             file,
-            launchable.write(),
+            launchable.storageKey(),
             arrayOf(SHOW_ATTRIBUTE),
             arrayOf("true")
         )
@@ -1095,7 +696,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
             if (existingApp != null) return null
         }
 
-        apps = apps + APPS_SEPARATOR + launchable.write()
+        apps = apps + APPS_SEPARATOR + launchable.storageKey()
         if (apps.startsWith(APPS_SEPARATOR)) apps = apps.substring(1)
 
         e.setAttribute(APPS_ATTRIBUTE, apps)
@@ -1131,7 +732,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         var apps = e.getAttribute(APPS_ATTRIBUTE)
         if (apps == null) return null
 
-        val writeKey = launchable.write()
+        val writeKey = launchable.storageKey()
         val split = apps.split(APPS_SEPARATOR).filter { it.isNotEmpty() }
         val found = split.any {
             it == writeKey || (launchable is AppLauncher && it == launchable.packageName)
@@ -1284,7 +885,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
     private fun printNApps(type: Int, n: Int): String? {
         try {
-            val labels: MutableList<String> = AppUtils.labelList(
+            val labels: MutableList<String> = Launchable.labelList(
                 (if (type == SHOWN_APPS) appsHolder!!.launchables else hiddenLaunchables)!!,
                 true
             )
@@ -1298,7 +899,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
                 }
             }
 
-            return AppUtils.printApps(labels)
+            return Tuils.printApps(labels)
         } catch (e: NullPointerException) {
             return "[]"
         }
@@ -1307,7 +908,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     private fun printAppsThatBegins(type: Int, withStr: String?): String? {
         var with = withStr
         try {
-            val labels: MutableList<String> = AppUtils.labelList(
+            val labels: MutableList<String> = Launchable.labelList(
                 (if (type == SHOWN_APPS) appsHolder!!.launchables else hiddenLaunchables)!!,
                 true
             )
@@ -1321,7 +922,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
                 }
             }
 
-            return AppUtils.printApps(labels)
+            return Tuils.printApps(labels)
         } catch (e: NullPointerException) {
             return "[]"
         }
@@ -1454,13 +1055,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
                     if (vl == Apps.NULL) continue
                     if (vl == Apps.MOST_USED) suggested.add(SuggestedApp(null, MOST_USED, count + 1))
                     else {
-                        val match = launchables.find { launchable ->
-                            val key = when (launchable) {
-                                is AppLauncher -> "${launchable.packageName}-${launchable.activityName}"
-                                is WebLauncher -> launchable.name
-                            }
-                            key == vl
-                        }
+                        val match = launchables.find { launchable -> launchable.storageKey() == vl }
                         if (match != null) {
                             suggested.add(SuggestedApp(match, USER_DEFINIED, count + 1))
                         }

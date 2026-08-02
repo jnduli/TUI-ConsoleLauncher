@@ -15,8 +15,8 @@ import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.specific.APICommand;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.AppsManager;
-import ohi.andre.consolelauncher.managers.Launchable;
-import ohi.andre.consolelauncher.managers.AppLauncher;
+import ohi.andre.consolelauncher.managers.launchable.Launchable;
+import ohi.andre.consolelauncher.managers.launchable.AppLauncher;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 /**
@@ -111,7 +111,7 @@ public class shortcut extends ParamCommand implements APICommand {
                     AppLauncher appLauncher = (AppLauncher) l;
                     if(appLauncher.getShortcut() == null || appLauncher.getShortcut().length() == 0) continue;
 
-                    builder.append(appLauncher.label()).append(Tuils.NEWLINE);
+                    builder.append(appLauncher.name()).append(Tuils.NEWLINE);
                     builder.append(Tuils.DOUBLE_SPACE).append("- ").append(appLauncher.getShortcut()).append(Tuils.NEWLINE);
                 }
 

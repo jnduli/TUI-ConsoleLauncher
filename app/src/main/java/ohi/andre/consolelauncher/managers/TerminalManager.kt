@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import ohi.andre.consolelauncher.commands.main.MainPack
+import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Theme
@@ -105,7 +106,7 @@ class TerminalManager(
 
     init {
         _prefix.value = withTrailingSpace(prefixText)
-        _hint.value = Tuils.getHint(mainPack.currentDirectory.absolutePath)
+        _hint.value = Tuils.getHint(mainPack.currentDirectory.absolutePath) ?: Tuils.EMPTYSTRING
 
         val clearAfterMs = XMLPrefsManager.getInt(Behavior.clear_after_seconds) * 1000
         if (clearAfterMs > 0) {
@@ -151,7 +152,7 @@ class TerminalManager(
 
     fun setDefaultHint() {
         defaultHint = true
-        _hint.value = Tuils.getHint(mainPack.currentDirectory.absolutePath)
+        _hint.value = Tuils.getHint(mainPack.currentDirectory.absolutePath) ?: Tuils.EMPTYSTRING
     }
 
     fun requestInputFocus() {
@@ -200,7 +201,7 @@ class TerminalManager(
 
     private fun setupNewInput() {
         applyInput(Tuils.EMPTYSTRING, null)
-        if (defaultHint) _hint.value = Tuils.getHint(mainPack.currentDirectory.absolutePath)
+        if (defaultHint) _hint.value = Tuils.getHint(mainPack.currentDirectory.absolutePath) ?: Tuils.EMPTYSTRING
         requestInputFocus()
     }
 

@@ -23,7 +23,7 @@ import ohi.andre.consolelauncher.managers.AliasManager
 import ohi.andre.consolelauncher.managers.AppsManager
 import ohi.andre.consolelauncher.managers.ContactManager.Contact
 import ohi.andre.consolelauncher.managers.FileManager
-import ohi.andre.consolelauncher.managers.Launchable
+import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.RssManager
 import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.music.Song
@@ -508,7 +508,7 @@ class SuggestionsManager(
                         suggestionList.add(
                             Suggestion(
                                 beforeLastSpace,
-                                app.publicLabel,
+                                app.name(),
                                 clickToLaunch,
                                 Suggestion.Companion.TYPE_APP,
                                 app
@@ -700,14 +700,14 @@ class SuggestionsManager(
             else counts?.get(Suggestion.Companion.TYPE_ALIAS) ?: 0
 
         for (a in aliasManager.getAliases(true)) {
-            if (lastWord.isNullOrEmpty() || a.name.startsWith(lastWord)) {
+            if (lastWord.isNullOrEmpty() || a.aliasName.startsWith(lastWord)) {
                 if (canInsert == 0) return
                 canInsert--
 
                 suggestions.add(
                     Suggestion(
                         Tuils.EMPTYSTRING,
-                        a.name,
+                        a.aliasName,
                         clickToLaunch && !a.isParametrized,
                         Suggestion.Companion.TYPE_ALIAS
                     )
@@ -1485,7 +1485,7 @@ class SuggestionsManager(
                 suggestions.add(
                     Suggestion(
                         beforeLastSpace,
-                        l.publicLabel,
+                        l.name(),
                         canClickToLaunch && clickToLaunch,
                         Suggestion.Companion.TYPE_APP,
                         l
@@ -1525,7 +1525,7 @@ class SuggestionsManager(
                 suggestions.add(
                     Suggestion(
                         beforeLastSpace,
-                        i.publicLabel,
+                        i.name(),
                         canClickToLaunch && clickToLaunch,
                         Suggestion.Companion.TYPE_APP,
                         if (canClickToLaunch && clickToLaunch) i else null
@@ -1775,7 +1775,7 @@ class SuggestionsManager(
                     suggestions.add(
                         Suggestion(
                             beforeLastSpace,
-                            o.publicLabel,
+                            o.name(),
                             clickToLaunch,
                             Suggestion.Companion.TYPE_APP,
                             o
@@ -1811,7 +1811,7 @@ class SuggestionsManager(
                     suggestions.add(
                         Suggestion(
                             beforeLastSpace,
-                            gli.publicLabel,
+                            gli.name(),
                             clickToLaunch,
                             Suggestion.Companion.TYPE_APP,
                             gli

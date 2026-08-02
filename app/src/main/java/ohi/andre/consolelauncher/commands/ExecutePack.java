@@ -5,7 +5,7 @@ import android.content.Context;
 import java.util.ArrayList;
 
 import ohi.andre.consolelauncher.managers.AppsManager;
-import ohi.andre.consolelauncher.managers.Launchable;
+import ohi.andre.consolelauncher.managers.launchable.Launchable;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 
 @SuppressWarnings("deprecation")

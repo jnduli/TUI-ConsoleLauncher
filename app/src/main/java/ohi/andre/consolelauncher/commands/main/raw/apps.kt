@@ -18,10 +18,10 @@ import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.VISIBLE_P
 import ohi.andre.consolelauncher.commands.ExecutePack
 import ohi.andre.consolelauncher.commands.main.MainPack
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand
-import ohi.andre.consolelauncher.managers.AppLauncher
-import ohi.andre.consolelauncher.managers.AppUtils.format
+import ohi.andre.consolelauncher.managers.launchable.AppLauncher
+import ohi.andre.consolelauncher.managers.launchable.AppUtils.format
 import ohi.andre.consolelauncher.managers.AppsManager
-import ohi.andre.consolelauncher.managers.Launchable
+import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave
 import ohi.andre.consolelauncher.managers.xml.options.Apps
 import ohi.andre.consolelauncher.tuils.Tuils
@@ -126,7 +126,7 @@ class apps : ParamCommand() {
                 val marker: String?
                 if (o is Launchable) {
                     val i = o
-                    marker = i.write()
+                    marker = i.storageKey()
                 } else {
                     marker = o as String?
                 }

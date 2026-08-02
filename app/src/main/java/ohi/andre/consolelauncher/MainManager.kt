@@ -16,14 +16,13 @@ import ohi.andre.consolelauncher.commands.main.MainPack
 import ohi.andre.consolelauncher.commands.main.raw.location
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
 import ohi.andre.consolelauncher.managers.AliasManager
-import ohi.andre.consolelauncher.managers.AppUtils
-import ohi.andre.consolelauncher.managers.AppUtils.printApps
 import ohi.andre.consolelauncher.managers.AppsManager
-import ohi.andre.consolelauncher.managers.WebLauncher
+import ohi.andre.consolelauncher.tuils.Tuils.printApps
+import ohi.andre.consolelauncher.managers.launchable.WebLauncher
 import ohi.andre.consolelauncher.managers.ChangelogManager
 import ohi.andre.consolelauncher.managers.ContactManager
 import ohi.andre.consolelauncher.managers.HTMLExtractManager
-import ohi.andre.consolelauncher.managers.Launchable
+import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.MessagesManager
 import ohi.andre.consolelauncher.managers.RssManager
 import ohi.andre.consolelauncher.managers.TerminalManager
@@ -152,7 +151,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         Pattern.compile("(#[^(]{6})\\[([^\\)]*)\\]", Pattern.CASE_INSENSITIVE)
 
     fun onCommand(input: String?, alias: String?, wasMusicService: Boolean) {
-        val input = Tuils.removeUnncesarySpaces(input)
+        val input = Tuils.removeUnncesarySpaces(input!!)
 
         if (alias == null) updateServices(input, wasMusicService)
 
@@ -380,7 +379,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     private inner class AliasTrigger : CmdTrigger {
         override fun trigger(input: String): Boolean {
             val alias = aliasManager.getAlias(input, true) ?: return false
-            val aliasValue = aliasManager.format(alias[0] ?: return false, alias[2])
+            val aliasValue = aliasManager.format(alias[0] ?: return false, alias[2]!!)
             onCommand(aliasValue, alias[1], false)
             return true
         }
@@ -408,7 +407,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                     if (rest == null) {
                         Tuils.sendOutput(
                             mContext,
-                            printApps(AppUtils.labelList(g.members() as MutableList<out Launchable>, false))
+                            printApps(Launchable.labelList(g.members() as MutableList<out Launchable>, false))
                         )
                         return true
                     } else {
