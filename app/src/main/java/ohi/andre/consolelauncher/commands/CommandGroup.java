@@ -1,55 +1,40 @@
 package ohi.andre.consolelauncher.commands;
 
-import android.content.Context;
 import android.os.Build;
 
-import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 
 import ohi.andre.consolelauncher.commands.main.specific.APICommand;
-import ohi.andre.consolelauncher.tuils.Tuils;
 
-import ohi.andre.consolelauncher.tuils.FileTuils;
-
+/**
+ * Holds the fixed set of commands the launcher supports. The list is built explicitly by the
+ * caller (see MainManager) rather than discovered via reflection, so each command can declare
+ * constructor dependencies instead of receiving every manager through a shared god object.
+ */
 public class CommandGroup {
 
-    private String packageName;
-    private CommandAbstraction[] commands;
-    private String[] commandNames;
+    private final CommandAbstraction[] commands;
+    private final String[] commandNames;
 
-    public CommandGroup(Context c, String packageName) {
-        this.packageName = packageName;
-
-        List<String> cmds;
-        try {
-            cmds = FileTuils.getClassesInPackage(packageName, c);
-        } catch (IOException e) {
-            return;
-        }
-
+    public CommandGroup(List<CommandAbstraction> commands) {
         List<CommandAbstraction> cmdAbs = new ArrayList<>();
-        Iterator<String> iterator = cmds.iterator();
-        while (iterator.hasNext()) {
-            String s = iterator.next();
-            CommandAbstraction ca = buildCommand(s);
-            if(ca != null && ( !(ca instanceof APICommand) || ((APICommand) ca).willWorkOn(Build.VERSION.SDK_INT))) {
-                cmdAbs.add(ca);
-            } else {
-                iterator.remove();
+        List<String> names = new ArrayList<>();
+
+        for (CommandAbstraction ca : commands) {
+            if (ca instanceof APICommand && !((APICommand) ca).willWorkOn(Build.VERSION.SDK_INT)) {
+                continue;
             }
+            cmdAbs.add(ca);
+            names.add(ca.getClass().getSimpleName());
         }
 
-        Collections.sort(cmds);
-        commandNames = new String[cmds.size()];
-        cmds.toArray(commandNames);
+        Collections.sort(names);
+        this.commandNames = names.toArray(new String[0]);
 
         Collections.sort(cmdAbs, (o1, o2) -> o2.priority() - o1.priority());
-        commands = new CommandAbstraction[cmdAbs.size()];
-        cmdAbs.toArray(commands);
+        this.commands = cmdAbs.toArray(new CommandAbstraction[0]);
     }
 
     public CommandAbstraction getCommandByName(String name) {
@@ -60,20 +45,6 @@ public class CommandGroup {
         }
 
         return null;
-    }
-
-    private CommandAbstraction buildCommand(String name) {
-        String fullCmdName = packageName + Tuils.DOT + name;
-        try {
-            Class<CommandAbstraction> clazz = (Class<CommandAbstraction>) Class.forName(fullCmdName);
-            if(CommandAbstraction.class.isAssignableFrom(clazz)) {
-                Constructor<CommandAbstraction> constructor = clazz.getConstructor();
-                return constructor.newInstance();
-            }
-            return null;
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     public CommandAbstraction[] getCommands() {

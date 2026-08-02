@@ -2,9 +2,8 @@ package ohi.andre.consolelauncher.commands.main.raw;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.PermanentSuggestionCommand;
-import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.tuils.MathTuils;
 
 /**
@@ -14,7 +13,7 @@ import ohi.andre.consolelauncher.tuils.MathTuils;
 public class calc extends PermanentSuggestionCommand {
 
     @Override
-    public String exec(ExecutePack pack) throws Exception {
+    public String exec(CommandContext pack) throws Exception {
         try {
             return String.valueOf(MathTuils.eval(pack.getString()));
         } catch (Exception e) {
@@ -38,13 +37,13 @@ public class calc extends PermanentSuggestionCommand {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack pack, int index) {
+    public String onArgNotFound(CommandContext pack, int index) {
         return null;
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack pack, int nArgs) {
-        MainPack info = (MainPack) pack;
+    public String onNotArgEnough(CommandContext pack, int nArgs) {
+        CommandContext info = (CommandContext) pack;
         return info.res.getString(helpRes());
     }
 

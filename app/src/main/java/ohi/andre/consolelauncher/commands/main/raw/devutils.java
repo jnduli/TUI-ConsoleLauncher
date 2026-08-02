@@ -9,8 +9,7 @@ import java.util.List;
 import ohi.andre.consolelauncher.BuildConfig;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
@@ -26,8 +25,8 @@ public class devutils extends ParamCommand {
     private enum Param implements ohi.andre.consolelauncher.commands.main.Param {
         notify {
             @Override
-            public String exec(ExecutePack pack) {
-                List<String> text = pack.getList();
+            public String exec(CommandContext pack) {
+                List<String> text = (List<String>) pack.getList();
 
                 String title, txt = null;
                 if(text.size() == 0) return null;
@@ -58,7 +57,7 @@ public class devutils extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 return "Notification access: " + NotificationManagerCompat.getEnabledListenerPackages(pack.context).contains(BuildConfig.APPLICATION_ID) + Tuils.NEWLINE + "Notification service running: " + NotificationService.isRunning(pack.context);
             }
         };
@@ -89,18 +88,18 @@ public class devutils extends ParamCommand {
         }
 
         @Override
-        public String onNotArgEnough(ExecutePack pack, int n) {
+        public String onNotArgEnough(CommandContext pack, int n) {
             return pack.context.getString(R.string.help_devutils);
         }
 
         @Override
-        public String onArgNotFound(ExecutePack pack, int index) {
+        public String onArgNotFound(CommandContext pack, int index) {
             return null;
         }
     }
 
     @Override
-    protected ohi.andre.consolelauncher.commands.main.Param paramForString(MainPack pack, String param) {
+    protected ohi.andre.consolelauncher.commands.main.Param paramForString(CommandContext pack, String param) {
         return Param.get(param);
     }
 
@@ -120,7 +119,7 @@ public class devutils extends ParamCommand {
     }
 
     @Override
-    protected String doThings(ExecutePack pack) {
+    protected String doThings(CommandContext pack) {
         return null;
     }
 }

@@ -15,7 +15,7 @@ import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import ohi.andre.consolelauncher.commands.main.MainPack
+import ohi.andre.consolelauncher.commands.CommandContext
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
 import ohi.andre.consolelauncher.compose.TerminalScreen
 import ohi.andre.consolelauncher.managers.TerminalManager
@@ -43,9 +43,12 @@ import kotlin.math.min
 class UIManager(
     context: Context,
     rootView: ViewGroup,
-    mainPack: MainPack?,
+    mainPack: CommandContext?,
     canApplyTheme: Boolean,
     executer: CommandExecuter?,
+    aliasManager: ohi.andre.consolelauncher.managers.AliasManager,
+    appsManager: ohi.andre.consolelauncher.managers.AppsManager,
+    contacts: ohi.andre.consolelauncher.managers.ContactManager?,
 ) {
     public lateinit var mContext: Context
 
@@ -63,7 +66,7 @@ class UIManager(
     private val receiver: BroadcastReceiver
 
     @kotlin.jvm.JvmField
-    var pack: MainPack? = null
+    var pack: CommandContext? = null
 
     fun dispose() {
         mTerminalAdapter.dispose()
@@ -263,7 +266,7 @@ class UIManager(
         mTerminalAdapter = TerminalManager(context, requireNotNull(mainPack), requireNotNull(executer))
 
         suggestionsManager = if (XMLPrefsManager.getBoolean(Suggestions.show_suggestions)) {
-            SuggestionsManager(requireNotNull(mainPack), mTerminalAdapter)
+            SuggestionsManager(requireNotNull(mainPack), mTerminalAdapter, aliasManager, appsManager, contacts)
         } else {
             null
         }

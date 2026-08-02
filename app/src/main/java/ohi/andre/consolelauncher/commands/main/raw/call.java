@@ -12,15 +12,14 @@ import androidx.core.content.ContextCompat;
 import ohi.andre.consolelauncher.LauncherActivity;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 public class call implements CommandAbstraction {
 
     @Override
-    public String exec(ExecutePack pack) {
-        final MainPack info = (MainPack) pack;
+    public String exec(CommandContext pack) {
+        final CommandContext info = (CommandContext) pack;
         if (ContextCompat.checkSelfPermission(info.context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED ||
                 ContextCompat.checkSelfPermission(info.context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
 
@@ -67,13 +66,13 @@ public class call implements CommandAbstraction {
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack info, int nArgs) {
+    public String onNotArgEnough(CommandContext info, int nArgs) {
         return info.context.getString(helpRes());
     }
 
     @Override
-    public String onArgNotFound(ExecutePack pack, int index) {
-        MainPack info = (MainPack) pack;
+    public String onArgNotFound(CommandContext pack, int index) {
+        CommandContext info = (CommandContext) pack;
         return info.res.getString(R.string.output_numbernotfound);
     }
 

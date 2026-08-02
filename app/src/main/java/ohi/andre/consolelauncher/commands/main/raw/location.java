@@ -6,8 +6,7 @@ import android.os.Build;
 import ohi.andre.consolelauncher.BuildConfig;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.APICommand;
 import ohi.andre.consolelauncher.managers.TuiLocationManager;
 
@@ -20,8 +19,8 @@ public class location implements APICommand, CommandAbstraction {
     public static String ACTION_LOCATION_CMD_GOT = BuildConfig.APPLICATION_ID + ".loc_cmd_location";
 
     @Override
-    public String exec(final ExecutePack pack) throws Exception {
-        final Context context = ((MainPack) pack).context;
+    public String exec(final CommandContext pack) throws Exception {
+        final Context context = pack.context;
 
         TuiLocationManager l = TuiLocationManager.instance(context);
         if(l.locationAvailable) return "Lat: " + l.latitude + "; Long: " + l.longitude;
@@ -48,12 +47,12 @@ public class location implements APICommand, CommandAbstraction {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack pack, int indexNotFound) {
+    public String onArgNotFound(CommandContext pack, int indexNotFound) {
         return null;
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack pack, int nArgs) {
+    public String onNotArgEnough(CommandContext pack, int nArgs) {
         return null;
     }
 

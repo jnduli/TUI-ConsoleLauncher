@@ -14,8 +14,7 @@ import java.lang.reflect.Method;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 import static android.provider.Settings.System.SCREEN_BRIGHTNESS;
@@ -28,8 +27,8 @@ import static android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC;
 public class status implements CommandAbstraction {
 
     @Override
-    public String exec(ExecutePack pack) {
-        MainPack info = (MainPack) pack;
+    public String exec(CommandContext pack) {
+        CommandContext info = (CommandContext) pack;
 
 //        wifi
         ConnectivityManager connManager = (ConnectivityManager) info.context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -118,12 +117,12 @@ public class status implements CommandAbstraction {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack info, int index) {
+    public String onArgNotFound(CommandContext info, int index) {
         return null;
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack info, int nArgs) {
+    public String onNotArgEnough(CommandContext info, int nArgs) {
         return null;
     }
 }

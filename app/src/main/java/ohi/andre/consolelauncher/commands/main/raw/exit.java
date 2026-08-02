@@ -2,7 +2,7 @@ package ohi.andre.consolelauncher.commands.main.raw;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.tuils.SystemUtils;
 
 /**
@@ -11,7 +11,7 @@ import ohi.andre.consolelauncher.tuils.SystemUtils;
 
 public class exit implements CommandAbstraction {
     @Override
-    public String exec(ExecutePack pack) throws Exception {
+    public String exec(CommandContext pack) throws Exception {
         SystemUtils.resetPreferredLauncherAndOpenChooser(pack.context);
         return null;
     }
@@ -32,12 +32,12 @@ public class exit implements CommandAbstraction {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack pack, int indexNotFound) {
+    public String onArgNotFound(CommandContext pack, int indexNotFound) {
         return null;
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack pack, int nArgs) {
+    public String onNotArgEnough(CommandContext pack, int nArgs) {
         return null;
     }
 }

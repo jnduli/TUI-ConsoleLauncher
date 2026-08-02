@@ -2,20 +2,34 @@ package ohi.andre.consolelauncher.commands.main.raw;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
+import ohi.andre.consolelauncher.managers.AliasManager;
+import ohi.andre.consolelauncher.managers.AppsManager;
+import ohi.andre.consolelauncher.managers.ContactManager;
+import ohi.andre.consolelauncher.managers.RssManager;
 
 public class refresh implements CommandAbstraction {
 
-    @Override
-    public String exec(ExecutePack pack) {
-        MainPack info = (MainPack) pack;
-        info.appsManager.fill();
-        info.aliasManager.reload();
-        info.contacts.refreshContacts(info.context);
-        info.rssManager.refresh();
+    private final AliasManager aliasManager;
+    private final RssManager rssManager;
+    private final AppsManager appsManager;
+    private final ContactManager contacts;
 
-        return info.res.getString(R.string.output_refresh);
+    public refresh(AliasManager aliasManager, RssManager rssManager, AppsManager appsManager, ContactManager contacts) {
+        this.aliasManager = aliasManager;
+        this.rssManager = rssManager;
+        this.appsManager = appsManager;
+        this.contacts = contacts;
+    }
+
+    @Override
+    public String exec(CommandContext pack) {
+        appsManager.fill();
+        aliasManager.reload();
+        if (contacts != null) contacts.refreshContacts(pack.context);
+        if (rssManager != null) rssManager.refresh();
+
+        return pack.res.getString(R.string.output_refresh);
     }
 
     @Override
@@ -34,12 +48,12 @@ public class refresh implements CommandAbstraction {
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack info, int nArgs) {
+    public String onNotArgEnough(CommandContext info, int nArgs) {
         return null;
     }
 
     @Override
-    public String onArgNotFound(ExecutePack info, int index) {
+    public String onArgNotFound(CommandContext info, int index) {
         return null;
     }
 }

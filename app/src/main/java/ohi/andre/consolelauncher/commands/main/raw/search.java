@@ -9,8 +9,7 @@ import java.util.List;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.managers.xml.options.Cmd;
@@ -35,44 +34,44 @@ public class search extends ParamCommand {
 
         ps {
             @Override
-            public String exec(ExecutePack pack) {
-                List<String> args = pack.getList();
+            public String exec(CommandContext pack) {
+                List<String> args = (List<String>) pack.getList();
                 return playstore(args, pack.context);
             }
         },
 //        file {
 //            @Override
-//            public String exec(ExecutePack pack) {
+//            public String exec(CommandContext pack) {
 //                List<String> args = pack.get(ArrayList.class, 1);
-//                MainPack p = ((MainPack) pack);
+//                CommandContext p = ((CommandContext) pack);
 //                return file(args, p.currentDirectory, p.res, p.outputable);
 //            }
 //        },
         gg {
             @Override
-            public String exec(ExecutePack pack) {
-                List<String> args = pack.getList();
+            public String exec(CommandContext pack) {
+                List<String> args = (List<String>) pack.getList();
                 return google(args, pack.context);
             }
         },
         yt {
             @Override
-            public String exec(ExecutePack pack) {
-                List<String> args = pack.getList();
+            public String exec(CommandContext pack) {
+                List<String> args = (List<String>) pack.getList();
                 return youTube(args, pack.context);
             }
         },
         u {
             @Override
-            public String exec(ExecutePack pack) {
-                List<String> args = pack.getList();
+            public String exec(CommandContext pack) {
+                List<String> args = (List<String>) pack.getList();
                 return url(StringTuils.toPlanString(args, Tuils.SPACE), pack.context);
             }
         },
         dd {
             @Override
-            public String exec(ExecutePack pack) {
-                List<String> args = pack.getList();
+            public String exec(CommandContext pack) {
+                List<String> args = (List<String>) pack.getList();
                 return duckDuck(args, pack.context);
             }
         };
@@ -108,18 +107,18 @@ public class search extends ParamCommand {
         }
 
         @Override
-        public String onNotArgEnough(ExecutePack pack, int n) {
+        public String onNotArgEnough(CommandContext pack, int n) {
             return pack.context.getString(R.string.help_search);
         }
 
         @Override
-        public String onArgNotFound(ExecutePack pack, int index) {
+        public String onArgNotFound(CommandContext pack, int index) {
             return null;
         }
     }
 
     @Override
-    protected ohi.andre.consolelauncher.commands.main.Param paramForString(MainPack pack, String param) {
+    protected ohi.andre.consolelauncher.commands.main.Param paramForString(CommandContext pack, String param) {
         return Param.get(param);
     }
 
@@ -129,7 +128,7 @@ public class search extends ParamCommand {
     }
 
     @Override
-    protected String doThings(ExecutePack pack) {
+    protected String doThings(CommandContext pack) {
         return null;
     }
 

@@ -10,8 +10,7 @@ import java.util.List;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.AppsManager;
 import ohi.andre.consolelauncher.managers.RssManager;
@@ -50,7 +49,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 XMLPrefsSave save = pack.getPrefsSave();
                 String value = pack.getString();
                 save.parent().write(pack.context, save, value);
@@ -71,7 +70,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String onNotArgEnough(ExecutePack pack, int n) {
+            public String onNotArgEnough(CommandContext pack, int n) {
                 pack.args = new Object[] {pack.args[1], Tuils.EMPTYSTRING};
                 return set.exec(pack);
             }
@@ -83,7 +82,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 XMLPrefsSave save = pack.getPrefsSave();
 
                 return "Type:" + Tuils.SPACE + save.type() + Tuils.NEWLINE
@@ -98,7 +97,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 File file = new File(FileTuils.getFolder(pack.context), pack.getString());
 
                 try {
@@ -115,7 +114,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String onArgNotFound(ExecutePack pack, int index) {
+            public String onArgNotFound(CommandContext pack, int index) {
                 return pack.context.getString(R.string.output_filenotfound);
             }
         },
@@ -126,7 +125,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 XMLPrefsSave save = pack.getPrefsSave();
                 String value = XMLPrefsManager.get(save) + pack.getString();
 
@@ -138,7 +137,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String onNotArgEnough(ExecutePack pack, int n) {
+            public String onNotArgEnough(CommandContext pack, int n) {
                 pack.args = new Object[] {pack.args[0], pack.args[1], Tuils.EMPTYSTRING};
                 return set.exec(pack);
             }
@@ -150,7 +149,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 XMLPrefsSave save = pack.getPrefsSave();
                 save.parent().write(pack.context, save, Tuils.EMPTYSTRING);
 
@@ -166,7 +165,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 XMLPrefsSave save = pack.getPrefsSave();
                 String s = XMLPrefsManager.get(String.class, save);
                 if(s.length() == 0) return "\"\"";
@@ -180,7 +179,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 File file = new File(FileTuils.getFolder(pack.context), pack.getString());
                 String name = file.getName();
 
@@ -218,12 +217,12 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String onArgNotFound(ExecutePack pack, int index) {
+            public String onArgNotFound(CommandContext pack, int index) {
                 return pack.context.getString(R.string.output_filenotfound);
             }
 
             @Override
-            public String onNotArgEnough(ExecutePack pack, int n) {
+            public String onNotArgEnough(CommandContext pack, int n) {
                 List<String> ss = new ArrayList<>();
 
                 for(XMLPrefsManager.XMLPrefsRoot element : XMLPrefsManager.XMLPrefsRoot.values()) {
@@ -255,7 +254,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 XMLPrefsElement parent = Ui.device_size.parent();
 
                 int size = pack.getInt();
@@ -280,7 +279,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 XMLPrefsSave save = pack.getPrefsSave();
                 save.parent().write(pack.context, save, save.defaultValue());
 
@@ -296,7 +295,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 File folder = FileTuils.getFolder(pack.context);
 
                 for(XMLPrefsManager.XMLPrefsRoot root : XMLPrefsManager.XMLPrefsRoot.values()) {
@@ -325,7 +324,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 File file = pack.get(File.class);
 
                 if(!file.getName().endsWith(".xml")) {
@@ -358,7 +357,7 @@ public class config extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Customize-T_UI"));
                 return null;
             }
@@ -388,12 +387,12 @@ public class config extends ParamCommand {
         }
 
         @Override
-        public String onNotArgEnough(ExecutePack pack, int n) {
+        public String onNotArgEnough(CommandContext pack, int n) {
             return pack.context.getString(R.string.help_config);
         }
 
         @Override
-        public String onArgNotFound(ExecutePack pack, int index) {
+        public String onArgNotFound(CommandContext pack, int index) {
             return pack.context.getString(R.string.output_invalidarg);
         }
     }
@@ -404,12 +403,12 @@ public class config extends ParamCommand {
     }
 
     @Override
-    protected ohi.andre.consolelauncher.commands.main.Param paramForString(MainPack pack, String param) {
+    protected ohi.andre.consolelauncher.commands.main.Param paramForString(CommandContext pack, String param) {
         return Param.get(param);
     }
 
     @Override
-    protected String doThings(ExecutePack pack) {
+    protected String doThings(CommandContext pack) {
         return null;
     }
 

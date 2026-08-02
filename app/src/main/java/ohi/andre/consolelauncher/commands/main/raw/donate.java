@@ -19,16 +19,15 @@ import android.net.Uri;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 
 public class donate implements CommandAbstraction {
 
     private final String DONATE_URL = "https://www.paypal.me/fandreuzzi";
 
     @Override
-    public String exec(ExecutePack pack) {
-        MainPack info = (MainPack) pack;
+    public String exec(CommandContext pack) {
+        CommandContext info = (CommandContext) pack;
         Intent donateIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(DONATE_URL));
         info.context.startActivity(donateIntent);
         return info.res.getString(R.string.output_rate);
@@ -50,12 +49,12 @@ public class donate implements CommandAbstraction {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack info, int index) {
+    public String onArgNotFound(CommandContext info, int index) {
         return null;
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack info, int nArgs) {
+    public String onNotArgEnough(CommandContext info, int nArgs) {
         return null;
     }
 }

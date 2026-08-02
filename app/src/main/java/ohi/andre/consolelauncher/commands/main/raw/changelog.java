@@ -2,9 +2,10 @@ package ohi.andre.consolelauncher.commands.main.raw;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.managers.ChangelogManager;
+
+import okhttp3.OkHttpClient;
 
 /**
  * Created by francescoandreuzzi on 26/03/2018.
@@ -12,9 +13,15 @@ import ohi.andre.consolelauncher.managers.ChangelogManager;
 
 public class changelog implements CommandAbstraction {
 
+    private final OkHttpClient client;
+
+    public changelog(OkHttpClient client) {
+        this.client = client;
+    }
+
     @Override
-    public String exec(ExecutePack pack) throws Exception {
-        ChangelogManager.printLog(pack.context, ((MainPack) pack).client, true);
+    public String exec(CommandContext pack) throws Exception {
+        ChangelogManager.printLog(pack.context, client, true);
         return null;
     }
 
@@ -34,12 +41,12 @@ public class changelog implements CommandAbstraction {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack pack, int indexNotFound) {
+    public String onArgNotFound(CommandContext pack, int indexNotFound) {
         return null;
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack pack, int nArgs) {
+    public String onNotArgEnough(CommandContext pack, int nArgs) {
         return null;
     }
 }

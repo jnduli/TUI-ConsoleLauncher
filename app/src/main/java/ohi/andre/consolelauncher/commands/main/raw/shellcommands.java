@@ -12,7 +12,7 @@ import java.util.Set;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 import ohi.andre.consolelauncher.tuils.StringTuils;
@@ -23,7 +23,7 @@ import ohi.andre.consolelauncher.tuils.StringTuils;
 public class shellcommands implements CommandAbstraction {
 
     @Override
-    public String exec(ExecutePack pack) {
+    public String exec(CommandContext pack) {
         Collection<String> cmds = getOSCommands();
         List<String> commands = new ArrayList<>(cmds);
 
@@ -70,12 +70,12 @@ public class shellcommands implements CommandAbstraction {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack info, int index) {
+    public String onArgNotFound(CommandContext info, int index) {
         return null;
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack info, int nArgs) {
+    public String onNotArgEnough(CommandContext info, int nArgs) {
         return null;
     }
 }

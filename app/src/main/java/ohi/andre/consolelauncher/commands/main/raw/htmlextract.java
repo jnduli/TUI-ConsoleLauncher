@@ -8,8 +8,7 @@ import java.io.File;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.HTMLExtractManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
@@ -33,7 +32,7 @@ public class htmlextract extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 Intent i = new Intent(HTMLExtractManager.ACTION_QUERY);
 
                 i.putExtra(HTMLExtractManager.ID, pack.getInt());
@@ -46,7 +45,7 @@ public class htmlextract extends ParamCommand {
             }
 
             @Override
-            public String onArgNotFound(ExecutePack pack, int index) {
+            public String onArgNotFound(CommandContext pack, int index) {
                 if(index == 1) return pack.context.getString(R.string.invalid_integer);
 
                 if(index == 2) {
@@ -74,7 +73,7 @@ public class htmlextract extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 Intent i = new Intent(HTMLExtractManager.ACTION_ADD);
                 i.putExtra(HTMLExtractManager.TAG_NAME, pack.getString());
                 i.putExtra(HTMLExtractManager.ID, pack.getInt());
@@ -86,7 +85,7 @@ public class htmlextract extends ParamCommand {
             }
 
             @Override
-            public String onArgNotFound(ExecutePack pack, int index) {
+            public String onArgNotFound(CommandContext pack, int index) {
                 if(index == 1) return pack.context.getString(R.string.invalid_datastoretype);
                 return super.onArgNotFound(pack, index);
             }
@@ -98,7 +97,7 @@ public class htmlextract extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 Intent i = new Intent(HTMLExtractManager.ACTION_RM);
                 i.putExtra(HTMLExtractManager.ID, pack.getInt());
                 i.putExtra(HTMLExtractManager.BROADCAST_COUNT, HTMLExtractManager.broadcastCount);
@@ -114,7 +113,7 @@ public class htmlextract extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 Intent i = new Intent(HTMLExtractManager.ACTION_EDIT);
                 i.putExtra(HTMLExtractManager.ID, pack.getInt());
                 i.putExtra(HTMLExtractManager.BROADCAST_COUNT, HTMLExtractManager.broadcastCount);
@@ -131,7 +130,7 @@ public class htmlextract extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 Intent i = new Intent(HTMLExtractManager.ACTION_LS);
                 i.putExtra(HTMLExtractManager.BROADCAST_COUNT, HTMLExtractManager.broadcastCount);
                 i.putExtra(HTMLExtractManager.TAG_NAME, pack.getString());
@@ -141,7 +140,7 @@ public class htmlextract extends ParamCommand {
             }
 
             @Override
-            public String onNotArgEnough(ExecutePack pack, int n) {
+            public String onNotArgEnough(CommandContext pack, int n) {
                 Intent i = new Intent(HTMLExtractManager.ACTION_LS);
                 i.putExtra(HTMLExtractManager.BROADCAST_COUNT, HTMLExtractManager.broadcastCount);
                 LocalBroadcastManager.getInstance(pack.context.getApplicationContext()).sendBroadcast(i);
@@ -150,7 +149,7 @@ public class htmlextract extends ParamCommand {
             }
 
             @Override
-            public String onArgNotFound(ExecutePack pack, int index) {
+            public String onArgNotFound(CommandContext pack, int index) {
                 return pack.context.getString(R.string.invalid_datastoretype);
             }
         },
@@ -161,7 +160,7 @@ public class htmlextract extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/HTMLExtract"));
                 return null;
             }
@@ -173,7 +172,7 @@ public class htmlextract extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 File file = new File(FileTuils.getFolder(pack.context), HTMLExtractManager.PATH);
                 pack.context.startActivity(FileTuils.openFile(pack.context, file));
                 return null;
@@ -204,12 +203,12 @@ public class htmlextract extends ParamCommand {
         }
 
         @Override
-        public String onNotArgEnough(ExecutePack pack, int n) {
+        public String onNotArgEnough(CommandContext pack, int n) {
             return pack.context.getString(R.string.help_htmlextract);
         }
 
         @Override
-        public String onArgNotFound(ExecutePack pack, int index) {
+        public String onArgNotFound(CommandContext pack, int index) {
             return pack.context.getString(R.string.invalid_integer);
         }
     }
@@ -220,12 +219,12 @@ public class htmlextract extends ParamCommand {
     }
 
     @Override
-    protected ohi.andre.consolelauncher.commands.main.Param paramForString(MainPack pack, String param) {
+    protected ohi.andre.consolelauncher.commands.main.Param paramForString(CommandContext pack, String param) {
         return Param.get(param);
     }
 
     @Override
-    protected String doThings(ExecutePack pack) {
+    protected String doThings(CommandContext pack) {
         return null;
     }
 

@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.Param;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.AppsManager;
@@ -40,7 +39,7 @@ public class CommandTuils {
     public static List<String> xmlPrefsFiles;
 
     //	parse a command
-    public static Command parse(String input, ExecutePack info) throws Exception {
+    public static Command parse(String input, CommandContext info, AppsManager appsManager, ContactManager contacts) throws Exception {
         Command command = new Command();
 
         String name = CommandTuils.findName(input);
@@ -62,7 +61,7 @@ public class CommandTuils {
 
         try {
             if(cmd instanceof ParamCommand) {
-                ArgInfo arg = param((MainPack) info, (ParamCommand) cmd, input);
+                ArgInfo arg = param(info, (ParamCommand) cmd, input);
                 if(arg == null || !arg.found) {
 
                     command.indexNotFound = 0;
@@ -91,7 +90,7 @@ public class CommandTuils {
                         break;
                     }
 
-                    ArgInfo arg = CommandTuils.getArg(info, input, types[count]);
+                    ArgInfo arg = CommandTuils.getArg(info, input, types[count], appsManager, contacts);
                     if(arg == null) {
                         return null;
                     }
@@ -131,21 +130,17 @@ public class CommandTuils {
     }
 
     //	find args
-    public static ArgInfo getArg(ExecutePack info, String input, int type) {
-        if (type == CommandAbstraction.FILE && info instanceof MainPack) {
-            MainPack pack = (MainPack) info;
-            return file(input, pack.currentDirectory);
-        } else if (type == CommandAbstraction.CONTACTNUMBER && info instanceof MainPack) {
-            MainPack pack = (MainPack) info;
-            return contactNumber(input, pack.contacts);
+    public static ArgInfo getArg(CommandContext info, String input, int type, AppsManager appsManager, ContactManager contacts) {
+        if (type == CommandAbstraction.FILE) {
+            return file(input, info.currentDirectory);
+        } else if (type == CommandAbstraction.CONTACTNUMBER) {
+            return contactNumber(input, contacts);
         } else if (type == CommandAbstraction.PLAIN_TEXT) {
             return plainText(input);
-        } else if (type == CommandAbstraction.VISIBLE_PACKAGE && info instanceof MainPack) {
-            MainPack pack = (MainPack) info;
-            return activityName(input, pack.appsManager);
-        } else if (type == CommandAbstraction.HIDDEN_PACKAGE && info instanceof MainPack) {
-            MainPack pack = (MainPack) info;
-            return hiddenPackage(input, pack.appsManager);
+        } else if (type == CommandAbstraction.VISIBLE_PACKAGE) {
+            return activityName(input, appsManager);
+        } else if (type == CommandAbstraction.HIDDEN_PACKAGE) {
+            return hiddenPackage(input, appsManager);
         } else if (type == CommandAbstraction.TEXTLIST) {
             return textList(input);
         } else if (type == CommandAbstraction.COMMAND) {
@@ -161,13 +156,13 @@ public class CommandTuils {
         } else if(type == CommandAbstraction.INT) {
             return integer(input);
         } else if(type == CommandAbstraction.DEFAULT_APP) {
-            return defaultApp(input, ((MainPack) info).appsManager);
+            return defaultApp(input, appsManager);
         } else if(type == CommandAbstraction.ALL_PACKAGES) {
-            return allPackages(input, ((MainPack) info).appsManager);
+            return allPackages(input, appsManager);
         } else if(type == CommandAbstraction.NO_SPACE_STRING || type == CommandAbstraction.APP_GROUP || type == CommandAbstraction.BOUND_REPLY_APP) {
             return noSpaceString(input);
         } else if(type == CommandAbstraction.APP_INSIDE_GROUP) {
-            return activityName(input, ((MainPack) info).appsManager);
+            return activityName(input, appsManager);
         } else if(type == CommandAbstraction.LONG) {
             return numberLong(input);
         } else if(type == CommandAbstraction.DATASTORE_PATH_TYPE) {
@@ -397,7 +392,7 @@ public class CommandTuils {
         }
     }
 
-    private static ArgInfo param(MainPack pack, ParamCommand cmd, String input) {
+    private static ArgInfo param(CommandContext pack, ParamCommand cmd, String input) {
         if(input == null || input.trim().length() == 0) return null;
 
         int indexOfFirstSpace = input.indexOf(Tuils.SPACE);
@@ -448,6 +443,8 @@ public class CommandTuils {
 
         if (StringTuils.isPhoneNumber(input))
             number = input;
+        else if (contacts == null)
+            number = null;
         else
             number = contacts.findNumber(input);
 

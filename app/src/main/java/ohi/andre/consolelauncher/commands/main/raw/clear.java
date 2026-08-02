@@ -7,7 +7,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 
 /**
  * Created by andre on 07/11/15.
@@ -15,7 +15,7 @@ import ohi.andre.consolelauncher.commands.ExecutePack;
 public class clear implements CommandAbstraction {
 
     @Override
-    public String exec(ExecutePack info) throws Exception {
+    public String exec(CommandContext info) throws Exception {
         LocalBroadcastManager.getInstance(info.context.getApplicationContext()).sendBroadcast(new Intent(UIManager.ACTION_CLEAR));
         return null;
     }
@@ -36,12 +36,12 @@ public class clear implements CommandAbstraction {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack info, int index) {
+    public String onArgNotFound(CommandContext info, int index) {
         return null;
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack info, int nArgs) {
+    public String onNotArgEnough(CommandContext info, int nArgs) {
         return null;
     }
 }

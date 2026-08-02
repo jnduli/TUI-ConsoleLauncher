@@ -7,8 +7,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.APICommand;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.notifications.reply.ReplyManager;
@@ -32,7 +31,7 @@ public class reply extends ParamCommand implements APICommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 Intent intent = new Intent(ReplyManager.ACTION);
 
                 intent.putExtra(ReplyManager.ID, pack.getString());
@@ -49,7 +48,7 @@ public class reply extends ParamCommand implements APICommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 String output = ReplyManager.bind(pack.context, ((AppLauncher)pack.getLaunchable()).getPackageName());
                 LocalBroadcastManager.getInstance(pack.context).sendBroadcast(new Intent(ReplyManager.ACTION_UPDATE));
                 return output;
@@ -62,7 +61,7 @@ public class reply extends ParamCommand implements APICommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 Intent intent = new Intent(ReplyManager.ACTION);
                 intent.putExtra(ReplyManager.ID, pack.getString());
 
@@ -77,7 +76,7 @@ public class reply extends ParamCommand implements APICommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 String output = ReplyManager.unbind(pack.context, ((AppLauncher)pack.getLaunchable()).getPackageName());
                 LocalBroadcastManager.getInstance(pack.context).sendBroadcast(new Intent(ReplyManager.ACTION_UPDATE));
 
@@ -92,7 +91,7 @@ public class reply extends ParamCommand implements APICommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 Intent intent = new Intent(ReplyManager.ACTION_LS);
                 LocalBroadcastManager.getInstance(pack.context).sendBroadcast(intent);
                 return null;
@@ -105,7 +104,7 @@ public class reply extends ParamCommand implements APICommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Reply"));
                 return null;
             }
@@ -137,12 +136,12 @@ public class reply extends ParamCommand implements APICommand {
         }
 
         @Override
-        public String onNotArgEnough(ExecutePack pack, int n) {
+        public String onNotArgEnough(CommandContext pack, int n) {
             return pack.context.getString(R.string.help_reply);
         }
 
         @Override
-        public String onArgNotFound(ExecutePack pack, int index) {
+        public String onArgNotFound(CommandContext pack, int index) {
             return pack.context.getString(R.string.help_reply);
         }
     }
@@ -153,12 +152,12 @@ public class reply extends ParamCommand implements APICommand {
     }
 
     @Override
-    protected Param paramForString(MainPack pack, String param) {
+    protected Param paramForString(CommandContext pack, String param) {
         return Param.get(param);
     }
 
     @Override
-    protected String doThings(ExecutePack pack) {
+    protected String doThings(CommandContext pack) {
         return null;
     }
 

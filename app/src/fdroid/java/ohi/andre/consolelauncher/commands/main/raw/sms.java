@@ -11,9 +11,9 @@ import androidx.core.content.ContextCompat;
 import ohi.andre.consolelauncher.LauncherActivity;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand;
+import ohi.andre.consolelauncher.tuils.interfaces.Redirectator;
 
 /**
  * Created by francescoandreuzzi on 02/03/2017.
@@ -21,21 +21,26 @@ import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand;
 
 public class sms extends RedirectCommand {
 
-    @Override
-    public String exec(ExecutePack pack) throws Exception {
-        MainPack info = (MainPack) pack;
-        if (ContextCompat.checkSelfPermission(info.context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+    private final Redirectator redirectator;
 
-            ActivityCompat.requestPermissions((Activity) info.context, new String[]{Manifest.permission.READ_CONTACTS}, LauncherActivity.COMMAND_REQUEST_PERMISSION);
-            return info.context.getString(R.string.output_waitingpermission);
+    public sms(Redirectator redirectator) {
+        this.redirectator = redirectator;
+    }
+
+    @Override
+    public String exec(CommandContext pack) throws Exception {
+        if (ContextCompat.checkSelfPermission(pack.context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions((Activity) pack.context, new String[]{Manifest.permission.READ_CONTACTS}, LauncherActivity.COMMAND_REQUEST_PERMISSION);
+            return pack.context.getString(R.string.output_waitingpermission);
         }
 
         beforeObjects.add(pack.getString());
 
         if(afterObjects.size() == 0) {
-            info.redirectator.prepareRedirection(this);
+            redirectator.prepareRedirection(this);
         } else {
-            return onRedirect(info);
+            return onRedirect(pack);
         }
 
         return null;
@@ -57,33 +62,30 @@ public class sms extends RedirectCommand {
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack info, int nArgs) {
-        return info.context.getString(helpRes());
+    public String onNotArgEnough(CommandContext pack, int nArgs) {
+        return pack.context.getString(helpRes());
     }
 
     @Override
-    public String onArgNotFound(ExecutePack pack, int index) {
-        MainPack info = (MainPack) pack;
-        return info.res.getString(R.string.output_numbernotfound);
+    public String onArgNotFound(CommandContext pack, int index) {
+        return pack.res.getString(R.string.output_numbernotfound);
     }
 
     @Override
-    public String onRedirect(ExecutePack pack) {
-        MainPack info = (MainPack) pack;
-
+    public String onRedirect(CommandContext pack) {
         String number = (String) beforeObjects.get(0);
         String message = (String) afterObjects.get(0);
         if(message.length() == 0) {
-            info.redirectator.cleanup();
-            return info.res.getString(R.string.output_smsnotsent);
+            redirectator.cleanup();
+            return pack.res.getString(R.string.output_smsnotsent);
         }
 
-        if (ContextCompat.checkSelfPermission(info.context, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions((Activity) info.context, new String[]{Manifest.permission.SEND_SMS}, LauncherActivity.COMMAND_REQUEST_PERMISSION);
-            return info.context.getString(R.string.output_waitingpermission);
+        if (ContextCompat.checkSelfPermission(pack.context, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions((Activity) pack.context, new String[]{Manifest.permission.SEND_SMS}, LauncherActivity.COMMAND_REQUEST_PERMISSION);
+            return pack.context.getString(R.string.output_waitingpermission);
         }
 
-        info.redirectator.cleanup();
+        redirectator.cleanup();
 
         try {
             SmsManager smsManager = SmsManager.getDefault();
@@ -91,7 +93,7 @@ public class sms extends RedirectCommand {
 
             cleanup();
 
-            return info.res.getString(R.string.output_smssent);
+            return pack.res.getString(R.string.output_smssent);
         } catch (Exception ex) {
             cleanup();
 

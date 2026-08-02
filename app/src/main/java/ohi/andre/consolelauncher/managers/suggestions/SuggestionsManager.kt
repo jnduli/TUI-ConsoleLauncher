@@ -14,13 +14,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import ohi.andre.consolelauncher.UIManager.Companion.getListOfIntValues
 import ohi.andre.consolelauncher.commands.Command
 import ohi.andre.consolelauncher.commands.CommandAbstraction
+import ohi.andre.consolelauncher.commands.CommandContext
 import ohi.andre.consolelauncher.commands.CommandTuils
-import ohi.andre.consolelauncher.commands.main.MainPack
 import ohi.andre.consolelauncher.commands.main.Param
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand
 import ohi.andre.consolelauncher.commands.main.specific.PermanentSuggestionCommand
 import ohi.andre.consolelauncher.managers.AliasManager
 import ohi.andre.consolelauncher.managers.AppsManager
+import ohi.andre.consolelauncher.managers.ContactManager
 import ohi.andre.consolelauncher.managers.ContactManager.Contact
 import ohi.andre.consolelauncher.managers.FileManager
 import ohi.andre.consolelauncher.managers.launchable.Launchable
@@ -62,8 +63,11 @@ import kotlin.math.max
  * Created by francescoandreuzzi on 25/12/15.
  */
 class SuggestionsManager(
-    private var pack: MainPack,
-    private val mTerminalAdapter: TerminalManager
+    private var pack: CommandContext,
+    private val mTerminalAdapter: TerminalManager,
+    private val aliasManager: AliasManager,
+    private val appsManager: AppsManager,
+    private val contacts: ContactManager?
 ) {
     private var hideViewValue: HideSuggestionViewValues? = null
 
@@ -126,7 +130,7 @@ class SuggestionsManager(
         if (suggestion.type == Suggestion.TYPE_APP || suggestion.type == Suggestion.TYPE_APPGP) {
             var o = suggestion.`object`
             if (o is Launchable) {
-                for (g in pack.appsManager.groups) {
+                for (g in appsManager.groups) {
                     if (g.contains(o as Launchable)) {
                         o = g
                         break
@@ -496,7 +500,7 @@ class SuggestionsManager(
             if (beforeLastSpace.length == 0) {
                 comparator.noInput = true
 
-                val apps = pack.appsManager.suggestedApps
+                val apps = appsManager.suggestedApps
                 if (apps != null) {
                     var count = 0
                     while (count < apps.size && count < (noInputCounts?.get(Suggestion.Companion.TYPE_APP) ?: 0)) {
@@ -521,7 +525,7 @@ class SuggestionsManager(
 
                 suggestCommand(pack, suggestionList, null)
 
-                if (showAliasDefault) suggestAlias(pack.aliasManager, suggestionList, lastWord)
+                if (showAliasDefault) suggestAlias(aliasManager, suggestionList, lastWord)
                 if (showAppsGpDefault) suggestAppGroup(
                     pack,
                     suggestionList,
@@ -534,7 +538,7 @@ class SuggestionsManager(
                 //                check if this is a command
                 var cmd: Command? = null
                 try {
-                    cmd = CommandTuils.parse(beforeLastSpace, pack)
+                    cmd = CommandTuils.parse(beforeLastSpace, pack, appsManager, contacts)
                 } catch (e: Exception) {
                 }
 
@@ -596,7 +600,7 @@ class SuggestionsManager(
 //                lastword > 0 && beforeLastSpace  > 0
                 var cmd: Command? = null
                 try {
-                    cmd = CommandTuils.parse(beforeLastSpace, pack)
+                    cmd = CommandTuils.parse(beforeLastSpace, pack, appsManager, contacts)
                 } catch (e: Exception) {
                 }
 
@@ -661,7 +665,7 @@ class SuggestionsManager(
                 //                lastword > 0 && beforeLastSpace  = 0
             } else {
                 suggestCommand(pack, suggestionList, lastWord, beforeLastSpace)
-                suggestAlias(pack.aliasManager, suggestionList, lastWord)
+                suggestAlias(aliasManager, suggestionList, lastWord)
                 suggestApp(pack, suggestionList, lastWord, Tuils.EMPTYSTRING)
                 suggestAppGroup(pack, suggestionList, lastWord, beforeLastSpace)
             }
@@ -718,7 +722,7 @@ class SuggestionsManager(
     }
 
     private fun suggestParams(
-        pack: MainPack?,
+        pack: CommandContext?,
         suggestions: MutableList<Suggestion?>,
         cmd: ParamCommand,
         beforeLastSpace: String?,
@@ -765,7 +769,7 @@ class SuggestionsManager(
     }
 
     private fun suggestArgs(
-        info: MainPack,
+        info: CommandContext,
         type: Int,
         suggestions: MutableList<Suggestion?>,
         afterLastSpace: String?,
@@ -864,7 +868,7 @@ class SuggestionsManager(
     }
 
     private fun suggestArgs(
-        info: MainPack,
+        info: CommandContext,
         type: Int,
         suggestions: MutableList<Suggestion?>,
         beforeLastSpace: String
@@ -892,7 +896,7 @@ class SuggestionsManager(
     }
 
     private fun suggestFile(
-        info: MainPack,
+        info: CommandContext,
         suggestions: MutableList<Suggestion?>,
         afterLastSpace: String?,
         beforeLastSpace: String?
@@ -1158,16 +1162,16 @@ class SuggestionsManager(
     }
 
     private fun suggestContact(
-        info: MainPack,
+        info: CommandContext,
         suggestions: MutableList<Suggestion?>,
         afterLastSpace: String?,
         beforeLastSpace: String?
     ) {
-        val contacts = info.contacts.getContacts()
-        if (contacts == null || contacts.size == 0) return
+        val contactList = contacts?.getContacts()
+        if (contactList == null || contactList.size == 0) return
 
         if (afterLastSpace == null || afterLastSpace.length == 0) {
-            for (contact in contacts) suggestions.add(
+            for (contact in contactList) suggestions.add(
                 Suggestion(
                     beforeLastSpace,
                     contact.name,
@@ -1179,7 +1183,7 @@ class SuggestionsManager(
         } else {
             val counter = quickCompare(
                 afterLastSpace,
-                contacts,
+                contactList,
                 suggestions,
                 beforeLastSpace,
                 suggestionsPerCategory,
@@ -1192,8 +1196,8 @@ class SuggestionsManager(
             val cts = CompareObjects.topMatchesWithDeadline<Contact?>(
                 Contact::class.java,
                 afterLastSpace,
-                contacts.size,
-                contacts,
+                contactList.size,
+                contactList,
                 suggestionsPerCategory - counter,
                 suggestionsDeadline,
                 SPLITTERS,
@@ -1246,7 +1250,7 @@ class SuggestionsManager(
     }
 
     private fun suggestCommand(
-        info: MainPack,
+        info: CommandContext,
         suggestions: MutableList<Suggestion?>,
         afterLastSpace: String?,
         beforeLastSpace: String?
@@ -1286,7 +1290,7 @@ class SuggestionsManager(
     }
 
     private fun suggestCommand(
-        info: MainPack,
+        info: CommandContext,
         suggestions: MutableList<Suggestion?>,
         beforeLastSpace: String?
     ) {
@@ -1338,22 +1342,22 @@ class SuggestionsManager(
     }
 
     private fun suggestApp(
-        info: MainPack,
+        info: CommandContext,
         suggestions: MutableList<Suggestion?>,
         afterLastSpace: String?,
         beforeLastSpace: String?
     ) {
-        suggestApp(info.appsManager.shownApps(), suggestions, afterLastSpace, beforeLastSpace, true)
+        suggestApp(appsManager.shownApps(), suggestions, afterLastSpace, beforeLastSpace, true)
     }
 
     private fun suggestHiddenApp(
-        info: MainPack,
+        info: CommandContext,
         suggestions: MutableList<Suggestion?>,
         afterLastSpace: String?,
         beforeLastSpace: String?
     ) {
         suggestApp(
-            info.appsManager.hiddenApps(),
+            appsManager.hiddenApps(),
             suggestions,
             afterLastSpace,
             beforeLastSpace,
@@ -1362,18 +1366,18 @@ class SuggestionsManager(
     }
 
     private fun suggestAllPackages(
-        info: MainPack,
+        info: CommandContext,
         suggestions: MutableList<Suggestion?>,
         afterLastSpace: String?,
         beforeLastSpace: String?
     ) {
-        val apps: MutableList<Launchable> = ArrayList<Launchable>(info.appsManager.shownApps())
-        apps.addAll(info.appsManager.hiddenApps())
+        val apps: MutableList<Launchable> = ArrayList<Launchable>(appsManager.shownApps())
+        apps.addAll(appsManager.hiddenApps())
         suggestApp(apps, suggestions, afterLastSpace, beforeLastSpace, true)
     }
 
     private fun suggestDefaultApp(
-        info: MainPack,
+        info: CommandContext,
         suggestions: MutableList<Suggestion?>,
         afterLastSpace: String?,
         beforeLastSpace: String?
@@ -1395,7 +1399,7 @@ class SuggestionsManager(
             )
         )
 
-        suggestApp(info.appsManager.shownApps(), suggestions, afterLastSpace, beforeLastSpace, true)
+        suggestApp(appsManager.shownApps(), suggestions, afterLastSpace, beforeLastSpace, true)
     }
 
     private fun suggestApp(
@@ -1586,13 +1590,13 @@ class SuggestionsManager(
     }
 
     private fun suggestAppGroup(
-        pack: MainPack,
+        pack: CommandContext,
         suggestions: MutableList<Suggestion?>,
         afterLastSpace: String?,
         beforeLastSpace: String?
     ) {
         val groups: MutableList<AppsManager.Group> =
-            ArrayList<AppsManager.Group>(pack.appsManager.groups)
+            ArrayList<AppsManager.Group>(appsManager.groups)
         if (groups.size == 0) return
 
         var canInsert: Int
@@ -1653,7 +1657,7 @@ class SuggestionsManager(
     }
 
     private fun suggestAppInsideGroup(
-        pack: MainPack,
+        pack: CommandContext,
         suggestions: MutableList<Suggestion?>,
         afterLastSpace: String?,
         beforeLastSpace: String,
@@ -1665,7 +1669,7 @@ class SuggestionsManager(
         var app: String? = Tuils.EMPTYSTRING
 
         if (!beforeLastSpace.contains(Tuils.SPACE)) {
-            index = StringTuils.find(beforeLastSpace, pack.appsManager.groups)
+            index = StringTuils.find(beforeLastSpace, appsManager.groups)
             app = afterLastSpace
             if (!keepGroupName) beforeLastSpace = Tuils.EMPTYSTRING
         } else {
@@ -1673,7 +1677,7 @@ class SuggestionsManager(
                 .toTypedArray()
             var count = 0
             while (count < split.size) {
-                index = StringTuils.find(split[count], pack.appsManager.groups)
+                index = StringTuils.find(split[count], appsManager.groups)
                 if (index != -1) {
                     beforeLastSpace = Tuils.EMPTYSTRING
                     var i = 0
@@ -1699,7 +1703,7 @@ class SuggestionsManager(
 
         if (index == -1) return false
 
-        val g = pack.appsManager.groups.get(index)
+        val g = appsManager.groups.get(index)
 
         val apps: MutableList<Launchable> =
             ArrayList((g.members() as? Collection<Launchable>) ?: emptyList())

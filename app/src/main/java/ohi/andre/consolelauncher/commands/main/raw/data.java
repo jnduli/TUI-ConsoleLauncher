@@ -8,25 +8,30 @@ import android.net.wifi.WifiManager;
 import android.os.Build;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.APICommand;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 public class data implements APICommand, CommandAbstraction {
 
+    // scratch state for this command's own use only, lazily built by init()
+    private WifiManager wifi;
+    private Method setMobileDataEnabledMethod;
+    private ConnectivityManager connectivityMgr;
+    private Object connectMgr;
+
     @Override
-    public String exec(ExecutePack pack) {
-        MainPack info = (MainPack) pack;
-        boolean active = toggle(info);
-        return info.res.getString(R.string.output_data) + Tuils.SPACE + Boolean.toString(active);
+    public String exec(CommandContext pack) {
+        boolean active = toggle(pack);
+        return pack.res.getString(R.string.output_data) + Tuils.SPACE + Boolean.toString(active);
     }
 
-    private boolean toggle(MainPack info) {
-        if (info.connectivityMgr == null) {
+    private boolean toggle(CommandContext info) {
+        if (connectivityMgr == null) {
             try {
                 init(info);
             } catch (Exception e) {}
@@ -34,19 +39,19 @@ public class data implements APICommand, CommandAbstraction {
 
         boolean mobileConnected;
 
-        if (info.wifi == null)
-            info.wifi = (WifiManager) info.context.getSystemService(Context.WIFI_SERVICE);
+        if (wifi == null)
+            wifi = (WifiManager) info.context.getSystemService(Context.WIFI_SERVICE);
 
-        if (info.wifi.isWifiEnabled())
+        if (wifi.isWifiEnabled())
             mobileConnected = true;
         else {
-            NetworkInfo mobileInfo = info.connectivityMgr.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+            NetworkInfo mobileInfo = connectivityMgr.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
             State state = mobileInfo.getState();
             mobileConnected = state == NetworkInfo.State.CONNECTED || state == NetworkInfo.State.CONNECTING;
         }
 
         try {
-            info.setMobileDataEnabledMethod.invoke(info.connectMgr, !mobileConnected);
+            setMobileDataEnabledMethod.invoke(connectMgr, !mobileConnected);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -54,15 +59,15 @@ public class data implements APICommand, CommandAbstraction {
         return !mobileConnected;
     }
 
-    private void init(MainPack info) throws Exception {
-        info.connectivityMgr = (ConnectivityManager) info.context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        Class<?> conmanClass = Class.forName(info.connectivityMgr.getClass().getName());
+    private void init(CommandContext info) throws Exception {
+        connectivityMgr = (ConnectivityManager) info.context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        Class<?> conmanClass = Class.forName(connectivityMgr.getClass().getName());
         Field iConnectivityManagerField = conmanClass.getDeclaredField("mService");
         iConnectivityManagerField.setAccessible(true);
-        info.connectMgr = iConnectivityManagerField.get(info.connectivityMgr);
-        Class<?> iConnectivityManagerClass = Class.forName(info.connectMgr.getClass().getName());
-        info.setMobileDataEnabledMethod = iConnectivityManagerClass.getDeclaredMethod("setMobileDataEnabled", Boolean.TYPE);
-        info.setMobileDataEnabledMethod.setAccessible(true);
+        connectMgr = iConnectivityManagerField.get(connectivityMgr);
+        Class<?> iConnectivityManagerClass = Class.forName(connectMgr.getClass().getName());
+        setMobileDataEnabledMethod = iConnectivityManagerClass.getDeclaredMethod("setMobileDataEnabled", Boolean.TYPE);
+        setMobileDataEnabledMethod.setAccessible(true);
     }
 
     @Override
@@ -81,12 +86,12 @@ public class data implements APICommand, CommandAbstraction {
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack info, int nArgs) {
+    public String onNotArgEnough(CommandContext info, int nArgs) {
         return null;
     }
 
     @Override
-    public String onArgNotFound(ExecutePack info, int index) {
+    public String onArgNotFound(CommandContext info, int index) {
         return onNotArgEnough(info, 0);
     }
 

@@ -2,7 +2,7 @@ package ohi.andre.consolelauncher.commands.main.raw;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.managers.TimeManager;
 
 /**
@@ -10,7 +10,7 @@ import ohi.andre.consolelauncher.managers.TimeManager;
  */
 public class time implements CommandAbstraction {
     @Override
-    public String exec(ExecutePack pack) {
+    public String exec(CommandContext pack) {
         int index = pack.getInt();
         return TimeManager.instance.replace("%t" + index).toString();
     }
@@ -31,12 +31,12 @@ public class time implements CommandAbstraction {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack info, int index) {
+    public String onArgNotFound(CommandContext info, int index) {
         return info.context.getString(R.string.invalid_integer);
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack info, int nArgs) {
+    public String onNotArgEnough(CommandContext info, int nArgs) {
         return TimeManager.instance.replace("%t0").toString();
     }
 }

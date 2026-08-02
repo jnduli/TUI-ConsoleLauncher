@@ -7,8 +7,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
@@ -29,7 +28,7 @@ public class tuiweather extends ParamCommand {
 
         update {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 if(!XMLPrefsManager.getBoolean(Ui.show_weather)) {
                     return pack.context.getString(R.string.weather_disabled);
                 } else if(!XMLPrefsManager.wasChanged(Behavior.weather_key, false)) {
@@ -43,7 +42,7 @@ public class tuiweather extends ParamCommand {
         },
         enable {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 XMLPrefsSave save = Ui.show_weather;
 
                 save.parent().write(pack.context, save, "true");
@@ -55,7 +54,7 @@ public class tuiweather extends ParamCommand {
         },
         disable {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 XMLPrefsSave save = Ui.show_weather;
 
                 save.parent().write(pack.context, save, "false");
@@ -67,7 +66,7 @@ public class tuiweather extends ParamCommand {
         },
         tutorial {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Weather/_edit"));
                 return null;
             }
@@ -79,7 +78,7 @@ public class tuiweather extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 Behavior.weather_key.parent().write(pack.context, Behavior.weather_key, pack.getString());
                 return null;
             }
@@ -116,18 +115,18 @@ public class tuiweather extends ParamCommand {
         }
 
         @Override
-        public String onNotArgEnough(ExecutePack pack, int n) {
+        public String onNotArgEnough(CommandContext pack, int n) {
             return pack.context.getString(R.string.help_shortcut);
         }
 
         @Override
-        public String onArgNotFound(ExecutePack pack, int index) {
+        public String onArgNotFound(CommandContext pack, int index) {
             return pack.context.getString(R.string.output_appnotfound);
         }
     }
 
     @Override
-    protected Param paramForString(MainPack pack, String param) {
+    protected Param paramForString(CommandContext pack, String param) {
         return Param.get(param);
     }
 
@@ -147,7 +146,7 @@ public class tuiweather extends ParamCommand {
     }
 
     @Override
-    protected String doThings(ExecutePack pack) {
+    protected String doThings(CommandContext pack) {
         return null;
     }
 }

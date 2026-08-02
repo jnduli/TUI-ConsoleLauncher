@@ -10,11 +10,11 @@ import ohi.andre.consolelauncher.MainManager;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 import ohi.andre.consolelauncher.tuils.StoppableThread;
+import ohi.andre.consolelauncher.tuils.libsuperuser.ShellHolder;
 
 /**
  * Created by francescoandreuzzi on 26/07/2017.
@@ -22,8 +22,14 @@ import ohi.andre.consolelauncher.tuils.StoppableThread;
 
 public class ctrlc implements CommandAbstraction {
 
+    private final ShellHolder shellHolder;
+
+    public ctrlc(ShellHolder shellHolder) {
+        this.shellHolder = shellHolder;
+    }
+
     @Override
-    public String exec(final ExecutePack pack) throws Exception {
+    public String exec(final CommandContext pack) throws Exception {
         new StoppableThread() {
             @Override
             public void run() {
@@ -33,9 +39,9 @@ public class ctrlc implements CommandAbstraction {
                 MainManager.interactive.close();
                 MainManager.interactive = null;
 
-                MainManager.interactive = ((MainPack) pack).shellHolder.build();
+                MainManager.interactive = shellHolder.build();
 
-                ((MainPack) pack).currentDirectory = XMLPrefsManager.get(File.class, Behavior.home_path);
+                pack.currentDirectory = XMLPrefsManager.get(File.class, Behavior.home_path);
                 LocalBroadcastManager.getInstance(pack.context.getApplicationContext()).sendBroadcast(new Intent(UIManager.ACTION_UPDATE_HINT));
             }
         }.start();
@@ -61,12 +67,12 @@ public class ctrlc implements CommandAbstraction {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack pack, int indexNotFound) {
+    public String onArgNotFound(CommandContext pack, int indexNotFound) {
         return null;
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack pack, int nArgs) {
+    public String onNotArgEnough(CommandContext pack, int nArgs) {
         return null;
     }
 }

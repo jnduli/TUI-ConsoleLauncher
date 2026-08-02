@@ -5,8 +5,7 @@ import android.os.Vibrator;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 import ohi.andre.consolelauncher.tuils.StringTuils;
@@ -18,9 +17,9 @@ import ohi.andre.consolelauncher.tuils.StringTuils;
 public class vibrate implements CommandAbstraction {
 
     @Override
-    public String exec(ExecutePack pack) throws Exception {
+    public String exec(CommandContext pack) throws Exception {
         String text = pack.getString();
-        Context context = ((MainPack) pack).context;
+        Context context = pack.context;
 
         char separator = StringTuils.firstNonDigit(text);
 
@@ -77,12 +76,12 @@ public class vibrate implements CommandAbstraction {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack pack, int index) {
+    public String onArgNotFound(CommandContext pack, int index) {
         return null;
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack pack, int nArgs) {
-        return ((MainPack) pack).context.getString(helpRes());
+    public String onNotArgEnough(CommandContext pack, int nArgs) {
+        return pack.context.getString(helpRes());
     }
 }

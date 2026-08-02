@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import ohi.andre.consolelauncher.commands.main.MainPack
+import ohi.andre.consolelauncher.commands.CommandContext
 import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
@@ -45,7 +45,7 @@ sealed interface TerminalUiEvent {
 
 class TerminalManager(
     val mContext: Context,
-    private val mainPack: MainPack,
+    private val mainPack: CommandContext,
     private val executer: CommandExecuter,
 ) {
     companion object {

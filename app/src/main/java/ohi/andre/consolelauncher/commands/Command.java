@@ -13,7 +13,7 @@ public class Command {
 
     public int indexNotFound = -1;
 
-    public String exec(ExecutePack info) throws Exception {
+    public String exec(CommandContext info) throws Exception {
         info.set(mArgs);
 
         if(cmd instanceof ParamCommand) {

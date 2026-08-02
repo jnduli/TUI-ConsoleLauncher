@@ -6,8 +6,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.ThemeManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
@@ -29,7 +28,7 @@ public class theme extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 Intent intent = new Intent(ThemeManager.ACTION_APPLY);
                 intent.putExtra(ThemeManager.NAME, pack.getString());
                 LocalBroadcastManager.getInstance(pack.context.getApplicationContext()).sendBroadcast(intent);
@@ -43,35 +42,35 @@ public class theme extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 LocalBroadcastManager.getInstance(pack.context.getApplicationContext()).sendBroadcast(new Intent(ThemeManager.ACTION_STANDARD));
                 return null;
             }
         },
         view {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 pack.context.startActivity(SystemUtils.webPage("https://tui.tarunshankerpandey.com"));
                 return null;
             }
         },
         create {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 pack.context.startActivity(SystemUtils.webPage("https://tui.tarunshankerpandey.com/create.php"));
                 return null;
             }
         },
         old {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 LocalBroadcastManager.getInstance(pack.context.getApplicationContext()).sendBroadcast(new Intent(ThemeManager.ACTION_REVERT));
                 return null;
             }
         },
         tutorial {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Themes"));
                 return null;
             }
@@ -103,12 +102,12 @@ public class theme extends ParamCommand {
         }
 
         @Override
-        public String onNotArgEnough(ExecutePack pack, int n) {
+        public String onNotArgEnough(CommandContext pack, int n) {
             return pack.context.getString(R.string.help_theme);
         }
 
         @Override
-        public String onArgNotFound(ExecutePack pack, int index) {
+        public String onArgNotFound(CommandContext pack, int index) {
             return null;
         }
 
@@ -124,7 +123,7 @@ public class theme extends ParamCommand {
     };
 
     @Override
-    protected ohi.andre.consolelauncher.commands.main.Param paramForString(MainPack pack, String param) {
+    protected ohi.andre.consolelauncher.commands.main.Param paramForString(CommandContext pack, String param) {
         return Param.get(param);
     }
 
@@ -139,7 +138,7 @@ public class theme extends ParamCommand {
     }
 
     @Override
-    protected String doThings(ExecutePack pack) {
+    protected String doThings(CommandContext pack) {
         return null;
     }
 }

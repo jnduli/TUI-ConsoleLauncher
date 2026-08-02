@@ -5,14 +5,13 @@ import android.net.Uri;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 
 public class rate implements CommandAbstraction {
 
     @Override
-    public String exec(ExecutePack pack) {
-        final MainPack info = (MainPack) pack;
+    public String exec(CommandContext pack) {
+        final CommandContext info = (CommandContext) pack;
         try {
             info.context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" +
                     info.context.getPackageName())));
@@ -40,12 +39,12 @@ public class rate implements CommandAbstraction {
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack info, int nArgs) {
+    public String onNotArgEnough(CommandContext info, int nArgs) {
         return null;
     }
 
     @Override
-    public String onArgNotFound(ExecutePack info, int index) {
+    public String onArgNotFound(CommandContext info, int index) {
         return null;
     }
 

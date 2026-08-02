@@ -4,14 +4,13 @@ import android.bluetooth.BluetoothAdapter;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 
 public class bluetooth implements CommandAbstraction {
 
     @Override
-    public String exec(ExecutePack pack) {
-        MainPack info = (MainPack) pack;
+    public String exec(CommandContext pack) {
+        CommandContext info = (CommandContext) pack;
 
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 
@@ -42,12 +41,12 @@ public class bluetooth implements CommandAbstraction {
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack info, int nArgs) {
+    public String onNotArgEnough(CommandContext info, int nArgs) {
         return null;
     }
 
     @Override
-    public String onArgNotFound(ExecutePack info, int index) {
+    public String onArgNotFound(CommandContext info, int index) {
         return null;
     }
 

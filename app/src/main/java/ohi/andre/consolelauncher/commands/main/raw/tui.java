@@ -16,8 +16,7 @@ import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.CommandsPreferences;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
@@ -37,8 +36,8 @@ public class tui extends ParamCommand {
 
         rm {
             @Override
-            public String exec(ExecutePack pack) {
-                MainPack info = (MainPack) pack;
+            public String exec(CommandContext pack) {
+                CommandContext info = (CommandContext) pack;
 
                 DevicePolicyManager policy = (DevicePolicyManager) info.context.getSystemService(Context.DEVICE_POLICY_SERVICE);
                 ComponentName name = new ComponentName(info.context, PolicyReceiver.class);
@@ -53,8 +52,8 @@ public class tui extends ParamCommand {
         },
         about {
             @Override
-            public String exec(ExecutePack pack) {
-                MainPack info = (MainPack) pack;
+            public String exec(CommandContext pack) {
+                CommandContext info = (CommandContext) pack;
                 return "Version:" + Tuils.SPACE + BuildConfig.VERSION_NAME + " (code: " + BuildConfig.VERSION_CODE + ")" +
                         (BuildConfig.DEBUG ? Tuils.NEWLINE + BuildConfig.BUILD_TYPE : Tuils.EMPTYSTRING) +
                         Tuils.NEWLINE + Tuils.NEWLINE + info.res.getString(R.string.output_about);
@@ -67,7 +66,7 @@ public class tui extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 Intent i = new Intent(UIManager.ACTION_LOGTOFILE);
                 i.putExtra(UIManager.FILE_NAME, pack.getString());
                 LocalBroadcastManager.getInstance(pack.context.getApplicationContext()).sendBroadcast(i);
@@ -76,7 +75,7 @@ public class tui extends ParamCommand {
             }
 
             @Override
-            public String onNotArgEnough(ExecutePack pack, int n) {
+            public String onNotArgEnough(CommandContext pack, int n) {
                 return pack.context.getString(R.string.help_tui);
             }
         },
@@ -87,52 +86,52 @@ public class tui extends ParamCommand {
             }
 
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 File file = new File(FileTuils.getFolder(pack.context), "cmd.xml");
                 return XMLPrefsManager.set(file, pack.get().getClass().getSimpleName() + CommandsPreferences.PRIORITY_SUFFIX, new String[] {XMLPrefsManager.VALUE_ATTRIBUTE}, new String[] {String.valueOf(pack.getInt())});
             }
 
             @Override
-            public String onNotArgEnough(ExecutePack pack, int n) {
+            public String onNotArgEnough(CommandContext pack, int n) {
                 return pack.context.getString(R.string.help_tui);
             }
 
             @Override
-            public String onArgNotFound(ExecutePack pack, int index) {
+            public String onArgNotFound(CommandContext pack, int index) {
                 return pack.context.getString(R.string.output_invalidarg);
             }
         },
         telegram {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 pack.context.startActivity(SystemUtils.webPage("https://t.me/tuilauncher"));
                 return null;
             }
         },
         googlep {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 pack.context.startActivity(SystemUtils.webPage("https://plus.google.com/communities/103936578623101446195"));
                 return null;
             }
         },
         twitter {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 pack.context.startActivity(SystemUtils.webPage("https://twitter.com/tui_launcher"));
                 return null;
             }
         },
         sourcecode {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher"));
                 return null;
             }
         },
         reset {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 FileTuils.deleteContentOnly(FileTuils.getFolder(pack.context));
 
                 ((LauncherActivity) pack.context).addMessage(pack.context.getString(R.string.tui_reset), null);
@@ -142,7 +141,7 @@ public class tui extends ParamCommand {
         },
         folder {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
 
                 Uri selectedUri = Uri.parse(FileTuils.getFolder(pack.context).getAbsolutePath());
                 Intent intent = new Intent(Intent.ACTION_VIEW);
@@ -165,12 +164,12 @@ public class tui extends ParamCommand {
 //            }
 //
 //            @Override
-//            public String exec(ExecutePack pack) {
+//            public String exec(CommandContext pack) {
 //                return null;
 //            }
 //
 //            @Override
-//            public String onNotArgEnough(ExecutePack pack, int n) {
+//            public String onNotArgEnough(CommandContext pack, int n) {
 //
 //            }
 //        }
@@ -207,23 +206,23 @@ public class tui extends ParamCommand {
         }
 
         @Override
-        public String onArgNotFound(ExecutePack pack, int index) {
+        public String onArgNotFound(CommandContext pack, int index) {
             return null;
         }
 
         @Override
-        public String onNotArgEnough(ExecutePack pack, int n) {
+        public String onNotArgEnough(CommandContext pack, int n) {
             return null;
         }
     }
 
     @Override
-    protected ohi.andre.consolelauncher.commands.main.Param paramForString(MainPack pack, String param) {
+    protected ohi.andre.consolelauncher.commands.main.Param paramForString(CommandContext pack, String param) {
         return Param.get(param);
     }
 
     @Override
-    protected String doThings(ExecutePack pack) {
+    protected String doThings(CommandContext pack) {
         return null;
     }
 

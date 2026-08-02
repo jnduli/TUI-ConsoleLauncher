@@ -5,16 +5,15 @@ import android.net.Uri;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.managers.launchable.AppLauncher;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 public class uninstall implements CommandAbstraction {
 
     @Override
-    public String exec(ExecutePack pack) {
-        MainPack info = (MainPack) pack;
+    public String exec(CommandContext pack) {
+        CommandContext info = (CommandContext) pack;
 
         String packageName = ((AppLauncher)info.getLaunchable()).getPackageName();
 
@@ -41,14 +40,14 @@ public class uninstall implements CommandAbstraction {
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack pack, int nArgs) {
-        MainPack info = (MainPack) pack;
+    public String onNotArgEnough(CommandContext pack, int nArgs) {
+        CommandContext info = (CommandContext) pack;
         return info.res.getString(helpRes());
     }
 
     @Override
-    public String onArgNotFound(ExecutePack pack, int index) {
-        MainPack info = (MainPack) pack;
+    public String onArgNotFound(CommandContext pack, int index) {
+        CommandContext info = (CommandContext) pack;
         return info.res.getString(R.string.output_appnotfound);
     }
 

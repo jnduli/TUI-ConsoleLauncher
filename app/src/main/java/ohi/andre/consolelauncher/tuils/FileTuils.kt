@@ -5,10 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.core.content.FileProvider
-import dalvik.system.DexFile
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
 import java.io.InputStream
 
 object FileTuils {
@@ -154,15 +152,5 @@ object FileTuils {
     @JvmStatic
     fun nOfBytes(file: File): Int {
         return file.length().toInt()
-    }
-
-    @JvmStatic
-    @Throws(IOException::class)
-    fun getClassesInPackage(packageName: String, c: Context): List<String> {
-        val df = DexFile(c.packageCodePath)
-        return df.entries().asSequence()
-            .filter { it.contains(packageName) && !it.contains("$") }
-            .map { it.substringAfterLast(".") }
-            .toList()
     }
 }

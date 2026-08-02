@@ -10,13 +10,13 @@ import androidx.core.content.ContextCompat;
 import ohi.andre.consolelauncher.LauncherActivity;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.managers.flashlight.TorchManager;
 
 public class flash implements CommandAbstraction {
 
     @Override
-    public String exec(ExecutePack pack) {
+    public String exec(CommandContext pack) {
         if (ContextCompat.checkSelfPermission(pack.context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
 
             ActivityCompat.requestPermissions((Activity) pack.context, new String[]{Manifest.permission.CAMERA}, LauncherActivity.COMMAND_REQUEST_PERMISSION);
@@ -25,7 +25,7 @@ public class flash implements CommandAbstraction {
 
         TorchManager.getInstance().toggle(pack.context);
 
-//        final MainPack info = (MainPack) pack;
+//        final CommandContext info = (CommandContext) pack;
 //        if (!info.canUseFlash) {
 //            return info.res.getString(R.string.output_flashlightnotavailable);
 //        }
@@ -141,12 +141,12 @@ public class flash implements CommandAbstraction {
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack info, int nArgs) {
+    public String onNotArgEnough(CommandContext info, int nArgs) {
         return null;
     }
 
     @Override
-    public String onArgNotFound(ExecutePack info, int index) {
+    public String onArgNotFound(CommandContext info, int index) {
         return null;
     }
 

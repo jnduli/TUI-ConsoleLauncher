@@ -17,17 +17,16 @@ import java.util.ArrayList;
 import ohi.andre.consolelauncher.LauncherActivity;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 
 public class timer implements CommandAbstraction {
     @Override
-    public String exec(ExecutePack pack) throws Exception {
+    public String exec(CommandContext pack) throws Exception {
         if (ContextCompat.checkSelfPermission(pack.context, Manifest.permission.SET_ALARM) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions((Activity) pack.context, new String[]{Manifest.permission.SET_ALARM}, LauncherActivity.COMMAND_REQUEST_PERMISSION);
             return pack.context.getString(R.string.output_waitingpermission);
         }
-        ArrayList<String> args = pack.getList();
+        ArrayList<String> args = (ArrayList<String>) pack.getList();
         if (args.size() < 1) {
             return "Timer must have at least one argument";
         }
@@ -85,14 +84,14 @@ public class timer implements CommandAbstraction {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack pack, int indexNotFound) {
-        MainPack info = (MainPack) pack;
+    public String onArgNotFound(CommandContext pack, int indexNotFound) {
+        CommandContext info = (CommandContext) pack;
         return info.res.getString(R.string.output_appnotfound);
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack pack, int nArgs) {
-        MainPack info = (MainPack) pack;
+    public String onNotArgEnough(CommandContext pack, int nArgs) {
+        CommandContext info = (CommandContext) pack;
         return info.res.getString(helpRes());
     }
 }

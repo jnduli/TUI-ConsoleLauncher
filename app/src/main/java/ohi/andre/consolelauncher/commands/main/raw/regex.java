@@ -2,8 +2,7 @@ package ohi.andre.consolelauncher.commands.main.raw;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.RegexManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
@@ -20,7 +19,7 @@ public class regex extends ParamCommand {
 
         add {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 String output = RegexManager.instance.add(pack.getInt(), pack.getString());
                 if(output == null) return null;
                 if(output.length() == 0) return pack.context.getString(R.string.id_already);
@@ -34,7 +33,7 @@ public class regex extends ParamCommand {
         },
         rm {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 String output = RegexManager.instance.rm(pack.getInt());
                 if(output == null) return null;
                 if(output.length() == 0) return pack.context.getString(R.string.id_notfound);
@@ -48,7 +47,7 @@ public class regex extends ParamCommand {
         },
         get {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 RegexManager.Regex r = RegexManager.instance.get(pack.getInt());
                 if(r == null) return pack.context.getString(R.string.id_notfound);
 
@@ -62,7 +61,7 @@ public class regex extends ParamCommand {
         },
         test {
             @Override
-            public String exec(ExecutePack pack) {
+            public String exec(CommandContext pack) {
                 CharSequence s = RegexManager.instance.test(pack.getInt(), pack.getString());
                 if(s.length() == 0) return pack.context.getString(R.string.id_notfound);
 
@@ -77,12 +76,12 @@ public class regex extends ParamCommand {
         };
 
         @Override
-        public String onArgNotFound(ExecutePack pack, int index) {
+        public String onArgNotFound(CommandContext pack, int index) {
             return pack.context.getString(R.string.invalid_integer);
         }
 
         @Override
-        public String onNotArgEnough(ExecutePack pack, int n) {
+        public String onNotArgEnough(CommandContext pack, int n) {
             return pack.context.getString(R.string.help_regex);
         }
 
@@ -114,12 +113,12 @@ public class regex extends ParamCommand {
     }
 
     @Override
-    protected ohi.andre.consolelauncher.commands.main.Param paramForString(MainPack pack, String param) {
+    protected ohi.andre.consolelauncher.commands.main.Param paramForString(CommandContext pack, String param) {
         return Param.get(param);
     }
 
     @Override
-    protected String doThings(ExecutePack pack) {
+    protected String doThings(CommandContext pack) {
         return null;
     }
 

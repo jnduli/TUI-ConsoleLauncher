@@ -10,10 +10,11 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import ohi.andre.consolelauncher.commands.CommandAbstraction
+import ohi.andre.consolelauncher.commands.CommandContext
 import ohi.andre.consolelauncher.commands.CommandGroup
 import ohi.andre.consolelauncher.commands.CommandTuils
-import ohi.andre.consolelauncher.commands.main.MainPack
-import ohi.andre.consolelauncher.commands.main.raw.location
+import ohi.andre.consolelauncher.commands.main.raw.*
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
 import ohi.andre.consolelauncher.managers.AliasManager
 import ohi.andre.consolelauncher.managers.AppsManager
@@ -89,8 +90,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         this.redirectionListener = redirectionListener
     }
 
-    private val COMMANDS_PKG = "ohi.andre.consolelauncher.commands.main.raw"
-
     private val triggers = arrayOf<CmdTrigger>(
         GroupTrigger(),
         AliasTrigger(),
@@ -98,17 +97,18 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         AppTrigger(),
         ShellCommandTrigger()
     )
-    val mainPack: MainPack
+    val mainPack: CommandContext
 
     private val showAliasValue: Boolean
     private val aliasContentColor: Int
 
     private val multipleCmdSeparator: String
 
-    private val aliasManager: AliasManager
+    val aliasManager: AliasManager
     private val rssManager: RssManager?
-    private val appsManager: AppsManager
-    private var contactManager: ContactManager? = null
+    val appsManager: AppsManager
+    var contactManager: ContactManager? = null
+        private set
     private val themeManager: ThemeManager
     private val htmlExtractManager: HTMLExtractManager
 
@@ -117,6 +117,25 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     private val receiver: BroadcastReceiver
 
     private val keeperServiceRunning: Boolean
+
+    /**
+     * "sms" (app/src/fdroid/.../raw/sms.java) only exists in the fdroid flavor, so it isn't on
+     * this sourceset's compile classpath and can't be constructed directly here. This is the one
+     * place that still uses reflection, scoped to exactly that flavor-conditional case.
+     */
+    private fun flavorOnlyCommands(): List<CommandAbstraction> {
+        return try {
+            val clazz = Class.forName("ohi.andre.consolelauncher.commands.main.raw.sms")
+            val constructor = clazz.getConstructor(Redirectator::class.java)
+            listOf(constructor.newInstance(redirectator) as CommandAbstraction)
+        } catch (e: ClassNotFoundException) {
+            // not present in this flavor - fine, just skip it
+            emptyList()
+        } catch (e: ReflectiveOperationException) {
+            LogTuils.log(e)
+            emptyList()
+        }
+    }
 
     private fun updateServices(cmd: String?) {
         if (keeperServiceRunning) {
@@ -225,7 +244,10 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     }
 
     fun destroy() {
-        mainPack.destroy()
+        appsManager.onDestroy()
+        rssManager?.dispose()
+        contactManager?.destroy(mContext)
+
         TuiLocationManager.disposeStatic()
 
         messagesManager?.onDestroy()
@@ -271,8 +293,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
 
         multipleCmdSeparator = XMLPrefsManager.get(Behavior.multiple_cmd_separator)
 
-        val group = CommandGroup(mContext, COMMANDS_PKG)
-
         try {
             contactManager = ContactManager(mContext)
         } catch (e: NullPointerException) {
@@ -295,20 +315,57 @@ class MainManager constructor(private var mContext: LauncherActivity) {
             messagesManager = MessagesManager(mContext)
         }
 
-        mainPack = MainPack(
-            mContext,
-            group,
-            aliasManager,
-            appsManager,
-            contactManager,
-            redirectator,
-            rssManager,
-            client
-        )
-
         val shellHolder = ShellHolder(mContext)
         interactive = shellHolder.build()
-        mainPack.shellHolder = shellHolder
+
+        // Explicit registration (instead of classpath scanning) so each command can declare
+        // constructor dependencies rather than pulling every manager out of a shared object.
+        val group = CommandGroup(
+            listOf(
+                alias(aliasManager),
+                beep(),
+                bluetooth(),
+                calc(),
+                call(),
+                changelog(client),
+                clear(),
+                cntcts(contactManager),
+                config(),
+                ctrlc(shellHolder),
+                data(),
+                devutils(),
+                donate(),
+                exit(),
+                flash(),
+                help(),
+                htmlextract(),
+                location(),
+                notifications(),
+                open(),
+                rate(),
+                refresh(aliasManager, rssManager, appsManager, contactManager),
+                regex(),
+                reply(),
+                restart(),
+                rss(rssManager),
+                search(),
+                share(),
+                shellcommands(),
+                shortcut(appsManager),
+                status(),
+                theme(),
+                time(),
+                timer(),
+                tui(),
+                tuiweather(),
+                tutorial(),
+                uninstall(),
+                vibrate(),
+                apps(appsManager)
+            ) + flavorOnlyCommands()
+        )
+
+        mainPack = CommandContext(mContext, group)
 
         val filter = IntentFilter()
         filter.addAction(ACTION_EXEC)
@@ -394,7 +451,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                 rest = null
             }
 
-            val appGroups = mainPack.appsManager?.groups ?: return false
+            val appGroups = appsManager.groups
             for (g in appGroups) {
                 if (name == g.name()) {
                     if (rest == null) {
@@ -478,7 +535,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
 
     private inner class TuiCommandTrigger : CmdTrigger {
         override fun trigger(input: String): Boolean {
-            val command = CommandTuils.parse(input, mainPack)
+            val command = CommandTuils.parse(input, mainPack, appsManager, contactManager)
             if (command == null) return false
             mainPack.lastCommand = input
             object : StoppableThread() {
@@ -501,7 +558,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
 
     interface Group {
         fun members(): MutableList<out Any?>?
-        fun use(mainPack: MainPack?, input: String?): Boolean
+        fun use(mainPack: CommandContext?, input: String?): Boolean
         fun name(): String?
     }
 

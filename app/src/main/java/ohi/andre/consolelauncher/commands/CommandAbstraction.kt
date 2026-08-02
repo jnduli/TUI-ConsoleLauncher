@@ -2,12 +2,12 @@ package ohi.andre.consolelauncher.commands
 
 interface CommandAbstraction {
     @Throws(Exception::class)
-    fun exec(pack: ExecutePack?): String?
+    fun exec(pack: CommandContext?): String?
     fun argType(): IntArray?
     fun priority(): Int
     fun helpRes(): Int
-    fun onArgNotFound(pack: ExecutePack?, indexNotFound: Int): String?
-    fun onNotArgEnough(pack: ExecutePack?, nArgs: Int): String?
+    fun onArgNotFound(pack: CommandContext?, indexNotFound: Int): String?
+    fun onNotArgEnough(pack: CommandContext?, nArgs: Int): String?
 
     companion object {
         //	arg type

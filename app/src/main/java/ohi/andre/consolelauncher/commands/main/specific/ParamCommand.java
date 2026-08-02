@@ -2,8 +2,7 @@ package ohi.andre.consolelauncher.commands.main.specific;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.Param;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.tuils.SimpleMutableEntry;
@@ -49,16 +48,16 @@ public abstract class ParamCommand implements CommandAbstraction {
         }
 
         @Override
-        public String onNotArgEnough(ExecutePack pack, int n) {
+        public String onNotArgEnough(CommandContext pack, int n) {
         }
 
         @Override
-        public String onArgNotFound(ExecutePack pack, int index) {
+        public String onArgNotFound(CommandContext pack, int index) {
         }
     }
 
     @Override
-    protected Param paramForString(MainPack pack, String param) {
+    protected Param paramForString(CommandContext pack, String param) {
         return Param.get(param);
     }
      */
@@ -69,7 +68,7 @@ public abstract class ParamCommand implements CommandAbstraction {
     }
 
     @Override
-    public final String exec(ExecutePack pack) throws Exception {
+    public final String exec(CommandContext pack) throws Exception {
         String o = doThings(pack);
         if(o != null) return o;
 
@@ -83,7 +82,7 @@ public abstract class ParamCommand implements CommandAbstraction {
         return param.exec(pack);
     }
 
-    public SimpleMutableEntry<Boolean, Param> getParam(MainPack pack, String param) {
+    public SimpleMutableEntry<Boolean, Param> getParam(CommandContext pack, String param) {
         Param p = paramForString(pack, param);
         if(p == null && defaultParamReference() != null) {
             return new SimpleMutableEntry<>(true, paramForString(pack, defaultParam(pack)));
@@ -91,19 +90,19 @@ public abstract class ParamCommand implements CommandAbstraction {
         return new SimpleMutableEntry<>(false, p);
     }
 
-    public String defaultParam(MainPack pack) {
+    public String defaultParam(CommandContext pack) {
         String def = pack.cmdPrefs.get(defaultParamReference());
         if(!def.startsWith("-")) def = "-" + def;
         return def;
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack pack, int nArgs) {
+    public String onNotArgEnough(CommandContext pack, int nArgs) {
         return pack.context.getString(helpRes());
     }
 
     @Override
-    public String onArgNotFound(ExecutePack pack, int indexNotFound) {
+    public String onArgNotFound(CommandContext pack, int indexNotFound) {
         LogTuils.log("inf", indexNotFound);
         if(indexNotFound == 0) {
             try {
@@ -117,8 +116,8 @@ public abstract class ParamCommand implements CommandAbstraction {
     }
 
     public abstract String[] params();
-    protected abstract Param paramForString(MainPack pack, String param);
-    protected abstract String doThings(ExecutePack pack);
+    protected abstract Param paramForString(CommandContext pack, String param);
+    protected abstract String doThings(CommandContext pack);
     public XMLPrefsSave defaultParamReference() {
         return null;
     }

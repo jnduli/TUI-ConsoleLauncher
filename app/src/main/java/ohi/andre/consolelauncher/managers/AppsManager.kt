@@ -28,7 +28,7 @@ import kotlinx.parcelize.RawValue
 import ohi.andre.consolelauncher.MainManager
 import ohi.andre.consolelauncher.R
 import ohi.andre.consolelauncher.UIManager
-import ohi.andre.consolelauncher.commands.main.MainPack
+import ohi.andre.consolelauncher.commands.CommandContext
 import ohi.andre.consolelauncher.managers.launchable.AppLauncher
 import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.launchable.WebLauncher
@@ -283,7 +283,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
             return
         }
 
-        val group = Group(name).apply {
+        val group = Group(name, this).apply {
             val appNames = e.getAttribute(APPS_ATTRIBUTE).split(APPS_SEPARATOR).filter { it.isNotEmpty() }
             val available = allApps.toMutableList()
 
@@ -621,7 +621,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     fun createGroup(name: String): String? {
         val index = StringTuils.find(name, groups)
         if (index == -1) {
-            groups.add(Group(name))
+            groups.add(Group(name, this))
             return XMLPrefsManager.set(
                 file,
                 name,
@@ -944,7 +944,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         }
     }
 
-    class Group(var name: String) : MainManager.Group, StringableObject {
+    class Group(var name: String, private val appsManager: AppsManager) : MainManager.Group, StringableObject {
         var apps: MutableList<Launchable>
 
         @JvmField
@@ -989,11 +989,11 @@ class AppsManager(context: Context) : XMLPrefsElement {
             return apps as MutableList<out Any?>
         }
 
-        override fun use(mainPack: MainPack?, input: String?): Boolean {
+        override fun use(mainPack: CommandContext?, input: String?): Boolean {
             if (mainPack == null || input == null) return false
             val label = StringTuils.removeSpaces(input)
             val launchable = apps.find { it.names().contains(label) }
-            return launchable?.let { mainPack.appsManager.performLaunch(it) } ?: false
+            return launchable?.let { appsManager.performLaunch(it) } ?: false
         }
 
         override fun name(): String? {

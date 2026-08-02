@@ -4,7 +4,7 @@ import android.content.Intent;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.tuils.SystemUtils;
 
 /**
@@ -16,7 +16,7 @@ public class tutorial implements CommandAbstraction {
     final String url = "https://github.com/Andre1299/TUI-ConsoleLauncher/wiki";
 
     @Override
-    public String exec(ExecutePack pack) throws Exception {
+    public String exec(CommandContext pack) throws Exception {
         Intent intent = SystemUtils.webPage(url);
         if(intent != null) pack.context.startActivity(intent);
         return null;
@@ -38,12 +38,12 @@ public class tutorial implements CommandAbstraction {
     }
 
     @Override
-    public String onArgNotFound(ExecutePack pack, int indexNotFound) {
+    public String onArgNotFound(CommandContext pack, int indexNotFound) {
         return null;
     }
 
     @Override
-    public String onNotArgEnough(ExecutePack pack, int nArgs) {
+    public String onNotArgEnough(CommandContext pack, int nArgs) {
         return null;
     }
 }

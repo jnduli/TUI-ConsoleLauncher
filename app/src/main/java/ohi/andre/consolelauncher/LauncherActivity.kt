@@ -386,7 +386,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
             mainView.setSystemUiVisibility(mainView.getSystemUiVisibility() or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR)
         }
 
-        val uiMgr = UIManager(this, mainView, mgr.mainPack, canApplyTheme, mgr.executer())
+        val uiMgr = UIManager(this, mainView, mgr.mainPack, canApplyTheme, mgr.executer(), mgr.aliasManager, mgr.appsManager, mgr.contactManager)
         ui = uiMgr
 
         mgr.setRedirectionListener(uiMgr.buildRedirectionListener())

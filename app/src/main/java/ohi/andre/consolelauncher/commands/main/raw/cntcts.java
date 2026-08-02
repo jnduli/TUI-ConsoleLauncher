@@ -14,8 +14,7 @@ import java.util.List;
 import ohi.andre.consolelauncher.LauncherActivity;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
-import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.ContactManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
@@ -28,154 +27,158 @@ import ohi.andre.consolelauncher.tuils.StringTuils;
 
 public class cntcts extends ParamCommand {
 
-    private enum Param implements ohi.andre.consolelauncher.commands.main.Param {
+    private final ContactManager contacts;
 
-        ls {
-            @Override
-            public String exec(ExecutePack pack) {
-                List<String> list = ((MainPack) pack).contacts.listNamesAndNumbers();
-                StringTuils.insertHeaders(list, false);
-                return StringTuils.toPlanString(list);
-            }
+    public cntcts(ContactManager contacts) {
+        this.contacts = contacts;
+    }
 
-            @Override
-            public int[] args() {
-                return new int[0];
-            }
-        },
-        add {
-            @Override
-            public String exec(ExecutePack pack) {
-                Intent intent = new Intent(ContactsContract.Intents.Insert.ACTION);
-                intent.setType(ContactsContract.RawContacts.CONTENT_TYPE);
-                pack.context.startActivity(intent);
+    // not a static enum: constants need access to the outer instance's contacts
+    private abstract class Param implements ohi.andre.consolelauncher.commands.main.Param {
 
-                return null;
-            }
+        private final String name;
 
-            @Override
-            public int[] args() {
-                return new int[0];
-            }
-        },
-        rm {
-            @Override
-            public String exec(ExecutePack pack) {
-                if (ContextCompat.checkSelfPermission(pack.context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions((Activity) pack.context, new String[]{Manifest.permission.WRITE_CONTACTS}, LauncherActivity.COMMAND_REQUEST_PERMISSION);
-                    return pack.context.getString(R.string.output_waitingpermission);
-                }
-
-                ((MainPack) pack).contacts.delete(pack.getString());
-                return null;
-            }
-
-            @Override
-            public int[] args() {
-                return new int[] {CommandAbstraction.CONTACTNUMBER};
-            }
-
-            @Override
-            public String onArgNotFound(ExecutePack pack, int index) {
-                return pack.context.getString(R.string.output_numbernotfound);
-            }
-        },
-        edit {
-            @Override
-            public String exec(ExecutePack pack) {
-                Intent editIntent = new Intent(Intent.ACTION_EDIT);
-                editIntent.setDataAndType(((MainPack) pack).contacts.fromPhone(pack.getString()), ContactsContract.Contacts.CONTENT_ITEM_TYPE);
-                pack.context.startActivity(editIntent);
-
-                return null;
-            }
-
-            @Override
-            public int[] args() {
-                return new int[] {CommandAbstraction.CONTACTNUMBER};
-            }
-
-            @Override
-            public String onArgNotFound(ExecutePack pack, int index) {
-                return pack.context.getString(R.string.output_numbernotfound);
-            }
-        },
-        l {
-            @Override
-            public String exec(ExecutePack pack) {
-                String[] about = ((MainPack) pack).contacts.about(pack.getString());
-                StringBuilder builder = new StringBuilder();
-
-                builder.append(about[ContactManager.NAME]).append(Tuils.NEWLINE);
-                builder.append("\t\t").append(about[ContactManager.NUMBERS].replaceAll(Tuils.NEWLINE, Tuils.NEWLINE + "\t\t")).append(Tuils.NEWLINE);
-                builder.append("ID: ").append(about[ContactManager.CONTACT_ID]).append(Tuils.NEWLINE);
-                builder.append("Contacted ").append(about[ContactManager.TIME_CONTACTED]).append(" time(s)").append(Tuils.NEWLINE);
-
-                return builder.toString();
-            }
-
-            @Override
-            public int[] args() {
-                return new int[] {CommandAbstraction.CONTACTNUMBER};
-            }
-
-            @Override
-            public String onArgNotFound(ExecutePack pack, int index) {
-                return pack.context.getString(R.string.output_numbernotfound);
-            }
-        };
-
-        static Param get(String p) {
-            p = p.toLowerCase();
-            Param[] ps = values();
-            for (Param p1 : ps)
-                if (p.endsWith(p1.label()))
-                    return p1;
-            return null;
-        }
-
-        static String[] labels() {
-            Param[] ps = values();
-            String[] ss = new String[ps.length];
-
-            for (int count = 0; count < ps.length; count++) {
-                ss[count] = ps[count].label();
-            }
-
-            return ss;
+        Param(String name) {
+            this.name = name;
         }
 
         @Override
         public String label() {
-            return Tuils.MINUS + name();
+            return Tuils.MINUS + name;
         }
 
         @Override
-        public String onArgNotFound(ExecutePack pack, int index) {
+        public String onArgNotFound(CommandContext pack, int index) {
             return null;
         }
 
         @Override
-        public String onNotArgEnough(ExecutePack pack, int n) {
+        public String onNotArgEnough(CommandContext pack, int n) {
             return pack.context.getString(R.string.help_cntcts);
         }
     }
 
+    private final Param ls = new Param("ls") {
+        @Override
+        public String exec(CommandContext pack) {
+            List<String> list = contacts.listNamesAndNumbers();
+            StringTuils.insertHeaders(list, false);
+            return StringTuils.toPlanString(list);
+        }
+
+        @Override
+        public int[] args() {
+            return new int[0];
+        }
+    };
+
+    private final Param add = new Param("add") {
+        @Override
+        public String exec(CommandContext pack) {
+            Intent intent = new Intent(ContactsContract.Intents.Insert.ACTION);
+            intent.setType(ContactsContract.RawContacts.CONTENT_TYPE);
+            pack.context.startActivity(intent);
+
+            return null;
+        }
+
+        @Override
+        public int[] args() {
+            return new int[0];
+        }
+    };
+
+    private final Param rm = new Param("rm") {
+        @Override
+        public String exec(CommandContext pack) {
+            if (ContextCompat.checkSelfPermission(pack.context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions((Activity) pack.context, new String[]{Manifest.permission.WRITE_CONTACTS}, LauncherActivity.COMMAND_REQUEST_PERMISSION);
+                return pack.context.getString(R.string.output_waitingpermission);
+            }
+
+            contacts.delete(pack.getString());
+            return null;
+        }
+
+        @Override
+        public int[] args() {
+            return new int[] {CommandAbstraction.CONTACTNUMBER};
+        }
+
+        @Override
+        public String onArgNotFound(CommandContext pack, int index) {
+            return pack.context.getString(R.string.output_numbernotfound);
+        }
+    };
+
+    private final Param edit = new Param("edit") {
+        @Override
+        public String exec(CommandContext pack) {
+            Intent editIntent = new Intent(Intent.ACTION_EDIT);
+            editIntent.setDataAndType(contacts.fromPhone(pack.getString()), ContactsContract.Contacts.CONTENT_ITEM_TYPE);
+            pack.context.startActivity(editIntent);
+
+            return null;
+        }
+
+        @Override
+        public int[] args() {
+            return new int[] {CommandAbstraction.CONTACTNUMBER};
+        }
+
+        @Override
+        public String onArgNotFound(CommandContext pack, int index) {
+            return pack.context.getString(R.string.output_numbernotfound);
+        }
+    };
+
+    private final Param l = new Param("l") {
+        @Override
+        public String exec(CommandContext pack) {
+            String[] about = contacts.about(pack.getString());
+            StringBuilder builder = new StringBuilder();
+
+            builder.append(about[ContactManager.NAME]).append(Tuils.NEWLINE);
+            builder.append("\t\t").append(about[ContactManager.NUMBERS].replaceAll(Tuils.NEWLINE, Tuils.NEWLINE + "\t\t")).append(Tuils.NEWLINE);
+            builder.append("ID: ").append(about[ContactManager.CONTACT_ID]).append(Tuils.NEWLINE);
+            builder.append("Contacted ").append(about[ContactManager.TIME_CONTACTED]).append(" time(s)").append(Tuils.NEWLINE);
+
+            return builder.toString();
+        }
+
+        @Override
+        public int[] args() {
+            return new int[] {CommandAbstraction.CONTACTNUMBER};
+        }
+
+        @Override
+        public String onArgNotFound(CommandContext pack, int index) {
+            return pack.context.getString(R.string.output_numbernotfound);
+        }
+    };
+
+    private Param[] values() {
+        return new Param[] {ls, add, rm, edit, l};
+    }
+
     @Override
-    protected ohi.andre.consolelauncher.commands.main.Param paramForString(MainPack pack, String param) {
-        return Param.get(param);
+    protected ohi.andre.consolelauncher.commands.main.Param paramForString(CommandContext pack, String param) {
+        return ohi.andre.consolelauncher.commands.main.Param.find(values(), param);
     }
 
     @Override
     public String[] params() {
-        return Param.labels();
+        return ohi.andre.consolelauncher.commands.main.Param.labels(values());
     }
 
     @Override
-    protected String doThings(ExecutePack pack) {
+    protected String doThings(CommandContext pack) {
         if (ContextCompat.checkSelfPermission(pack.context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions((Activity) pack.context, new String[]{Manifest.permission.READ_CONTACTS}, LauncherActivity.COMMAND_REQUEST_PERMISSION);
             return pack.context.getString(R.string.output_waitingpermission);
+        }
+        if (contacts == null) {
+            return pack.context.getString(R.string.output_error);
         }
         return null;
     }
