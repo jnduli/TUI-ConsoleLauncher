@@ -10,6 +10,8 @@ import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.FileTuils;
+
 public class share implements CommandAbstraction {
 
     @Override
@@ -19,7 +21,7 @@ public class share implements CommandAbstraction {
         if (f.isDirectory())
             return info.res.getString(R.string.output_isdirectory);
 
-        Intent sharingIntent = Tuils.shareFile(pack.context, f);
+        Intent sharingIntent = FileTuils.shareFile(pack.context, f);
         info.context.startActivity(Intent.createChooser(sharingIntent, info.res.getString(R.string.share_label)));
 
         return Tuils.EMPTYSTRING;

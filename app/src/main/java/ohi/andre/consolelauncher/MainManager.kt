@@ -17,7 +17,7 @@ import ohi.andre.consolelauncher.commands.main.raw.location
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
 import ohi.andre.consolelauncher.managers.AliasManager
 import ohi.andre.consolelauncher.managers.AppsManager
-import ohi.andre.consolelauncher.tuils.Tuils.printApps
+import ohi.andre.consolelauncher.tuils.StringTuils.printApps
 import ohi.andre.consolelauncher.managers.launchable.WebLauncher
 import ohi.andre.consolelauncher.managers.ChangelogManager
 import ohi.andre.consolelauncher.managers.ContactManager
@@ -29,8 +29,6 @@ import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.ThemeManager
 import ohi.andre.consolelauncher.managers.TimeManager
 import ohi.andre.consolelauncher.managers.TuiLocationManager
-import ohi.andre.consolelauncher.managers.music.MusicManager2
-import ohi.andre.consolelauncher.managers.music.MusicService
 import ohi.andre.consolelauncher.managers.notifications.KeeperService
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
@@ -38,6 +36,10 @@ import ohi.andre.consolelauncher.managers.xml.options.Theme
 import ohi.andre.consolelauncher.tuils.PrivateIOReceiver
 import ohi.andre.consolelauncher.tuils.StoppableThread
 import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.LogTuils
+import ohi.andre.consolelauncher.tuils.OutputTuils
+import ohi.andre.consolelauncher.tuils.StringTuils
+
 import ohi.andre.consolelauncher.tuils.interfaces.CommandExecuter
 import ohi.andre.consolelauncher.tuils.interfaces.OnRedirectionListener
 import ohi.andre.consolelauncher.tuils.interfaces.Redirectator
@@ -107,7 +109,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     private val rssManager: RssManager?
     private val appsManager: AppsManager
     private var contactManager: ContactManager? = null
-    private val musicManager2: MusicManager2?
     private val themeManager: ThemeManager
     private val htmlExtractManager: HTMLExtractManager
 
@@ -117,55 +118,50 @@ class MainManager constructor(private var mContext: LauncherActivity) {
 
     private val keeperServiceRunning: Boolean
 
-    private fun updateServices(cmd: String?, wasMusicService: Boolean) {
+    private fun updateServices(cmd: String?) {
         if (keeperServiceRunning) {
             val i = Intent(mContext, KeeperService::class.java)
             i.putExtra(KeeperService.CMD_KEY, cmd)
             i.putExtra(KeeperService.PATH_KEY, mainPack.currentDirectory.getAbsolutePath())
             mContext.startService(i)
         }
-
-        if (wasMusicService) {
-            val i = Intent(mContext, MusicService::class.java)
-            mContext.startService(i)
-        }
     }
 
-    fun onCommand(input: String, launchable: Launchable?, wasMusicService: Boolean) {
+    fun onCommand(input: String, launchable: Launchable?) {
         if (launchable == null) {
-            onCommand(input, null as String?, wasMusicService)
+            onCommand(input, null as String?)
             return
         }
 
-        updateServices(input, wasMusicService)
+        updateServices(input)
 
-        val unspacedLabel = Tuils.removeSpaces(launchable.name().lowercase(Locale.getDefault()))
-        if (unspacedLabel == Tuils.removeSpaces(input.lowercase(Locale.getDefault()))) {
+        val unspacedLabel = StringTuils.removeSpaces(launchable.name().lowercase(Locale.getDefault()))
+        if (unspacedLabel == StringTuils.removeSpaces(input.lowercase(Locale.getDefault()))) {
             appsManager.performLaunch(launchable)
         } else {
-            onCommand(input, null as String?, wasMusicService)
+            onCommand(input, null as String?)
         }
     }
 
     var colorExtractor: Pattern =
         Pattern.compile("(#[^(]{6})\\[([^\\)]*)\\]", Pattern.CASE_INSENSITIVE)
 
-    fun onCommand(input: String?, alias: String?, wasMusicService: Boolean) {
-        val input = Tuils.removeUnncesarySpaces(input!!)
+    fun onCommand(input: String?, alias: String?) {
+        val input = StringTuils.removeUnncesarySpaces(input!!)
 
-        if (alias == null) updateServices(input, wasMusicService)
+        if (alias == null) updateServices(input)
 
         val currentRedirect = redirect
         if (currentRedirect != null) {
             if (!currentRedirect.isWaitingPermission()) {
                 currentRedirect.afterObjects.add(input)
             }
-            Tuils.sendOutput(mContext, currentRedirect.onRedirect(mainPack))
+            OutputTuils.sendOutput(mContext, currentRedirect.onRedirect(mainPack))
             return
         }
 
         if (alias != null && showAliasValue) {
-            Tuils.sendOutput(aliasContentColor, mContext, aliasManager.formatLabel(alias, input))
+            OutputTuils.sendOutput(mContext, aliasManager.formatLabel(alias, input), aliasContentColor)
         }
 
         val (cmds, colors) = splitAndColorize(input ?: return)
@@ -206,7 +202,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
             try {
                 triggered = trigger.trigger(cmd)
             } catch (e: Exception) {
-                Tuils.sendOutput(mContext, Tuils.getStackTrace(e))
+                OutputTuils.sendOutput(mContext, LogTuils.getStackTrace(e))
                 break
             }
             if (triggered) {
@@ -217,7 +213,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     }
 
     fun onLongBack() {
-        Tuils.sendInput(mContext, Tuils.EMPTYSTRING)
+        OutputTuils.sendInput(mContext, Tuils.EMPTYSTRING)
     }
 
     fun sendPermissionNotGrantedWarning() {
@@ -248,8 +244,8 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                     interactive.kill()
                     interactive.close()
                 } catch (e: Exception) {
-                    Tuils.log(e)
-                    // Tuils.toFile(e);
+                    LogTuils.log(e)
+                    // LogTuils.toFile(e);
                 }
             }
         }.start()
@@ -258,7 +254,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     fun executer(): CommandExecuter {
         return CommandExecuter { input: String?, obj: Any? ->
             val launchable = if (obj is Launchable) obj else null
-            onCommand(input!!, launchable, false)
+            onCommand(input!!, launchable)
         }
     }
 
@@ -280,7 +276,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         try {
             contactManager = ContactManager(mContext)
         } catch (e: NullPointerException) {
-            Tuils.log(e)
+            LogTuils.log(e)
         }
 
         appsManager = AppsManager(mContext)
@@ -292,8 +288,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
 
         rssManager = RssManager(mContext, client)
         themeManager = ThemeManager(client, mContext, mContext)
-        musicManager2 =
-            if (XMLPrefsManager.getBoolean(Behavior.enable_music)) MusicManager2(mContext) else null
         ChangelogManager.printLog(mContext, client)
         htmlExtractManager = HTMLExtractManager(mContext, client)
 
@@ -306,7 +300,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
             group,
             aliasManager,
             appsManager,
-            musicManager2,
             contactManager,
             redirectator,
             rssManager,
@@ -348,12 +341,12 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                     }
 
                     if (p != null && p is Launchable) {
-                        onCommand(cmd, p, intent.getBooleanExtra(MUSIC_SERVICE, false))
+                        onCommand(cmd, p)
                     } else {
-                        onCommand(cmd, aliasName, intent.getBooleanExtra(MUSIC_SERVICE, false))
+                        onCommand(cmd, aliasName)
                     }
                 } else if (action == location.ACTION_LOCATION_CMD_GOT) {
-                    Tuils.sendOutput(
+                    OutputTuils.sendOutput(
                         context,
                         "Lat: " + intent.getDoubleExtra(
                             TuiLocationManager.LATITUDE,
@@ -380,7 +373,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         override fun trigger(input: String): Boolean {
             val alias = aliasManager.getAlias(input, true) ?: return false
             val aliasValue = aliasManager.format(alias[0] ?: return false, alias[2]!!)
-            onCommand(aliasValue, alias[1], false)
+            onCommand(aliasValue, alias[1])
             return true
         }
     }
@@ -405,7 +398,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
             for (g in appGroups) {
                 if (name == g.name()) {
                     if (rest == null) {
-                        Tuils.sendOutput(
+                        OutputTuils.sendOutput(
                             mContext,
                             printApps(Launchable.labelList(g.members() as MutableList<out Launchable>, false))
                         )
@@ -494,11 +487,11 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                     try {
                         val output = command.exec(mainPack)
                         if (output != null) {
-                            Tuils.sendOutput(mainPack, output, TerminalManager.CATEGORY_OUTPUT)
+                            OutputTuils.sendOutput(mainPack.context, output, mainPack.commandColor, TerminalManager.CATEGORY_OUTPUT)
                         }
                     } catch (e: Exception) {
-                        Tuils.sendOutput(mContext, Tuils.getStackTrace(e))
-                        Tuils.log(e)
+                        OutputTuils.sendOutput(mContext, LogTuils.getStackTrace(e))
+                        LogTuils.log(e)
                     }
                 }
             }.start()
@@ -523,8 +516,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         var PARCELABLE: String = "parcelable"
         @JvmField
         var CMD_COUNT: String = "cmdCount"
-        @JvmField
-        var MUSIC_SERVICE: String = "musicService"
 
         lateinit var interactive: Interactive
 

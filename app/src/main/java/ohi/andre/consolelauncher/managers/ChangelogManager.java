@@ -14,6 +14,10 @@ import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Theme;
 import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.SystemUtils;
+import ohi.andre.consolelauncher.tuils.LogTuils;
+import ohi.andre.consolelauncher.tuils.OutputTuils;
+
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -59,8 +63,8 @@ public class ChangelogManager {
                 public void run() {
                     super.run();
 
-                    if (!Tuils.hasInternetAccess()) {
-                        if(force) Tuils.sendOutput(context, R.string.no_internet);
+                    if (!SystemUtils.hasInternetAccess()) {
+                        if(force) OutputTuils.sendOutput(context, R.string.no_internet);
                         return;
                     }
 
@@ -74,7 +78,7 @@ public class ChangelogManager {
                         Response response = client.newCall(builder.build()).execute();
 
                         if (!response.isSuccessful() || response.code() == 304) {
-                            if(force) Tuils.sendOutput(context, R.string.internet_error + Tuils.SPACE + response.code());
+                            if(force) OutputTuils.sendOutput(context, R.string.internet_error + Tuils.SPACE + response.code());
                             return;
                         }
 
@@ -86,21 +90,21 @@ public class ChangelogManager {
                         boolean cut = !force && log.length() >= MAX_LENGTH;
                         if(cut) log = log.substring(0, MAX_LENGTH) + "...";
 
-                        Tuils.sendOutput(context, header + Tuils.NEWLINE + log);
+                        OutputTuils.sendOutput(context, header + Tuils.NEWLINE + log);
 
                         if(cut) {
                             SpannableString sp = new SpannableString("Click here to see the full changelog");
                             sp.setSpan(new ForegroundColorSpan(XMLPrefsManager.getColor(Theme.output_color)), 0, sp.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                             sp.setSpan(new ForegroundColorSpan(XMLPrefsManager.getColor(Theme.link_color)), 6, 10, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                            Tuils.sendOutput(context, sp, TerminalManager.CATEGORY_NO_COLOR, Uri.parse(changelogUrl));
+                            OutputTuils.sendOutput(context, sp, Integer.MAX_VALUE, TerminalManager.CATEGORY_NO_COLOR, Uri.parse(changelogUrl));
                         }
 
                         SharedPreferences.Editor editor = preferences.edit();
                         editor.putBoolean(changelogUrl, true);
                         editor.apply();
                     } catch (Exception e) {
-                        Tuils.sendOutput(context, e.toString());
-                        Tuils.log(e);
+                        OutputTuils.sendOutput(context, e.toString());
+                        LogTuils.log(e);
                     }
                 }
             }.start();

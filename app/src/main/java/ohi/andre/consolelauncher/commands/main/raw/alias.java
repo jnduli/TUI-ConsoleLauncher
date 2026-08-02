@@ -11,6 +11,10 @@ import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.AliasManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.SystemUtils;
+import ohi.andre.consolelauncher.tuils.FileTuils;
+import ohi.andre.consolelauncher.tuils.StringTuils;
+
 /**
  * Created by andre on 15/11/15.
  */
@@ -24,7 +28,7 @@ public class alias extends ParamCommand {
                 ArrayList<String> args = pack.getList();
                 if(args.size() < 2) return pack.context.getString(R.string.output_lessarg);
 
-                ((MainPack) pack).aliasManager.add(pack.context, args.remove(0), Tuils.toPlanString(args, Tuils.SPACE));
+                ((MainPack) pack).aliasManager.add(pack.context, args.remove(0), StringTuils.toPlanString(args, Tuils.SPACE));
                 return null;
             }
 
@@ -50,7 +54,7 @@ public class alias extends ParamCommand {
         file {
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.openFile(pack.context, new File(Tuils.getFolder(pack.context), AliasManager.PATH)));
+                pack.context.startActivity(FileTuils.openFile(pack.context, new File(FileTuils.getFolder(pack.context), AliasManager.PATH)));
                 return null;
             }
 
@@ -78,7 +82,7 @@ public class alias extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Alias"));
+                pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Alias"));
                 return null;
             }
         };

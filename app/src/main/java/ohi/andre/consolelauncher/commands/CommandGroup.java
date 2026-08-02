@@ -13,6 +13,8 @@ import java.util.List;
 import ohi.andre.consolelauncher.commands.main.specific.APICommand;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.FileTuils;
+
 public class CommandGroup {
 
     private String packageName;
@@ -24,7 +26,7 @@ public class CommandGroup {
 
         List<String> cmds;
         try {
-            cmds = Tuils.getClassesInPackage(packageName, c);
+            cmds = FileTuils.getClassesInPackage(packageName, c);
         } catch (IOException e) {
             return;
         }

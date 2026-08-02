@@ -17,7 +17,6 @@ import ohi.andre.consolelauncher.managers.ContactManager;
 import ohi.andre.consolelauncher.managers.RssManager;
 import ohi.andre.consolelauncher.managers.TerminalManager;
 import ohi.andre.consolelauncher.managers.flashlight.TorchManager;
-import ohi.andre.consolelauncher.managers.music.MusicManager2;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 import ohi.andre.consolelauncher.tuils.interfaces.Redirectator;
@@ -47,9 +46,6 @@ public class MainPack extends ExecutePack {
     //	contacts
     public ContactManager contacts;
 
-    //	music
-    public MusicManager2 player;
-
     //	apps & assocs
     public AliasManager aliasManager;
     public AppsManager appsManager;
@@ -68,7 +64,7 @@ public class MainPack extends ExecutePack {
 
     public int commandColor = TerminalManager.NO_COLOR;
 
-    public MainPack(Context context, CommandGroup commandGroup, AliasManager alMgr, AppsManager appmgr, MusicManager2 p,
+    public MainPack(Context context, CommandGroup commandGroup, AliasManager alMgr, AppsManager appmgr,
                     ContactManager c, Redirectator redirectator, RssManager rssManager, OkHttpClient client) {
         super(commandGroup);
 
@@ -87,7 +83,6 @@ public class MainPack extends ExecutePack {
 
         this.cmdPrefs = new CommandsPreferences();
 
-        this.player = p;
         this.contacts = c;
 
         this.redirectator = redirectator;
@@ -99,7 +94,6 @@ public class MainPack extends ExecutePack {
     }
 
     public void destroy() {
-        if(player != null) player.destroy();
         appsManager.onDestroy();
         if(rssManager != null) rssManager.dispose();
         contacts.destroy(context);

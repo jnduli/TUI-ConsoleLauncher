@@ -19,12 +19,14 @@ import ohi.andre.consolelauncher.commands.ExecutePack
 import ohi.andre.consolelauncher.commands.main.MainPack
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand
 import ohi.andre.consolelauncher.managers.launchable.AppLauncher
-import ohi.andre.consolelauncher.managers.launchable.AppUtils.format
 import ohi.andre.consolelauncher.managers.AppsManager
 import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave
 import ohi.andre.consolelauncher.managers.xml.options.Apps
 import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.SystemUtils
+import ohi.andre.consolelauncher.tuils.FileTuils
+
 import java.io.File
 import java.util.Locale
 
@@ -97,7 +99,7 @@ class apps : ParamCommand() {
                         i.componentName!!.getPackageName(),
                         PackageManager.GET_PERMISSIONS or PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES or PackageManager.GET_RECEIVERS
                     )
-                    return format(i as AppLauncher, info)
+                    return (i as AppLauncher).format(info)
                 } catch (e: PackageManager.NameNotFoundException) {
                     return e.toString()
                 }
@@ -177,9 +179,9 @@ class apps : ParamCommand() {
 
             override fun exec(pack: ExecutePack): String? {
                 pack.context.startActivity(
-                    Tuils.openFile(
+                    FileTuils.openFile(
                         pack.context,
-                        File(Tuils.getFolder(pack.context), AppsManager.PATH)
+                        File(FileTuils.getFolder(pack.context), AppsManager.PATH)
                     )
                 )
                 return null
@@ -328,7 +330,7 @@ class apps : ParamCommand() {
             }
 
             override fun exec(pack: ExecutePack): String? {
-                pack.context.startActivity(Tuils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Apps"))
+                pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Apps"))
                 return null
             }
         };
@@ -392,7 +394,7 @@ class apps : ParamCommand() {
 
     companion object {
         private fun openSettings(context: Context, packageName: String?) {
-            Tuils.openSettingsPage(context, packageName)
+            SystemUtils.openSettingsPage(context, packageName)
         }
 
         private fun openPlaystore(context: Context, packageName: String?) {

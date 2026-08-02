@@ -20,6 +20,8 @@ import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.ContactManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.StringTuils;
+
 /**
  * Created by francescoandreuzzi on 11/05/2017.
  */
@@ -32,8 +34,8 @@ public class cntcts extends ParamCommand {
             @Override
             public String exec(ExecutePack pack) {
                 List<String> list = ((MainPack) pack).contacts.listNamesAndNumbers();
-                Tuils.insertHeaders(list, false);
-                return Tuils.toPlanString(list);
+                StringTuils.insertHeaders(list, false);
+                return StringTuils.toPlanString(list);
             }
 
             @Override

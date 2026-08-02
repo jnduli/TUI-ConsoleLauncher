@@ -15,6 +15,8 @@ import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 import ohi.andre.consolelauncher.managers.xml.options.Ui;
 import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.SystemUtils;
+
 import ohi.andre.consolelauncher.tuils.interfaces.Reloadable;
 
 /**
@@ -66,7 +68,7 @@ public class tuiweather extends ParamCommand {
         tutorial {
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Weather/_edit"));
+                pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Weather/_edit"));
                 return null;
             }
         },

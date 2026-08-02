@@ -8,6 +8,8 @@ import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.RegexManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.OutputTuils;
+
 /**
  * Created by francescoandreuzzi on 04/10/2017.
  */
@@ -64,7 +66,7 @@ public class regex extends ParamCommand {
                 CharSequence s = RegexManager.instance.test(pack.getInt(), pack.getString());
                 if(s.length() == 0) return pack.context.getString(R.string.id_notfound);
 
-                Tuils.sendOutput(pack.context, s);
+                OutputTuils.sendOutput(pack.context, s);
                 return null;
             }
 

@@ -18,6 +18,10 @@ import ohi.andre.consolelauncher.BuildConfig;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.SystemUtils;
+import ohi.andre.consolelauncher.tuils.FileTuils;
+import ohi.andre.consolelauncher.tuils.OutputTuils;
+
 import ohi.andre.consolelauncher.tuils.interfaces.Reloadable;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -81,8 +85,8 @@ public class ThemeManager {
             public void run() {
                 super.run();
 
-                if(!Tuils.hasInternetAccess()) {
-                    Tuils.sendOutput(Color.RED, context, R.string.no_internet);
+                if(!SystemUtils.hasInternetAccess()) {
+                    OutputTuils.sendOutput(context, R.string.no_internet, Color.RED);
                     return;
                 }
 
@@ -95,12 +99,12 @@ public class ThemeManager {
                 try {
                     response = client.newCall(builder.build()).execute();
                 } catch (IOException e) {
-                    Tuils.sendOutput(context, e.toString());
+                    OutputTuils.sendOutput(context, e.toString());
                     return;
                 }
 
                 if (!response.isSuccessful()) {
-                    Tuils.sendOutput(Color.RED, context, "theme url unavailable");
+                    OutputTuils.sendOutput(context, "theme url unavailable", Color.RED);
                 } else {
                     String string;
                     try {
@@ -110,7 +114,7 @@ public class ThemeManager {
                     }
 
                     if(string.length() == 0) {
-                        Tuils.sendOutput(context, R.string.theme_not_found);
+                        OutputTuils.sendOutput(context, R.string.theme_not_found);
                         return;
                     }
 
@@ -121,7 +125,7 @@ public class ThemeManager {
 
                         applyTheme(theme, suggestions, true, themeName);
                     } else {
-                        Tuils.sendOutput(context, R.string.theme_not_found);
+                        OutputTuils.sendOutput(context, R.string.theme_not_found);
                         return;
                     }
                 }
@@ -135,15 +139,15 @@ public class ThemeManager {
 
     private void applyTheme(File theme, File suggestions, boolean keepOld) {
         if(theme == null || suggestions == null) {
-            Tuils.sendOutput(context, R.string.theme_unable);
+            OutputTuils.sendOutput(context, R.string.theme_unable);
             return;
         }
 
-        File oldTheme = new File(Tuils.getFolder(context), XMLPrefsManager.XMLPrefsRoot.THEME.path);
-        File oldSuggestions = new File(Tuils.getFolder(context), XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.path);
+        File oldTheme = new File(FileTuils.getFolder(context), XMLPrefsManager.XMLPrefsRoot.THEME.path);
+        File oldSuggestions = new File(FileTuils.getFolder(context), XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.path);
         if(keepOld) {
-            Tuils.insertOld(context, oldTheme);
-            Tuils.insertOld(context, oldSuggestions);
+            FileTuils.insertOld(context, oldTheme);
+            FileTuils.insertOld(context, oldSuggestions);
         }
 
         theme.renameTo(oldTheme);
@@ -154,7 +158,7 @@ public class ThemeManager {
 
     private void applyTheme(String theme, String suggestions, boolean keepOld, String themeName) {
         if(theme == null || suggestions == null) {
-            Tuils.sendOutput(context, R.string.theme_unable);
+            OutputTuils.sendOutput(context, R.string.theme_unable);
             return;
         }
 
@@ -168,11 +172,11 @@ public class ThemeManager {
             suggestions = Pattern.compile(Pattern.quote(colorMatcher.group())).matcher(suggestions).replaceAll(toHexColor(colorMatcher.group()));
         }
 
-        File oldTheme = new File(Tuils.getFolder(context), XMLPrefsManager.XMLPrefsRoot.THEME.path);
-        File oldSuggestions = new File(Tuils.getFolder(context), XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.path);
+        File oldTheme = new File(FileTuils.getFolder(context), XMLPrefsManager.XMLPrefsRoot.THEME.path);
+        File oldSuggestions = new File(FileTuils.getFolder(context), XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.path);
         if(keepOld) {
-            Tuils.insertOld(context, oldTheme);
-            Tuils.insertOld(context, oldSuggestions);
+            FileTuils.insertOld(context, oldTheme);
+            FileTuils.insertOld(context, oldSuggestions);
         }
         oldTheme.delete();
         oldSuggestions.delete();
@@ -191,19 +195,19 @@ public class ThemeManager {
             reloadable.addMessage(context.getString(R.string.theme_applied) + Tuils.SPACE + themeName, null);
             reloadable.reload();
         } catch (IOException e) {
-            Tuils.sendOutput(context, R.string.output_error);
+            OutputTuils.sendOutput(context, R.string.output_error);
         }
     }
 
     private void revert() {
-        applyTheme(Tuils.getOld(context, XMLPrefsManager.XMLPrefsRoot.THEME.path), Tuils.getOld(context, XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.path), false);
+        applyTheme(FileTuils.getOld(context, XMLPrefsManager.XMLPrefsRoot.THEME.path), FileTuils.getOld(context, XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.path), false);
     }
 
     private void standard() {
-        File oldTheme = new File(Tuils.getFolder(context), XMLPrefsManager.XMLPrefsRoot.THEME.path);
-        File oldSuggestions = new File(Tuils.getFolder(context), XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.path);
-        Tuils.insertOld(context, oldTheme);
-        Tuils.insertOld(context, oldSuggestions);
+        File oldTheme = new File(FileTuils.getFolder(context), XMLPrefsManager.XMLPrefsRoot.THEME.path);
+        File oldSuggestions = new File(FileTuils.getFolder(context), XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.path);
+        FileTuils.insertOld(context, oldTheme);
+        FileTuils.insertOld(context, oldSuggestions);
 
         oldTheme.delete();
         oldSuggestions.delete();

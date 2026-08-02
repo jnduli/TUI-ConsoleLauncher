@@ -27,6 +27,11 @@ import ohi.andre.consolelauncher.managers.xml.options.Theme
 import ohi.andre.consolelauncher.managers.xml.options.Toolbar
 import ohi.andre.consolelauncher.managers.xml.options.Ui
 import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.SystemUtils
+import ohi.andre.consolelauncher.tuils.FileTuils
+import ohi.andre.consolelauncher.tuils.OutputTuils
+import ohi.andre.consolelauncher.tuils.ViewTuils
+
 import ohi.andre.consolelauncher.tuils.interfaces.CommandExecuter
 import ohi.andre.consolelauncher.tuils.interfaces.OnRedirectionListener
 import ohi.andre.consolelauncher.tuils.stuff.PolicyReceiver
@@ -67,7 +72,7 @@ class UIManager(
         LocalBroadcastManager.getInstance(mContext.applicationContext)
             .unregisterReceiver(receiver)
 
-        Tuils.cancelFont()
+        ViewTuils.cancelFont()
     }
 
     fun openKeyboard() {
@@ -138,7 +143,7 @@ class UIManager(
             val comp = component
             if (pol != null && comp != null) {
                 if (!pol.isAdminActive(comp)) {
-                    val i = Tuils.requestAdmin(comp, mContext.getString(R.string.admin_permission))
+                    val i = SystemUtils.requestAdmin(comp, mContext.getString(R.string.admin_permission))
                     mContext.startActivity(i)
                 } else {
                     pol.lockNow()
@@ -194,17 +199,17 @@ class UIManager(
                     val fileName = intent.getStringExtra(FILE_NAME)
                     if (fileName == null || fileName.contains(File.separator)) return
 
-                    val file = File(Tuils.getFolder(context), fileName)
+                    val file = File(FileTuils.getFolder(context), fileName)
                     if (file.exists()) file.delete()
 
                     try {
                         file.createNewFile()
                         val fos = FileOutputStream(file)
                         fos.write(mTerminalAdapter.getTerminalText().toByteArray())
-                        Tuils.sendOutput(context, "Logged to " + file.absolutePath)
+                        OutputTuils.sendOutput(context, "Logged to " + file.absolutePath)
                     } catch (e: Exception) {
                         Log.e(TAG, e.toString())
-                        Tuils.sendOutput(Color.RED, context, e.toString())
+                        OutputTuils.sendOutput(context, e.toString(), Color.RED)
                     }
                 } else if (action == ACTION_CLEAR) {
                     mTerminalAdapter.clear()
@@ -232,7 +237,7 @@ class UIManager(
         if (XMLPrefsManager.getBoolean(Behavior.auto_scroll)) {
             rootView.viewTreeObserver.addOnGlobalLayoutListener(OnGlobalLayoutListener {
                 val heightDiff = rootView.rootView.height - rootView.height
-                if (heightDiff > Tuils.dpToPx(context, 200)) { // if more than 200 dp, it's probably a keyboard...
+                if (heightDiff > ViewTuils.dpToPx(context, 200)) { // if more than 200 dp, it's probably a keyboard...
                     mTerminalAdapter.scrollToEnd()
                 }
             })
@@ -249,10 +254,10 @@ class UIManager(
             getListOfIntValues(XMLPrefsManager.get(Ui.display_margin_mm), 4, 0)
         val metrics = mContext.resources.displayMetrics
         rootView.setPadding(
-            Tuils.mmToPx(metrics, displayMargins[0]),
-            Tuils.mmToPx(metrics, displayMargins[1]),
-            Tuils.mmToPx(metrics, displayMargins[2]),
-            Tuils.mmToPx(metrics, displayMargins[3])
+            ViewTuils.mmToPx(metrics, displayMargins[0]),
+            ViewTuils.mmToPx(metrics, displayMargins[1]),
+            ViewTuils.mmToPx(metrics, displayMargins[2]),
+            ViewTuils.mmToPx(metrics, displayMargins[3])
         )
 
         mTerminalAdapter = TerminalManager(context, requireNotNull(mainPack), requireNotNull(executer))

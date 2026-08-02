@@ -20,6 +20,11 @@ import ohi.andre.consolelauncher.managers.xml.options.Theme;
 import ohi.andre.consolelauncher.tuils.SimpleMutableEntry;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.LogTuils;
+import ohi.andre.consolelauncher.tuils.OutputTuils;
+import ohi.andre.consolelauncher.tuils.StringTuils;
+import ohi.andre.consolelauncher.tuils.ViewTuils;
+
 /**
  * Created by francescoandreuzzi on 26/07/2017.
  */
@@ -43,7 +48,7 @@ public class TimeManager {
 
         for(int c = 0; c < dateFormatList.length; c++) {
             try {
-                formats[c] = Tuils.patternNewline.matcher(formats[c]).replaceAll(Tuils.NEWLINE);
+                formats[c] = StringTuils.patternNewline.matcher(formats[c]).replaceAll(Tuils.NEWLINE);
 
                 int color = XMLPrefsManager.getColor(Theme.time_color);
                 Matcher m = colorPattern.matcher(formats[c]);
@@ -54,7 +59,7 @@ public class TimeManager {
 
                 dateFormatList[c] = new SimpleMutableEntry<>(color, new SimpleDateFormat(formats[c]));
             } catch (Exception e) {
-                Tuils.sendOutput(Color.RED, context,"Invalid time format: " + formats[c]);
+                OutputTuils.sendOutput(context, "Invalid time format: " + formats[c], Color.RED);
                 dateFormatList[c] = dateFormatList[0];
             }
         }
@@ -100,8 +105,8 @@ public class TimeManager {
         }
 
         if(cs instanceof String) {
-            Tuils.log(Thread.currentThread().getStackTrace());
-            Tuils.log("cant span a string!", cs.toString());
+            LogTuils.log(Thread.currentThread().getStackTrace());
+            LogTuils.log("cant span a string!", cs.toString());
         }
 
         Date date = new Date(tm);
@@ -180,7 +185,7 @@ public class TimeManager {
         spannableString.setSpan(new ForegroundColorSpan(clr), 0, tf.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
         if(size != Integer.MAX_VALUE && context != null) {
-            spannableString.setSpan(new AbsoluteSizeSpan(Tuils.convertSpToPixels(size, context)), 0, tf.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            spannableString.setSpan(new AbsoluteSizeSpan(ViewTuils.convertSpToPixels(size, context)), 0, tf.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
         return spannableString;

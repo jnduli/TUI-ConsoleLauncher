@@ -21,6 +21,9 @@ import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.SystemUtils;
+import ohi.andre.consolelauncher.tuils.FileTuils;
+
 import ohi.andre.consolelauncher.tuils.interfaces.Reloadable;
 import ohi.andre.consolelauncher.tuils.stuff.PolicyReceiver;
 
@@ -85,7 +88,7 @@ public class tui extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                File file = new File(Tuils.getFolder(pack.context), "cmd.xml");
+                File file = new File(FileTuils.getFolder(pack.context), "cmd.xml");
                 return XMLPrefsManager.set(file, pack.get().getClass().getSimpleName() + CommandsPreferences.PRIORITY_SUFFIX, new String[] {XMLPrefsManager.VALUE_ATTRIBUTE}, new String[] {String.valueOf(pack.getInt())});
             }
 
@@ -102,35 +105,35 @@ public class tui extends ParamCommand {
         telegram {
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://t.me/tuilauncher"));
+                pack.context.startActivity(SystemUtils.webPage("https://t.me/tuilauncher"));
                 return null;
             }
         },
         googlep {
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://plus.google.com/communities/103936578623101446195"));
+                pack.context.startActivity(SystemUtils.webPage("https://plus.google.com/communities/103936578623101446195"));
                 return null;
             }
         },
         twitter {
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://twitter.com/tui_launcher"));
+                pack.context.startActivity(SystemUtils.webPage("https://twitter.com/tui_launcher"));
                 return null;
             }
         },
         sourcecode {
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher"));
+                pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher"));
                 return null;
             }
         },
         reset {
             @Override
             public String exec(ExecutePack pack) {
-                Tuils.deleteContentOnly(Tuils.getFolder(pack.context));
+                FileTuils.deleteContentOnly(FileTuils.getFolder(pack.context));
 
                 ((LauncherActivity) pack.context).addMessage(pack.context.getString(R.string.tui_reset), null);
                 ((Reloadable) pack.context).reload();
@@ -141,14 +144,14 @@ public class tui extends ParamCommand {
             @Override
             public String exec(ExecutePack pack) {
 
-                Uri selectedUri = Uri.parse(Tuils.getFolder(pack.context).getAbsolutePath());
+                Uri selectedUri = Uri.parse(FileTuils.getFolder(pack.context).getAbsolutePath());
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setDataAndType(selectedUri, "resource/folder");
 
                 if (intent.resolveActivityInfo(pack.context.getPackageManager(), 0) != null) {
                     pack.context.startActivity(intent);
                 } else {
-                    return Tuils.getFolder(pack.context).getAbsolutePath();
+                    return FileTuils.getFolder(pack.context).getAbsolutePath();
                 }
 
                 return null;

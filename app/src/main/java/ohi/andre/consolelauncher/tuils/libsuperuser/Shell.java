@@ -36,7 +36,7 @@ import java.util.UUID;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.LogTuils;
 
 import static ohi.andre.consolelauncher.tuils.libsuperuser.StreamGobbler.*;
 
@@ -181,11 +181,11 @@ public class Shell {
             }
         } catch (IOException e) {
             // shell probably not found
-            Tuils.log(e);
+            LogTuils.log(e);
             res = null;
         } catch (InterruptedException e) {
             // this should really be re-thrown
-            Tuils.log(e);
+            LogTuils.log(e);
             res = null;
         }
 

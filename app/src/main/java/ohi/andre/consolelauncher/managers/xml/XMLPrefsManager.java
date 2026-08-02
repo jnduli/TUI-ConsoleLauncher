@@ -38,6 +38,11 @@ import ohi.andre.consolelauncher.managers.xml.options.Toolbar;
 import ohi.andre.consolelauncher.managers.xml.options.Ui;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.FileTuils;
+import ohi.andre.consolelauncher.tuils.LogTuils;
+import ohi.andre.consolelauncher.tuils.OutputTuils;
+import ohi.andre.consolelauncher.tuils.StringTuils;
+
 public class XMLPrefsManager {
 
     public static final String XML_DEFAULT = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
@@ -110,7 +115,7 @@ public class XMLPrefsManager {
 
         @Override
         public void write(Context c, XMLPrefsSave save, String value) {
-            set(new File(Tuils.getFolder(c), path), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
+            set(new File(FileTuils.getFolder(c), path), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
         }
 
         public XMLPrefsList getValues() {
@@ -138,9 +143,9 @@ public class XMLPrefsManager {
         if(commonsLoaded) return;
         commonsLoaded = true;
 
-        File folder = Tuils.getFolder(context);
+        File folder = FileTuils.getFolder(context);
         if(folder == null) {
-            Tuils.sendOutput(Color.RED, context, R.string.tuinotfound_xmlprefs);
+            OutputTuils.sendOutput(context, R.string.tuinotfound_xmlprefs, Color.RED);
             return;
         }
 
@@ -154,14 +159,14 @@ public class XMLPrefsManager {
             try {
                 o = buildDocument(file, element.name());
                 if(o == null) {
-                    Tuils.sendXMLParseError(context, element.path);
+                    OutputTuils.sendXMLParseError(context, element.path);
                     return;
                 }
             } catch (SAXParseException e) {
-                Tuils.sendXMLParseError(context, element.path, e);
+                OutputTuils.sendXMLParseError(context, element.path, e);
                 continue;
             } catch (Exception e) {
-                Tuils.log(e);
+                LogTuils.log(e);
                 return;
             }
 
@@ -225,7 +230,7 @@ public class XMLPrefsManager {
                 }
 
                 if(!check && deleted != null) {
-                    int index = Tuils.find(nn, deleted);
+                    int index = StringTuils.find(nn, deleted);
                     if(index != -1) {
                         deleted[index] = null;
                         Element e = (Element) node;
@@ -275,7 +280,7 @@ public class XMLPrefsManager {
             return file;
         }
 
-        return Tuils.getDefaultValue(c);
+        return LogTuils.getDefaultValue(c);
     }
 
     public static float getFloat(XMLPrefsSave prefsSave) {
@@ -382,14 +387,14 @@ public class XMLPrefsManager {
         try {
             return (T) transform(prefsSave.parent().getValues().get(prefsSave).value, c);
         } catch (Exception e) {
-            Tuils.log(e);
+            LogTuils.log(e);
 //            this will happen if the option is not found
             try {
                 return (T) transform(prefsSave.defaultValue(), c);
             } catch (Exception e1) {
-                Tuils.log(e1);
+                LogTuils.log(e1);
 //                attempts to get a default value for the given type, as we say in italian, "the last beach"
-                return Tuils.getDefaultValue(c);
+                return LogTuils.getDefaultValue(c);
             }
         }
     }
@@ -430,9 +435,9 @@ public class XMLPrefsManager {
         try {
             d = builder.parse(file);
         } catch (Exception e) {
-            Tuils.log(e);
+            LogTuils.log(e);
 
-            int nOfBytes = Tuils.nOfBytes(file);
+            int nOfBytes = FileTuils.nOfBytes(file);
             if(nOfBytes == 0 && rootName != null) {
                 XMLPrefsManager.resetFile(file, rootName);
                 d = builder.parse(file);
@@ -461,7 +466,7 @@ public class XMLPrefsManager {
             stream.flush();
             stream.close();
         } catch (Exception e) {
-            Tuils.log(e);
+            LogTuils.log(e);
         }
     }
 
@@ -473,7 +478,7 @@ public class XMLPrefsManager {
                 o = buildDocument(file, null);
                 if(o == null) return Tuils.EMPTYSTRING;
             } catch (Exception e) {
-                Tuils.log(e);
+                LogTuils.log(e);
                 return e.toString();
             }
 
@@ -489,7 +494,7 @@ public class XMLPrefsManager {
 
             writeTo(d, file);
         } catch (Exception e) {
-            Tuils.log(e);
+            LogTuils.log(e);
             return e.toString();
         }
         return null;
@@ -517,7 +522,7 @@ public class XMLPrefsManager {
                 o = buildDocument(file, null);
                 if(o == null) return Tuils.EMPTYSTRING;
             } catch (Exception e) {
-                Tuils.log(e);
+                LogTuils.log(e);
                 return e.toString();
             }
 
@@ -577,8 +582,8 @@ public class XMLPrefsManager {
             if(nFound == 0) return Tuils.EMPTYSTRING;
             return null;
         } catch (Exception e) {
-            Tuils.log(e);
-            // Tuils.toFile(e);
+            LogTuils.log(e);
+            // LogTuils.toFile(e);
             return e.toString();
         }
     }

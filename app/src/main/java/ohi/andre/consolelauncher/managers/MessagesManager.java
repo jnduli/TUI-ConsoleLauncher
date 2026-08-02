@@ -14,6 +14,8 @@ import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Theme;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.OutputTuils;
+
 /**
  * Created by francescoandreuzzi on 31/08/2017.
  */
@@ -57,7 +59,7 @@ public class MessagesManager {
 
             SharedPreferences.Editor editor = preferences.edit();
             if(count < hints.length) {
-                Tuils.sendOutput(color, context, original.get(count));
+                OutputTuils.sendOutput(context, original.get(count), color);
                 editor.putInt(LAST_TUTORIAL_COUNT, ++count).apply();
             }
             else editor.putBoolean(NEED_TUTORIAL_KEY, false).apply();
@@ -83,7 +85,7 @@ public class MessagesManager {
         if(tutorialMode) {
             SharedPreferences.Editor editor = context.getSharedPreferences(PREFS_NAME, 0).edit();
             if(count < original.size()) {
-                Tuils.sendOutput(color, context, original.get(count));
+                OutputTuils.sendOutput(context, original.get(count), color);
                 editor.putInt(LAST_TUTORIAL_COUNT, count).apply();
             } else {
                 editor.putBoolean(NEED_TUTORIAL_KEY, false).apply();
@@ -92,7 +94,7 @@ public class MessagesManager {
             count = 0;
 
             if(donate) {
-                Tuils.sendOutput(color, context, R.string.donate);
+                OutputTuils.sendOutput(context, R.string.donate, color);
             } else {
                 if(copy.size() == 0) {
                     copy = new ArrayList<>(original);
@@ -104,7 +106,7 @@ public class MessagesManager {
                     return;
                 }
 
-                Tuils.sendOutput(color, context, MARKER + Tuils.NEWLINE + copy.remove(index) + Tuils.NEWLINE + MARKER);
+                OutputTuils.sendOutput(context, MARKER + Tuils.NEWLINE + copy.remove(index) + Tuils.NEWLINE + MARKER, color);
             }
 
             donate = !donate;

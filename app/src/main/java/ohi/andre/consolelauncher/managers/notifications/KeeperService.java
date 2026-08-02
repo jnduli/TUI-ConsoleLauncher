@@ -23,6 +23,11 @@ import ohi.andre.consolelauncher.tuils.PrivateIOReceiver;
 import ohi.andre.consolelauncher.tuils.PublicIOReceiver;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.StringTuils;
+import ohi.andre.consolelauncher.tuils.LogTuils;
+import ohi.andre.consolelauncher.tuils.MathTuils;
+import ohi.andre.consolelauncher.tuils.ViewTuils;
+
 import static ohi.andre.consolelauncher.managers.TerminalManager.FORMAT_INPUT;
 import static ohi.andre.consolelauncher.managers.TerminalManager.FORMAT_NEWLINE;
 import static ohi.andre.consolelauncher.managers.TerminalManager.FORMAT_PREFIX;
@@ -71,7 +76,7 @@ public class KeeperService extends Service {
 
             String path = intent != null ? intent.getStringExtra(PATH_KEY) : Environment.getExternalStorageDirectory().getAbsolutePath();
 
-            startForeground(ONGOING_NOTIFICATION_ID, buildNotification(getApplicationContext(), title, subtitle, Tuils.getHint(path),
+            startForeground(ONGOING_NOTIFICATION_ID, buildNotification(getApplicationContext(), title, subtitle, StringTuils.getHint(path),
                     clickCmd, showHome, lastCommands, upDown, priority));
 
             int lastCmdSize = XMLPrefsManager.getInt(Behavior.tui_notification_lastcmds_size);
@@ -88,7 +93,7 @@ public class KeeperService extends Service {
             String path = intent != null ? intent.getStringExtra(PATH_KEY) : Environment.getExternalStorageDirectory().getAbsolutePath();
 
             NotificationManagerCompat.from(getApplicationContext()).notify(KeeperService.ONGOING_NOTIFICATION_ID,
-                    KeeperService.buildNotification(getApplicationContext(), title, subtitle, Tuils.getHint(path),
+                    KeeperService.buildNotification(getApplicationContext(), title, subtitle, StringTuils.getHint(path),
                             clickCmd, showHome, lastCommands, upDown, priority));
         }
 
@@ -110,7 +115,7 @@ public class KeeperService extends Service {
             System.arraycopy(lastCommands, 0, lastCommands, 1, toCopy);
             lastCommands[0] = formatInput(cmd, inputFormat, prefix, suPrefix, inputColor, timeColor);
         } catch (Exception e) {
-            Tuils.log(e);
+            LogTuils.log(e);
         }
     }
 
@@ -118,7 +123,7 @@ public class KeeperService extends Service {
         if(cmd == null) return null;
         boolean su = cmd.startsWith("su ");
 
-        SpannableString si = Tuils.span(inputFormat, inputColor);
+        SpannableString si = ViewTuils.span(inputFormat, inputColor);
 
         CharSequence s = TimeManager.instance.replace(si, timeColor);
         s = TextUtils.replace(s,
@@ -174,7 +179,7 @@ public class KeeperService extends Service {
 
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                int oPriority = Tuils.scale(new int[] {0, 4}, new int[] {2,4}, priority + 2);
+                int oPriority = MathTuils.scale(new int[] {0, 4}, new int[] {2,4}, priority + 2);
                 if(oPriority < 2 || oPriority > 4) oPriority = NotificationManager.IMPORTANCE_UNSPECIFIED;
 
                 NotificationChannel notificationChannel = new NotificationChannel(BuildConfig.APPLICATION_ID, c.getString(R.string.app_name), oPriority);

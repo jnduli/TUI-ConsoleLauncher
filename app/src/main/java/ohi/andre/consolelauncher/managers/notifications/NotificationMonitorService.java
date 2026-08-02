@@ -10,8 +10,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.IBinder;
 
-import ohi.andre.consolelauncher.tuils.Tuils;
-
 
 public class NotificationMonitorService extends Service {
 
@@ -27,7 +25,7 @@ public class NotificationMonitorService extends Service {
     }
 
     private void ensureCollectorRunning() {
-        if(Tuils.notificationServiceIsRunning(this)) toggleNotificationListenerService();
+        if(NotificationService.isRunning(this)) toggleNotificationListenerService();
     }
 
     private void toggleNotificationListenerService() {

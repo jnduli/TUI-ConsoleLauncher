@@ -47,54 +47,6 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.TEXT;
         }
     },
-    random_play {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String info() {
-            return "If true, music player will play your tracks in random order";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-    },
-    songs_folder {
-        @Override
-        public String defaultValue() {
-            return "";
-        }
-
-        @Override
-        public String info() {
-            return "The folder that contains your music files";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-    },
-    songs_from_mediastore {
-        @Override
-        public String defaultValue() {
-            return "true";
-        }
-
-        @Override
-        public String info() {
-            return "If true, t-ui will get tracks from the system mediastore";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
-        }
-    },
     tui_notification {
         @Override
         public String defaultValue() {
@@ -461,22 +413,6 @@ public enum Behavior implements XMLPrefsSave {
         @Override
         public String type() {
             return XMLPrefsSave.TEXT;
-        }
-    },
-    enable_music {
-        @Override
-        public String defaultValue() {
-            return "false";
-        }
-
-        @Override
-        public String info() {
-            return "If true, you will be able to use t-ui as a music player. Otherwise, the music command will try to communicate with the music player that your using";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.BOOLEAN;
         }
     },
     max_optional_depth {

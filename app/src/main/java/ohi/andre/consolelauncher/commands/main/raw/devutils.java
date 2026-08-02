@@ -14,6 +14,9 @@ import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.managers.notifications.NotificationService;
+import ohi.andre.consolelauncher.tuils.StringTuils;
+
 /**
  * Created by francescoandreuzzi on 22/08/2017.
  */
@@ -30,7 +33,7 @@ public class devutils extends ParamCommand {
                 if(text.size() == 0) return null;
                 else {
                     title = text.remove(0);
-                    if(text.size() >= 2) txt = Tuils.toPlanString(text, Tuils.SPACE);
+                    if(text.size() >= 2) txt = StringTuils.toPlanString(text, Tuils.SPACE);
                 }
 
                 NotificationManagerCompat.from(pack.context).notify(200,
@@ -56,7 +59,7 @@ public class devutils extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                return "Notification access: " + NotificationManagerCompat.getEnabledListenerPackages(pack.context).contains(BuildConfig.APPLICATION_ID) + Tuils.NEWLINE + "Notification service running: " + Tuils.notificationServiceIsRunning(pack.context);
+                return "Notification access: " + NotificationManagerCompat.getEnabledListenerPackages(pack.context).contains(BuildConfig.APPLICATION_ID) + Tuils.NEWLINE + "Notification service running: " + NotificationService.isRunning(pack.context);
             }
         };
 

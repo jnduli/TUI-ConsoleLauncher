@@ -26,7 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ohi.andre.consolelauncher.managers.ContactManager.Contact
 import ohi.andre.consolelauncher.managers.suggestions.SuggestionsManager
 import ohi.andre.consolelauncher.managers.suggestions.SuggestionsManager.Suggestion
-import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.OutputTuils
 
 @Composable
 fun SuggestionsRow(manager: SuggestionsManager, modifier: Modifier = Modifier) {
@@ -92,7 +92,7 @@ private fun SuggestionChip(manager: SuggestionsManager, suggestion: Suggestion) 
                         text = { Text(number) },
                         onClick = {
                             contact.setSelectedNumber(index)
-                            Tuils.sendInput(context, suggestion.getText())
+                            OutputTuils.sendInput(context, suggestion.getText())
                             showContactMenu = false
                         },
                     )

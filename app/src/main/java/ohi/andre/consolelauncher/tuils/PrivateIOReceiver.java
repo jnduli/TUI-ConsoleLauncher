@@ -106,17 +106,17 @@ public class PrivateIOReceiver extends BroadcastReceiver {
                 int id = intent.getIntExtra(ID, 0);
 
                 if(b == null) {
-                    Tuils.sendOutput(Color.RED, context, "The bundle is null");
+                    OutputTuils.sendOutput(context, "The bundle is null", Color.RED);
                     return;
                 }
 
                 if(ps == null || ps.length == 0) {
-                    Tuils.sendOutput(Color.RED, context, "No remote inputs");
+                    OutputTuils.sendOutput(context, "No remote inputs", Color.RED);
                     return;
                 }
 
                 if(pi == null) {
-                    Tuils.sendOutput(Color.RED, context, "The pending intent couldn\'t be found");
+                    OutputTuils.sendOutput(context, "The pending intent couldn\'t be found", Color.RED);
                     return;
                 }
 
@@ -136,8 +136,8 @@ public class PrivateIOReceiver extends BroadcastReceiver {
                 try {
                     pi.send(context.getApplicationContext(), id, localIntent);
                 } catch (PendingIntent.CanceledException e) {
-                    Tuils.sendOutput(Color.RED, context, e.toString());
-                    Tuils.log(e);
+                    OutputTuils.sendOutput(context, e.toString(), Color.RED);
+                    LogTuils.log(e);
                 }
             }
         } else {

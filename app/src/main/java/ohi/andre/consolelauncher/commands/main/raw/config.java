@@ -25,6 +25,12 @@ import ohi.andre.consolelauncher.managers.xml.options.Notifications;
 import ohi.andre.consolelauncher.managers.xml.options.Rss;
 import ohi.andre.consolelauncher.managers.xml.options.Ui;
 import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.SystemUtils;
+import ohi.andre.consolelauncher.tuils.FileTuils;
+import ohi.andre.consolelauncher.tuils.LogTuils;
+import ohi.andre.consolelauncher.tuils.StringTuils;
+import ohi.andre.consolelauncher.tuils.ViewTuils;
+
 import ohi.andre.consolelauncher.tuils.interfaces.Reloadable;
 
 import static ohi.andre.consolelauncher.UIManager.PREFS_NAME;
@@ -93,16 +99,16 @@ public class config extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                File file = new File(Tuils.getFolder(pack.context), pack.getString());
+                File file = new File(FileTuils.getFolder(pack.context), pack.getString());
 
                 try {
-                    pack.context.startActivity(Tuils.openFile(pack.context, file));
+                    pack.context.startActivity(FileTuils.openFile(pack.context, file));
                 } catch (ActivityNotFoundException e) {
-                    Tuils.log("nf");
-                    Tuils.toFile(e);
+                    LogTuils.log("nf");
+                    LogTuils.toFile(e);
                 } catch (Exception ex) {
-                    Tuils.log(ex);
-                    Tuils.toFile(ex);
+                    LogTuils.log(ex);
+                    LogTuils.toFile(ex);
                 }
 
                 return null;
@@ -175,37 +181,37 @@ public class config extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                File file = new File(Tuils.getFolder(pack.context), pack.getString());
+                File file = new File(FileTuils.getFolder(pack.context), pack.getString());
                 String name = file.getName();
 
                 for(XMLPrefsManager.XMLPrefsRoot r : XMLPrefsManager.XMLPrefsRoot.values()) {
                     if(name.equalsIgnoreCase(r.path)) {
                         List<String> strings = r.getValues().values();
-                        Tuils.addPrefix(strings, Tuils.DOUBLE_SPACE);
+                        StringTuils.addPrefix(strings, Tuils.DOUBLE_SPACE);
                         strings.add(0, r.path);
-                        return Tuils.toPlanString(strings, Tuils.NEWLINE);
+                        return StringTuils.toPlanString(strings, Tuils.NEWLINE);
                     }
                 }
 
                 if(name.equalsIgnoreCase(AppsManager.PATH)) {
                     List<String> strings = AppsManager.instance.getValues().values();
-                    Tuils.addPrefix(strings, Tuils.DOUBLE_SPACE);
+                    StringTuils.addPrefix(strings, Tuils.DOUBLE_SPACE);
                     strings.add(0, AppsManager.PATH);
-                    return Tuils.toPlanString(strings, Tuils.NEWLINE);
+                    return StringTuils.toPlanString(strings, Tuils.NEWLINE);
                 }
 
                 if(name.equalsIgnoreCase(NotificationManager.PATH)) {
                     List<String> strings = NotificationManager.instance.getValues().values();
-                    Tuils.addPrefix(strings, Tuils.DOUBLE_SPACE);
+                    StringTuils.addPrefix(strings, Tuils.DOUBLE_SPACE);
                     strings.add(0, NotificationManager.PATH);
-                    return Tuils.toPlanString(strings, Tuils.NEWLINE);
+                    return StringTuils.toPlanString(strings, Tuils.NEWLINE);
                 }
 
                 if(name.equalsIgnoreCase(RssManager.PATH)) {
                     List<String> strings = NotificationManager.instance.getValues().values();
-                    Tuils.addPrefix(strings, Tuils.DOUBLE_SPACE);
+                    StringTuils.addPrefix(strings, Tuils.DOUBLE_SPACE);
                     strings.add(0, RssManager.PATH);
-                    return Tuils.toPlanString(strings, Tuils.NEWLINE);
+                    return StringTuils.toPlanString(strings, Tuils.NEWLINE);
                 }
 
                 return "[]";
@@ -239,7 +245,7 @@ public class config extends ParamCommand {
                     ss.add(Tuils.DOUBLE_SPACE + save.label());
                 }
 
-                return Tuils.toPlanString(ss);
+                return StringTuils.toPlanString(ss);
             }
         },
         fontsize {
@@ -291,11 +297,11 @@ public class config extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                File folder = Tuils.getFolder(pack.context);
+                File folder = FileTuils.getFolder(pack.context);
 
                 for(XMLPrefsManager.XMLPrefsRoot root : XMLPrefsManager.XMLPrefsRoot.values()) {
                     File file = new File(folder, root.path);
-                    Tuils.insertOld(pack.context, file);
+                    FileTuils.insertOld(pack.context, file);
                     XMLPrefsManager.resetFile(file, root.name());
                 }
 
@@ -324,22 +330,22 @@ public class config extends ParamCommand {
 
                 if(!file.getName().endsWith(".xml")) {
 //                    is font
-                    if(Tuils.fontPath != null) {
-                        File font = new File(Tuils.fontPath);
+                    if(ViewTuils.fontPath != null) {
+                        File font = new File(ViewTuils.fontPath);
                         if (font.exists()) {
                             File[] files = font.listFiles();
-                            if (files.length > 0) Tuils.insertOld(pack.context, files[0]);
-                            Tuils.deleteContentOnly(font);
+                            if (files.length > 0) FileTuils.insertOld(pack.context, files[0]);
+                            FileTuils.deleteContentOnly(font);
                         } else {
                             font.mkdir();
                         }
                     }
                 } else {
-                    File toPutInsideOld = new File(Tuils.getFolder(pack.context), file.getName());
-                    Tuils.insertOld(pack.context, toPutInsideOld);
+                    File toPutInsideOld = new File(FileTuils.getFolder(pack.context), file.getName());
+                    FileTuils.insertOld(pack.context, toPutInsideOld);
                 }
 
-                File dest = new File(Tuils.getFolder(pack.context), file.getName());
+                File dest = new File(FileTuils.getFolder(pack.context), file.getName());
                 file.renameTo(dest);
 
                 return "Path: " + dest.getAbsolutePath();
@@ -353,7 +359,7 @@ public class config extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Customize-T_UI"));
+                pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Customize-T_UI"));
                 return null;
             }
         };

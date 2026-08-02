@@ -15,7 +15,7 @@ import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.TimeManager
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Theme
-import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.OutputTuils
 
 @Parcelize
 @Serializable
@@ -37,7 +37,7 @@ data class AppLauncher(val packageName: String, val activityName: String, val la
             text.length,
             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
         )
-        Tuils.sendOutput(context, text, TerminalManager.CATEGORY_OUTPUT)
+        OutputTuils.sendOutput(context, text, type = TerminalManager.CATEGORY_OUTPUT)
         return intent
     }
 
@@ -51,25 +51,24 @@ data class AppLauncher(val packageName: String, val activityName: String, val la
 
     override fun storageKey(): String = "$packageName-$activityName"
 
-}
-
-object AppUtils {
-    private fun section(label: String, items: List<String>, separator: String, trailingBlankLine: Boolean = true): String {
-        if (items.isEmpty()) return ""
-        val body = "$label: \n" + items.joinToString(separator)
-        return if (trailingBlankLine) "$body\n\n" else body
-    }
-
-    private const val HEADER_TEMPLATE = "%s\nvrs: %s - %s\n\nlaunched_times: %s\n\nInstall: %s\n\n"
-
-    fun format(app: AppLauncher, info: PackageInfo): String {
+    fun format(info: PackageInfo): String {
         val installDate = TimeManager.instance.replace("%t0", info.firstInstallTime, Int.MAX_VALUE)
-        val header = HEADER_TEMPLATE.format(info.packageName, info.versionCode, info.versionName, app.launchTimes, installDate)
+        val header = HEADER_TEMPLATE.format(info.packageName, info.versionCode, info.versionName, launchTimes, installDate)
 
         return header +
             section("Activities", info.activities?.map { it.name.replace(info.packageName, "") } ?: emptyList(), "\n") +
             section("Services", info.services?.map { it.name.replace(info.packageName, "") } ?: emptyList(), "\n") +
             section("Receivers", info.receivers?.map { it.name.replace(info.packageName, "") } ?: emptyList(), "\n") +
             section("Permissions", info.requestedPermissions?.map { it.substringAfterLast(".") } ?: emptyList(), ", ", trailingBlankLine = false)
+    }
+
+    companion object {
+        private const val HEADER_TEMPLATE = "%s\nvrs: %s - %s\n\nlaunched_times: %s\n\nInstall: %s\n\n"
+
+        private fun section(label: String, items: List<String>, separator: String, trailingBlankLine: Boolean = true): String {
+            if (items.isEmpty()) return ""
+            val body = "$label: \n" + items.joinToString(separator)
+            return if (trailingBlankLine) "$body\n\n" else body
+        }
     }
 }

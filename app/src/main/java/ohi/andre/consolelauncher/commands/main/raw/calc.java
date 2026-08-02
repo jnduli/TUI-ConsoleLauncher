@@ -5,7 +5,7 @@ import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.commands.main.specific.PermanentSuggestionCommand;
 import ohi.andre.consolelauncher.commands.main.MainPack;
-import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.MathTuils;
 
 /**
  * Created by francescoandreuzzi on 29/01/2017.
@@ -16,7 +16,7 @@ public class calc extends PermanentSuggestionCommand {
     @Override
     public String exec(ExecutePack pack) throws Exception {
         try {
-            return String.valueOf(Tuils.eval(pack.getString()));
+            return String.valueOf(MathTuils.eval(pack.getString()));
         } catch (Exception e) {
             return e.toString();
         }

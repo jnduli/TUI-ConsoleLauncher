@@ -12,6 +12,8 @@ import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.StringTuils;
+
 public class help implements CommandAbstraction {
 
     @Override
@@ -42,13 +44,13 @@ public class help implements CommandAbstraction {
         MainPack info = (MainPack) pack;
         List<String> toPrint = new ArrayList<>(Arrays.asList(info.commandGroup.getCommandNames()));
 
-        Collections.sort(toPrint, Tuils::alphabeticCompare);
+        Collections.sort(toPrint, StringTuils::alphabeticCompare);
 
-        Tuils.addPrefix(toPrint, Tuils.DOUBLE_SPACE);
-        Tuils.addSeparator(toPrint, Tuils.TRIBLE_SPACE);
-        Tuils.insertHeaders(toPrint, true);
+        StringTuils.addPrefix(toPrint, Tuils.DOUBLE_SPACE);
+        StringTuils.addSeparator(toPrint, Tuils.TRIBLE_SPACE);
+        StringTuils.insertHeaders(toPrint, true);
 
-        return Tuils.toPlanString(toPrint, "");
+        return StringTuils.toPlanString(toPrint, "");
     }
 
     @Override

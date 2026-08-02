@@ -9,8 +9,8 @@ public class StoppableThread extends Thread {
     private volatile boolean stopped = false;
     public StoppableThread() {
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
-            Tuils.log(e);
-            // Tuils.toFile(e);
+            LogTuils.log(e);
+            // LogTuils.toFile(e);
             System.exit(1);
         });
     }

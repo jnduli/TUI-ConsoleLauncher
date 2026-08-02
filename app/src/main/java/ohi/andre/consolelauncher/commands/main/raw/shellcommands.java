@@ -15,6 +15,8 @@ import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.StringTuils;
+
 /**
  * Created by francescoandreuzzi on 19/04/16.
  */
@@ -25,13 +27,13 @@ public class shellcommands implements CommandAbstraction {
         Collection<String> cmds = getOSCommands();
         List<String> commands = new ArrayList<>(cmds);
 
-        Collections.sort(commands, Tuils::alphabeticCompare);
+        Collections.sort(commands, StringTuils::alphabeticCompare);
 
-        Tuils.addPrefix(commands, Tuils.DOUBLE_SPACE);
-        Tuils.addSeparator(commands, Tuils.SPACE);
-        Tuils.insertHeaders(commands, true);
+        StringTuils.addPrefix(commands, Tuils.DOUBLE_SPACE);
+        StringTuils.addSeparator(commands, Tuils.SPACE);
+        StringTuils.insertHeaders(commands, true);
 
-        return Tuils.toPlanString(commands, Tuils.EMPTYSTRING);
+        return StringTuils.toPlanString(commands, Tuils.EMPTYSTRING);
     }
 
     private final String[] path = {

@@ -14,7 +14,7 @@ public class CustomExceptionHandler implements Thread.UncaughtExceptionHandler {
 
     @Override
     public void uncaughtException(Thread thread, final Throwable ex) {
-        Tuils.log(ex);
+        LogTuils.log(ex);
         _defaultEH.uncaughtException(thread, ex);
     }
 

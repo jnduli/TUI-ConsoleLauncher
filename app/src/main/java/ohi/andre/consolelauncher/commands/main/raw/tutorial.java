@@ -5,7 +5,7 @@ import android.content.Intent;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.SystemUtils;
 
 /**
  * Created by francescoandreuzzi on 10/07/2017.
@@ -17,7 +17,7 @@ public class tutorial implements CommandAbstraction {
 
     @Override
     public String exec(ExecutePack pack) throws Exception {
-        Intent intent = Tuils.webPage(url);
+        Intent intent = SystemUtils.webPage(url);
         if(intent != null) pack.context.startActivity(intent);
         return null;
     }

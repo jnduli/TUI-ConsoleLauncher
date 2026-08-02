@@ -17,6 +17,9 @@ import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Rss;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.FileTuils;
+import ohi.andre.consolelauncher.tuils.LogTuils;
+
 /**
  * Created by francescoandreuzzi on 30/09/2017.
  */
@@ -181,7 +184,7 @@ public class rss extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                Node n = XMLPrefsManager.findNode(new File(Tuils.getFolder(pack.context), RssManager.PATH), RssManager.RSS_LABEL, new String[] {RssManager.ID_ATTRIBUTE}, new String[] {String.valueOf(pack.getInt())});
+                Node n = XMLPrefsManager.findNode(new File(FileTuils.getFolder(pack.context), RssManager.PATH), RssManager.RSS_LABEL, new String[] {RssManager.ID_ATTRIBUTE}, new String[] {String.valueOf(pack.getInt())});
                 if(n == null) return pack.context.getString(R.string.id_notfound);
 
                 Element el = (Element) n;
@@ -193,7 +196,7 @@ public class rss extends ParamCommand {
                     return TimeManager.instance.replace(XMLPrefsManager.get(Rss.rss_time_format), Long.parseLong(value),
                             Integer.MAX_VALUE).toString();
                 } catch (Exception e) {
-                    Tuils.log(e);
+                    LogTuils.log(e);
                     return pack.context.getString(R.string.output_error);
                 }
             }
@@ -325,7 +328,7 @@ public class rss extends ParamCommand {
         file {
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.openFile(pack.context, new File(Tuils.getFolder(pack.context), RssManager.PATH)));
+                pack.context.startActivity(FileTuils.openFile(pack.context, new File(FileTuils.getFolder(pack.context), RssManager.PATH)));
                 return null;
             }
 

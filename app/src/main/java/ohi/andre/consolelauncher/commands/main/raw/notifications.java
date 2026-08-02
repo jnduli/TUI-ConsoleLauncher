@@ -14,6 +14,9 @@ import ohi.andre.consolelauncher.managers.notifications.NotificationManager;
 import ohi.andre.consolelauncher.managers.launchable.AppLauncher;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.SystemUtils;
+import ohi.andre.consolelauncher.tuils.FileTuils;
+
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
 
 /**
@@ -189,7 +192,7 @@ public class notifications extends ParamCommand implements APICommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.openFile(pack.context, new File(Tuils.getFolder(pack.context), NotificationManager.PATH)));
+                pack.context.startActivity(FileTuils.openFile(pack.context, new File(FileTuils.getFolder(pack.context), NotificationManager.PATH)));
                 return null;
             }
         },
@@ -217,7 +220,7 @@ public class notifications extends ParamCommand implements APICommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Notifications"));
+                pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Notifications"));
                 return null;
             }
         };

@@ -29,6 +29,9 @@ import ohi.andre.consolelauncher.managers.xml.options.Ui
 import ohi.andre.consolelauncher.tuils.LongClickableSpan
 import ohi.andre.consolelauncher.tuils.PrivateIOReceiver
 import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.StringTuils
+import ohi.andre.consolelauncher.tuils.ViewTuils
+
 import ohi.andre.consolelauncher.tuils.interfaces.CommandExecuter
 
 /** One-shot UI actions TerminalManager can't perform itself (no View/composition to act on) -
@@ -106,7 +109,7 @@ class TerminalManager(
 
     init {
         _prefix.value = withTrailingSpace(prefixText)
-        _hint.value = Tuils.getHint(mainPack.currentDirectory.absolutePath) ?: Tuils.EMPTYSTRING
+        _hint.value = StringTuils.getHint(mainPack.currentDirectory.absolutePath) ?: Tuils.EMPTYSTRING
 
         val clearAfterMs = XMLPrefsManager.getInt(Behavior.clear_after_seconds) * 1000
         if (clearAfterMs > 0) {
@@ -152,7 +155,7 @@ class TerminalManager(
 
     fun setDefaultHint() {
         defaultHint = true
-        _hint.value = Tuils.getHint(mainPack.currentDirectory.absolutePath) ?: Tuils.EMPTYSTRING
+        _hint.value = StringTuils.getHint(mainPack.currentDirectory.absolutePath) ?: Tuils.EMPTYSTRING
     }
 
     fun requestInputFocus() {
@@ -201,7 +204,7 @@ class TerminalManager(
 
     private fun setupNewInput() {
         applyInput(Tuils.EMPTYSTRING, null)
-        if (defaultHint) _hint.value = Tuils.getHint(mainPack.currentDirectory.absolutePath) ?: Tuils.EMPTYSTRING
+        if (defaultHint) _hint.value = StringTuils.getHint(mainPack.currentDirectory.absolutePath) ?: Tuils.EMPTYSTRING
         requestInputFocus()
     }
 
@@ -287,7 +290,7 @@ class TerminalManager(
                 val str = t.toString()
                 val su = str.startsWith("su ") || suMode
 
-                val si = Tuils.span(inputFormat, inputColor)
+                val si = ViewTuils.span(inputFormat, inputColor)
                 if (clickCommands || longClickCommands) {
                     si.setSpan(
                         LongClickableSpan(
@@ -310,7 +313,7 @@ class TerminalManager(
 
             CATEGORY_OUTPUT -> {
                 val str = t.toString()
-                val so = Tuils.span(outputFormat, outputColor)
+                val so = ViewTuils.span(outputFormat, outputColor)
                 TextUtils.replace(
                     so,
                     arrayOf(FORMAT_OUTPUT, FORMAT_NEWLINE, FORMAT_OUTPUT.uppercase(), FORMAT_NEWLINE.uppercase()),

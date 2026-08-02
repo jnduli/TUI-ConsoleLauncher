@@ -12,6 +12,11 @@ import ohi.andre.consolelauncher.managers.launchable.AliasLauncher
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.FileTuils
+import ohi.andre.consolelauncher.tuils.LogTuils
+import ohi.andre.consolelauncher.tuils.OutputTuils
+import ohi.andre.consolelauncher.tuils.StringTuils
+
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.File
@@ -38,7 +43,7 @@ class AliasManager(private val context: Context) {
             when (intent.action) {
                 ACTION_ADD -> add(context, intent.getStringExtra(NAME)!!, intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE)!!)
                 ACTION_RM -> remove(context, intent.getStringExtra(NAME)!!)
-                ACTION_LS -> Tuils.sendOutput(context, printAliases())
+                ACTION_LS -> OutputTuils.sendOutput(context, printAliases())
             }
         }
     }
@@ -132,7 +137,7 @@ class AliasManager(private val context: Context) {
     private val pa: Pattern = Pattern.compile("%a", Pattern.CASE_INSENSITIVE or Pattern.LITERAL)
     fun formatLabel(aliasName: String, aliasValue: String): String {
         var a = aliasLabelFormat
-        a = Tuils.patternNewline.matcher(a).replaceAll(Matcher.quoteReplacement(Tuils.NEWLINE))
+        a = StringTuils.patternNewline.matcher(a).replaceAll(Matcher.quoteReplacement(Tuils.NEWLINE))
         a = pv.matcher(a).replaceAll(Matcher.quoteReplacement(aliasValue))
         a = pa.matcher(a).replaceAll(Matcher.quoteReplacement(aliasName))
         return a
@@ -141,7 +146,7 @@ class AliasManager(private val context: Context) {
     fun reload() {
         aliases.clear()
 
-        val root = Tuils.getFolder(this.context) ?: return
+        val root = FileTuils.getFolder(this.context) ?: return
         val file = File(root, PATH)
 
         try {
@@ -165,18 +170,20 @@ class AliasManager(private val context: Context) {
                     value = value.trim()
 
                     if (name.equals(value, ignoreCase = true)) {
-                        Tuils.sendOutput(
-                            Color.RED, context,
+                        OutputTuils.sendOutput(
+                            context,
                             context.getString(R.string.output_notaddingalias1) + Tuils.SPACE + name + Tuils.SPACE + context.getString(
                                 R.string.output_notaddingalias2
-                            )
+                            ),
+                            Color.RED
                         )
                     } else if (value.startsWith(name + Tuils.SPACE)) {
-                        Tuils.sendOutput(
-                            Color.RED, context,
+                        OutputTuils.sendOutput(
+                            context,
                             context.getString(R.string.output_notaddingalias1) + Tuils.SPACE + name + Tuils.SPACE + context.getString(
                                 R.string.output_notaddingalias3
-                            )
+                            ),
+                            Color.RED
                         )
                     } else {
                         aliases.add(AliasLauncher.create(name, value, parameterPattern))
@@ -184,7 +191,7 @@ class AliasManager(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            Tuils.log(e)
+            LogTuils.log(e)
         }
     }
 
@@ -195,19 +202,19 @@ class AliasManager(private val context: Context) {
     fun add(context: Context, name: String, value: String) {
         for (a in aliases) {
             if (name == a.aliasName) {
-                Tuils.sendOutput(context, R.string.unavailable_name)
+                OutputTuils.sendOutput(context, R.string.unavailable_name)
                 return
             }
         }
 
         try {
-            FileOutputStream(File(Tuils.getFolder(context), PATH), true).use { fos ->
+            FileOutputStream(File(FileTuils.getFolder(context), PATH), true).use { fos ->
                 fos.write((Tuils.NEWLINE + name + "=" + value).toByteArray())
             }
 
             aliases.add(AliasLauncher.create(name, value, parameterPattern))
         } catch (e: Exception) {
-            Tuils.sendOutput(context, e.toString())
+            OutputTuils.sendOutput(context, e.toString())
         }
     }
 
@@ -215,13 +222,13 @@ class AliasManager(private val context: Context) {
         reload()
 
         if (!removeAlias(name)) {
-            Tuils.sendOutput(context, R.string.invalid_name)
+            OutputTuils.sendOutput(context, R.string.invalid_name)
             return
         }
 
         try {
-            val inputFile = File(Tuils.getFolder(context), PATH)
-            val tempFile = File(Tuils.getFolder(context), PATH + "2")
+            val inputFile = File(FileTuils.getFolder(context), PATH)
+            val tempFile = File(FileTuils.getFolder(context), PATH + "2")
 
             BufferedReader(FileReader(inputFile)).use { reader ->
                 BufferedWriter(FileWriter(tempFile)).use { writer ->
@@ -236,7 +243,7 @@ class AliasManager(private val context: Context) {
 
             tempFile.renameTo(inputFile)
         } catch (e: Exception) {
-            Tuils.sendOutput(context, e.toString())
+            OutputTuils.sendOutput(context, e.toString())
         }
     }
 

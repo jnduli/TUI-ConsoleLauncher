@@ -18,7 +18,6 @@ import ohi.andre.consolelauncher.managers.FileManager;
 import ohi.andre.consolelauncher.managers.HTMLExtractManager;
 import ohi.andre.consolelauncher.managers.launchable.Launchable;
 import ohi.andre.consolelauncher.managers.RssManager;
-import ohi.andre.consolelauncher.managers.music.MusicManager2;
 import ohi.andre.consolelauncher.managers.notifications.NotificationManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
@@ -27,6 +26,9 @@ import ohi.andre.consolelauncher.managers.xml.options.Notifications;
 import ohi.andre.consolelauncher.managers.xml.options.Rss;
 import ohi.andre.consolelauncher.tuils.SimpleMutableEntry;
 import ohi.andre.consolelauncher.tuils.Tuils;
+
+import ohi.andre.consolelauncher.tuils.LogTuils;
+import ohi.andre.consolelauncher.tuils.StringTuils;
 
 @SuppressLint("DefaultLocale")
 public class CommandTuils {
@@ -42,7 +44,7 @@ public class CommandTuils {
         Command command = new Command();
 
         String name = CommandTuils.findName(input);
-        if (!Tuils.isAlpha(name))
+        if (!StringTuils.isAlpha(name))
             return null;
 
         CommandAbstraction cmd = info.commandGroup.getCommandByName(name);
@@ -108,7 +110,7 @@ public class CommandTuils {
                 }
             }
         } catch (Exception e) {
-            Tuils.log(e);
+            LogTuils.log(e);
         }
 
         command.mArgs = args.toArray(new Object[args.size()]);
@@ -146,11 +148,6 @@ public class CommandTuils {
             return hiddenPackage(input, pack.appsManager);
         } else if (type == CommandAbstraction.TEXTLIST) {
             return textList(input);
-        } else if (type == CommandAbstraction.SONG && info instanceof MainPack) {
-            MainPack pack = (MainPack) info;
-            if(pack.player == null) return null;
-
-            return song(input, pack.player);
         } else if (type == CommandAbstraction.COMMAND) {
             return command(input, info.commandGroup);
         } else if(type == CommandAbstraction.BOOLEAN) {
@@ -281,8 +278,8 @@ public class CommandTuils {
         try {
             abstraction = active.getCommandByName(string);
         } catch (Exception e) {
-            Tuils.log(e);
-            Tuils.toFile(e);
+            LogTuils.log(e);
+            LogTuils.toFile(e);
         }
 
         return new ArgInfo(abstraction, i.residualString, abstraction != null, 1);
@@ -320,7 +317,7 @@ public class CommandTuils {
                 while (count-- >= 0)
                     strings.remove(0);
 
-                String residual = Tuils.toPlanString(strings, Tuils.SPACE);
+                String residual = StringTuils.toPlanString(strings, Tuils.SPACE);
                 return new ArgInfo(info.file, residual, true, 1);
             }
 
@@ -449,16 +446,12 @@ public class CommandTuils {
     private static ArgInfo contactNumber(String input, ContactManager contacts) {
         String number;
 
-        if (Tuils.isPhoneNumber(input))
+        if (StringTuils.isPhoneNumber(input))
             number = input;
         else
             number = contacts.findNumber(input);
 
         return new ArgInfo(number, null, number != null, 1);
-    }
-
-    private static ArgInfo song(String input, MusicManager2 music) {
-        return new ArgInfo(input, null, true, 1);
     }
 
     private static ArgInfo configEntry(String input) {

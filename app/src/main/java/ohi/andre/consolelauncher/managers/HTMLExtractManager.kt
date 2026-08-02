@@ -22,6 +22,14 @@ import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Theme
 import ohi.andre.consolelauncher.tuils.LongClickableSpan
 import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.SystemUtils
+import ohi.andre.consolelauncher.tuils.FileTuils
+import ohi.andre.consolelauncher.tuils.LogTuils
+import ohi.andre.consolelauncher.tuils.MathTuils
+import ohi.andre.consolelauncher.tuils.OutputTuils
+import ohi.andre.consolelauncher.tuils.StringTuils
+import ohi.andre.consolelauncher.tuils.ViewTuils
+
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -83,7 +91,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
             override fun run() {
                 super.run()
 
-                if (!Tuils.hasInternetAccess()) {
+                if (!SystemUtils.hasInternetAccess()) {
                     output(R.string.no_internet, context, weatherArea)
                     return
                 }
@@ -124,13 +132,13 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
 
                     val inputStream = response.body!!.byteStream()
 
-                    var output: CharSequence? = Tuils.span(Tuils.EMPTYSTRING, outputColor)
+                    var output: CharSequence? = ViewTuils.span(Tuils.EMPTYSTRING, outputColor)
 
                     if (weatherArea) {
-                        val json = Tuils.inputStreamToString(inputStream)
+                        val json = FileTuils.inputStreamToString(inputStream)
 
                         //                        json = json.replaceAll("\"temp\":([\\d\\.]*)", "\"temp\":-4.3");
-                        var o: CharSequence = Tuils.span(weatherFormat, weatherColor)
+                        var o: CharSequence = ViewTuils.span(weatherFormat, weatherColor)
 
                         val m = weatherFormatPattern.matcher(weatherFormat)
                         while (m.find()) {
@@ -153,10 +161,10 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                                     if (converter != null && converter.isNotEmpty()) {
                                         try {
                                             var d = value.toDouble()
-                                            d = Tuils.textCalculus(d, converter)
+                                            d = MathTuils.textCalculus(d, converter)
                                             value = String.format("%.2f", d)
                                         } catch (e: Exception) {
-                                            Tuils.log(e)
+                                            LogTuils.log(e)
                                         }
                                     }
 
@@ -186,7 +194,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                         var node = cleaner.clean(inputStream)
                         val nodes = node.evaluateXPath(path)
                         if (nodes.size == 0) {
-                            Tuils.sendOutput(context, R.string.no_result)
+                            OutputTuils.sendOutput(context, R.string.no_result)
                             return
                         }
 
@@ -194,7 +202,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                             node = nodes[c] as TagNode
 
                             val f = if (format == null) defaultFormat else format
-                            var copy: CharSequence = Tuils.span(f, outputColor)
+                            var copy: CharSequence = ViewTuils.span(f, outputColor)
 
                             copy = Companion.replaceAllAttributesString(
                                 copy,
@@ -222,7 +230,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
 //                            this should be a single JSON object
 
                             val f = if (format == null) defaultFormat else format
-                            var copy: CharSequence = Tuils.span(f, outputColor)
+                            var copy: CharSequence = ViewTuils.span(f, outputColor)
                             val entry = o.entries as MutableSet<MutableMap.MutableEntry<String?, Any?>?>
 
                             copy = Companion.replaceAllAttributesObject(copy, entry)
@@ -240,7 +248,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
 
                             for (c in a.indices) {
                                 val f = if (format == null) defaultFormat else format
-                                var copy: CharSequence = Tuils.span(f, outputColor)
+                                var copy: CharSequence = ViewTuils.span(f, outputColor)
 
                                 val m = a.get(c) as LinkedHashMap<String?, Any?>
 
@@ -262,16 +270,16 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
 
                             output(output, context, weatherArea, TerminalManager.CATEGORY_NO_COLOR)
                         } else if (o is String) {
-                            output = Tuils.span(o.toString(), outputColor)
+                            output = ViewTuils.span(o.toString(), outputColor)
                             output(output, context, weatherArea, TerminalManager.CATEGORY_NO_COLOR)
                         } else {
-                            Tuils.sendOutput(outputColor, context, o.toString())
+                            OutputTuils.sendOutput(context, o.toString(), outputColor)
                         }
                     }
                 } catch (e: Exception) {
                     output(e.toString(), context, weatherArea)
-                    Tuils.toFile(e)
-                    Tuils.log(e)
+                    LogTuils.toFile(e)
+                    LogTuils.log(e)
                 }
             }
         }.start()
@@ -310,7 +318,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                             id_already = jsons.indices.any { jsons.get(it).id == intent_id}
                         }
                         if (id_already) {
-                            Tuils.sendOutput(context, R.string.id_already)
+                            OutputTuils.sendOutput(context, R.string.id_already)
                             return
                         }
 
@@ -348,7 +356,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                                 break
                             }
                         }
-                        if (!check) Tuils.sendOutput(context, R.string.id_notfound)
+                        if (!check) OutputTuils.sendOutput(context, R.string.id_notfound)
                     }
                     ACTION_EDIT -> {
                         if (intent_value == null || intent_value.length == 0) return
@@ -370,7 +378,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                                 return
                             }
                         }
-                        Tuils.sendOutput(context, R.string.id_notfound)
+                        OutputTuils.sendOutput(context, R.string.id_notfound)
                     }
                     ACTION_LS -> {
                         val values: MutableList<StoreableValue>
@@ -393,7 +401,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                         }
                         var text = builder.toString().trim { it <= ' ' }
                         if (text.length == 0) text = "[]"
-                        Tuils.sendOutput(context, text)
+                        OutputTuils.sendOutput(context, text)
                     }
                     ACTION_QUERY -> {
                         val website = intent_value
@@ -405,7 +413,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                             val formatId = intent.getIntExtra(FORMAT_ID, Int.Companion.MAX_VALUE)
                             format = formats.find { it.id == formatId }?.value ?: null
                             if (format == null) {
-                                Tuils.sendOutput(context, context.getString(R.string.id_notfound) + ": " + formatId + "(" + StoreableValue.Type.format.name + ")" )
+                                OutputTuils.sendOutput(context, context.getString(R.string.id_notfound) + ": " + formatId + "(" + StoreableValue.Type.format.name + ")" )
                             }
                         }
 
@@ -421,7 +429,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                             pathType = jsonpath?.type
 
                             if (path == null) {
-                                Tuils.sendOutput( context, context.getString(R.string.id_notfound) + ": " + pathId )
+                                OutputTuils.sendOutput( context, context.getString(R.string.id_notfound) + ": " + pathId )
                                 return
                             }
                         }
@@ -456,7 +464,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
         jsons = ArrayList<StoreableValue>()
         formats = ArrayList<StoreableValue>()
 
-        val file = File(Tuils.getFolder(context), PATH)
+        val file = File(FileTuils.getFolder(context), PATH)
         if (!file.exists()) {
             XMLPrefsManager.resetFile(file, NAME)
         }
@@ -477,10 +485,10 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                 }
             }
         } catch (e: SAXParseException) {
-            Tuils.sendXMLParseError(context, PATH, e)
+            OutputTuils.sendXMLParseError(context, PATH, e)
             Log.e(TAG, e.toString())
         } catch (e: Exception) {
-            Tuils.log(e)
+            LogTuils.log(e)
             Log.e(TAG, e.toString())
         }
     }
@@ -510,7 +518,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
         }
 
         fun remove(context: Context?) {
-            val file = File(Tuils.getFolder(context), PATH)
+            val file = File(FileTuils.getFolder(context), PATH)
             if (!file.exists()) {
                 XMLPrefsManager.resetFile(file, NAME)
             }
@@ -522,15 +530,15 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                 arrayOf<String>(id.toString())
             )
             if (output != null) {
-                if (output.isNotEmpty()) Tuils.sendOutput(Color.RED, context, output)
+                if (output.isNotEmpty()) OutputTuils.sendOutput(context, output, Color.RED)
                 else {
-                    Tuils.sendOutput(Color.RED, context, R.string.id_notfound)
+                    OutputTuils.sendOutput(context, R.string.id_notfound, Color.RED)
                 }
             }
         }
 
         fun edit(context: Context?, newExpression: String?) {
-            val file = File(Tuils.getFolder(context), PATH)
+            val file = File(FileTuils.getFolder(context), PATH)
             if (!file.exists()) {
                 XMLPrefsManager.resetFile(file, NAME)
             }
@@ -545,9 +553,9 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                 false
             )
             if (output != null) {
-                if (output.isNotEmpty()) Tuils.sendOutput(Color.RED, context, output)
+                if (output.isNotEmpty()) OutputTuils.sendOutput(context, output, Color.RED)
                 else {
-                    Tuils.sendOutput(Color.RED, context, R.string.id_notfound)
+                    OutputTuils.sendOutput(context, R.string.id_notfound, Color.RED)
                 }
             } else {
                 this.value = newExpression
@@ -577,12 +585,12 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
             ): StoreableValue? {
                 for (c in values.indices) {
                     if (values.get(c).id == id) {
-                        Tuils.sendOutput(context, R.string.id_already)
+                        OutputTuils.sendOutput(context, R.string.id_already)
                         return null
                     }
                 }
 
-                val file = File(Tuils.getFolder(context), PATH)
+                val file = File(FileTuils.getFolder(context), PATH)
                 if (!file.exists()) {
                     XMLPrefsManager.resetFile(file, NAME)
                 }
@@ -594,8 +602,8 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                     arrayOf<String?>(id.toString(), path)
                 )
                 if (output != null) {
-                    if (output.isNotEmpty()) Tuils.sendOutput(Color.RED, context, output)
-                    else Tuils.sendOutput(Color.RED, context, R.string.output_error)
+                    if (output.isNotEmpty()) OutputTuils.sendOutput(context, output, Color.RED)
+                    else OutputTuils.sendOutput(context, R.string.output_error, Color.RED)
                     return null
                 }
 
@@ -651,8 +659,8 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                 i.putExtra(XMLPrefsManager.VALUE_ATTRIBUTE, s)
                 LocalBroadcastManager.getInstance(context.getApplicationContext()).sendBroadcast(i)
             } else {
-                if (category != Int.Companion.MAX_VALUE) Tuils.sendOutput(context, s, category)
-                else Tuils.sendOutput(context, s)
+                if (category != Int.Companion.MAX_VALUE) OutputTuils.sendOutput(context, s, type = category)
+                else OutputTuils.sendOutput(context, s)
             }
         }
 
@@ -697,7 +705,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                     var temp = first
                     temp = attributeName.matcher(temp).replaceAll(element?.key)
                     temp = attributeValue.matcher(temp).replaceAll(
-                        Tuils.removeUnncesarySpaces(
+                        StringTuils.removeUnncesarySpaces(
                             element?.value.toString().trim { it <= ' ' })
                     )
 
@@ -761,7 +769,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                     var temp = first
                     temp = attributeName.matcher(temp).replaceAll(element?.key)
                     temp = attributeValue.matcher(temp)
-                        .replaceAll(Tuils.removeUnncesarySpaces(element?.value!!.trim { it <= ' ' }))
+                        .replaceAll(StringTuils.removeUnncesarySpaces(element?.value!!.trim { it <= ' ' }))
                     b.append(temp)
                     b.append(separator)
                 }
@@ -814,7 +822,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                 original,
                 arrayOf<String?>(nodeValuePattern),
                 arrayOf<CharSequence>(
-                    delimiterStart + Tuils.removeUnncesarySpaces(nodeValue)
+                    delimiterStart + StringTuils.removeUnncesarySpaces(nodeValue)
                         .trim { it <= ' ' } + delimiterEnd))
         }
 
@@ -825,7 +833,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                 before = original.length
                 original = TextUtils.replace(
                     original,
-                    arrayOf<String>(Tuils.patternNewline.pattern()),
+                    arrayOf<String>(StringTuils.patternNewline.pattern()),
                     arrayOf<CharSequence>(Tuils.NEWLINE)
                 )
             } while (original.length < before)
@@ -861,10 +869,10 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                     original = TextUtils.replace(
                         original,
                         arrayOf<String>(m.group()),
-                        arrayOf<CharSequence>(Tuils.span(m.group(2), cl))
+                        arrayOf<CharSequence>(ViewTuils.span(m.group(2), cl))
                     )
                 } catch (e: Exception) {
-                    Tuils.sendOutput(
+                    OutputTuils.sendOutput(
                         context,
                         context.getString(R.string.output_invalidcolor) + ": " + m.group(1)
                     )

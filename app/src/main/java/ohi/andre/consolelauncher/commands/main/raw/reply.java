@@ -15,6 +15,8 @@ import ohi.andre.consolelauncher.managers.notifications.reply.ReplyManager;
 import ohi.andre.consolelauncher.managers.launchable.AppLauncher;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.SystemUtils;
+
 /**
  * Created by francescoandreuzzi on 05/11/2017.
  */
@@ -104,7 +106,7 @@ public class reply extends ParamCommand implements APICommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Reply"));
+                pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Reply"));
                 return null;
             }
         };

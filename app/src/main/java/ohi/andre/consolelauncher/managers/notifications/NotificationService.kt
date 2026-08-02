@@ -1,7 +1,10 @@
 package ohi.andre.consolelauncher.managers.notifications
 
 import android.annotation.TargetApi
+import android.app.ActivityManager
 import android.app.PendingIntent
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -9,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Parcelable
+import android.os.Process
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.text.TextUtils
@@ -22,6 +26,10 @@ import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Notifications
 import ohi.andre.consolelauncher.tuils.StoppableThread
 import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.LogTuils
+import ohi.andre.consolelauncher.tuils.OutputTuils
+import ohi.andre.consolelauncher.tuils.ViewTuils
+
 import java.util.ConcurrentModificationException
 import java.util.Queue
 import java.util.concurrent.ArrayBlockingQueue
@@ -73,7 +81,7 @@ class NotificationService : NotificationListenerService() {
             notificationManager = NotificationManager.create(this)
             XMLPrefsManager.loadCommons(this)
         } catch (e: Exception) {
-            Tuils.log(e)
+            LogTuils.log(e)
             return
         }
 
@@ -117,7 +125,7 @@ class NotificationService : NotificationListenerService() {
                             val f = nApp?.format ?: format
                             val textColor = nApp?.color?.let { Color.parseColor(it) } ?: color
 
-                            var s: CharSequence = Tuils.span(f, textColor)
+                            var s: CharSequence = ViewTuils.span(f, textColor)
 
                             val bundle: Bundle? = NotificationCompat.getExtras(notification)
 
@@ -181,7 +189,7 @@ class NotificationService : NotificationListenerService() {
                                         }
 
                                         val spanned: CharSequence = try {
-                                            Tuils.span(stringed, Color.parseColor(colorGroup))
+                                            ViewTuils.span(stringed, Color.parseColor(colorGroup))
                                         } catch (e: Exception) {
                                             stringed
                                         }
@@ -219,15 +227,15 @@ class NotificationService : NotificationListenerService() {
                             try {
                                 s = TimeManager.instance.replace(s)
                             } catch (e: Exception) {
-                                Tuils.log(e)
+                                LogTuils.log(e)
                             }
 
-                            Tuils.sendOutput(
+                            OutputTuils.sendOutput(
                                 this@NotificationService.applicationContext,
                                 s,
-                                TerminalManager.CATEGORY_NO_COLOR,
-                                if (click) notification.contentIntent else null,
-                                if (longClick) n else null
+                                type = TerminalManager.CATEGORY_NO_COLOR,
+                                action = if (click) notification.contentIntent else null,
+                                longAction = if (longClick) n else null
                             )
 
                             if (replyManager != null) replyManager!!.onNotification(sbn, s)
@@ -237,7 +245,7 @@ class NotificationService : NotificationListenerService() {
                     try {
                         sleep(UPDATE_TIME)
                     } catch (e: InterruptedException) {
-                        Tuils.log(e)
+                        LogTuils.log(e)
                         return
                     }
                 }
@@ -355,5 +363,23 @@ class NotificationService : NotificationListenerService() {
 
     companion object {
         const val DESTROY = "destroy"
+
+        @JvmStatic
+        fun isRunning(context: Context): Boolean {
+            val collectorComponent = ComponentName(context, NotificationService::class.java)
+            val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            var collectorRunning = false
+            val runningServices = manager.getRunningServices(Integer.MAX_VALUE) ?: return false
+
+            for (service in runningServices) {
+                if (service.service == collectorComponent) {
+                    if (service.pid == Process.myPid()) {
+                        collectorRunning = true
+                    }
+                }
+            }
+
+            return collectorRunning
+        }
     }
 }

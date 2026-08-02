@@ -10,6 +10,8 @@ import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.OutputTuils;
+
 /**
  * Created by francescoandreuzzi on 18/08/2017.
  */
@@ -28,11 +30,11 @@ public class ShellHolder {
         Shell.Interactive interactive = new Shell.Builder()
                 .setOnSTDOUTLineListener(line -> {
                     line = p.matcher(line).replaceAll(Tuils.EMPTYSTRING);
-                    Tuils.sendOutput(context, line, TerminalManager.CATEGORY_OUTPUT);
+                    OutputTuils.sendOutput(context, line, Integer.MAX_VALUE, TerminalManager.CATEGORY_OUTPUT);
                 })
                 .setOnSTDERRLineListener(line -> {
                     line = p.matcher(line).replaceAll(Tuils.EMPTYSTRING);
-                    Tuils.sendOutput(context, line, TerminalManager.CATEGORY_OUTPUT);
+                    OutputTuils.sendOutput(context, line, Integer.MAX_VALUE, TerminalManager.CATEGORY_OUTPUT);
                 })
                 .open();
         interactive.addCommand("cd " + XMLPrefsManager.get(File.class, Behavior.home_path));

@@ -22,6 +22,11 @@ import ohi.andre.consolelauncher.managers.xml.options.Theme;
 import ohi.andre.consolelauncher.tuils.StoppableThread;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.FileTuils;
+import ohi.andre.consolelauncher.tuils.LogTuils;
+import ohi.andre.consolelauncher.tuils.OutputTuils;
+import ohi.andre.consolelauncher.tuils.ViewTuils;
+
 /**
  * Created by francescoandreuzzi on 04/10/2017.
  */
@@ -49,9 +54,9 @@ public class RegexManager {
                 super.run();
 
                 try {
-                    File root = Tuils.getFolder(context);
+                    File root = FileTuils.getFolder(context);
                     if(root == null) {
-                        Tuils.sendOutput(Color.RED, context, R.string.tuinotfound_rss);
+                        OutputTuils.sendOutput(context, R.string.tuinotfound_rss, Color.RED);
                         return;
                     }
 
@@ -65,14 +70,14 @@ public class RegexManager {
                     try {
                         o = XMLPrefsManager.buildDocument(file, ROOT);
                         if(o == null) {
-                            Tuils.sendXMLParseError(context, PATH);
+                            OutputTuils.sendXMLParseError(context, PATH);
                             return;
                         }
                     } catch (SAXParseException e) {
-                        Tuils.sendXMLParseError(context, PATH, e);
+                        OutputTuils.sendXMLParseError(context, PATH, e);
                         return;
                     } catch (Exception e) {
-                        Tuils.log(e);
+                        LogTuils.log(e);
                         return;
                     }
 
@@ -107,8 +112,8 @@ public class RegexManager {
                         }
                     }
                 } catch (Exception e) {
-                    Tuils.log(e);
-                    // Tuils.toFile(e);
+                    LogTuils.log(e);
+                    // LogTuils.toFile(e);
                     return;
                 }
             }
@@ -144,7 +149,7 @@ public class RegexManager {
 
         regexes.add(new Regex(value, id));
 
-        File file = new File(Tuils.getFolder(this.context), PATH);
+        File file = new File(FileTuils.getFolder(this.context), PATH);
 
         return XMLPrefsManager.add(file, REGEX_LABEL, new String[] {ID_ATTRIBUTE, XMLPrefsManager.VALUE_ATTRIBUTE}, new String[] {String.valueOf(id), value});
     }
@@ -153,7 +158,7 @@ public class RegexManager {
 //    "": not found
     public String rm(int id) {
         try {
-            File file = new File(Tuils.getFolder(this.context), PATH);
+            File file = new File(FileTuils.getFolder(this.context), PATH);
 
             Object[] o = XMLPrefsManager.buildDocument(file, null);
             if(o == null) {
@@ -204,14 +209,14 @@ public class RegexManager {
         int outputColor = XMLPrefsManager.getColor(Theme.output_color);
 
         if(m.matches()) {
-            return Tuils.span(color, outputColor, test);
+            return ViewTuils.span(test, outputColor, color);
         }
 
         int last = 0;
-        SpannableString s = Tuils.span(test, outputColor);
+        SpannableString s = ViewTuils.span(test, outputColor);
         while(m.find()) {
             String g0 = m.group(0);
-            last = Tuils.span(color, s, g0, last);
+            last = ViewTuils.highlightSubstring(color, s, g0, last);
         }
 
         return s;

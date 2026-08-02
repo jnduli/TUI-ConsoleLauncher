@@ -8,6 +8,8 @@ import java.io.FilenameFilter;
 
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.FileTuils;
+
 public class FileManager {
 
     public static final int FILE_NOTFOUND = 10;
@@ -25,7 +27,7 @@ public class FileManager {
             return FileManager.ISDIRECTORY;
         }
 
-        Intent intent = Tuils.openFile(c, file);
+        Intent intent = FileTuils.openFile(c, file);
 
         c.startActivity(intent);
         return 0;

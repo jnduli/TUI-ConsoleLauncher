@@ -16,7 +16,6 @@ interface CommandAbstraction {
         const val VISIBLE_PACKAGE: Int = 12
         const val CONTACTNUMBER: Int = 13
         const val TEXTLIST: Int = 14
-        const val SONG: Int = 15
         const val COMMAND: Int = 17
         const val PARAM: Int = 18
         const val BOOLEAN: Int = 19

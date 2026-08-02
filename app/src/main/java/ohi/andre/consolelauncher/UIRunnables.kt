@@ -46,6 +46,8 @@ import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Theme
 import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.OutputTuils
+
 import ohi.andre.consolelauncher.utils.ByteFormatter
 import java.io.File
 import java.text.SimpleDateFormat
@@ -286,11 +288,11 @@ class WeatherViewModel(application: Application): AndroidViewModel(application) 
     private var location: Location? = null
 
     val weather: StateFlow<CharSequence> = callbackFlow {
-        Tuils.sendOutput(application, "Found location", TerminalManager.CATEGORY_OUTPUT)
+        OutputTuils.sendOutput(application, "Found location", type = TerminalManager.CATEGORY_OUTPUT)
         val listener = LocationListener { loc ->
             location = loc
             Log.e(TAG, "Found location: $loc")
-            Tuils.sendOutput(application, "Found location: $loc", TerminalManager.CATEGORY_OUTPUT)
+            OutputTuils.sendOutput(application, "Found location: $loc", type = TerminalManager.CATEGORY_OUTPUT)
             val url = weatherURL(
                 key,
                 loc.latitude,

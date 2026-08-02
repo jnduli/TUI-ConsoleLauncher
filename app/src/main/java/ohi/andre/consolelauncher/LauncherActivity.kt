@@ -55,6 +55,11 @@ import ohi.andre.consolelauncher.tuils.PrivateIOReceiver
 import ohi.andre.consolelauncher.tuils.PublicIOReceiver
 import ohi.andre.consolelauncher.tuils.SimpleMutableEntry
 import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.SystemUtils
+import ohi.andre.consolelauncher.tuils.LogTuils
+import ohi.andre.consolelauncher.tuils.OutputTuils
+import ohi.andre.consolelauncher.tuils.ViewTuils
+
 import ohi.andre.consolelauncher.tuils.interfaces.Inputable
 import ohi.andre.consolelauncher.tuils.interfaces.Outputable
 import ohi.andre.consolelauncher.tuils.interfaces.Reloadable
@@ -301,7 +306,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         try {
             NotificationManager.create(this)
         } catch (e: Exception) {
-            Tuils.toFile(e)
+            LogTuils.toFile(e)
         }
 
         val notifications =
@@ -319,7 +324,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
                         PackageManager.DONT_KILL_APP
                     )
 
-                    if (!Tuils.hasNotificationAccess(this)) {
+                    if (!SystemUtils.hasNotificationAccess(this)) {
                         val i = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
                         if (i.resolveActivity(getPackageManager()) == null) {
                             Toast.makeText(this, R.string.no_notification_access, Toast.LENGTH_LONG)
@@ -342,7 +347,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
                     )
                 }
             } else {
-                Tuils.sendOutput(Color.RED, this, R.string.notification_low_api)
+                OutputTuils.sendOutput(this, R.string.notification_low_api, Color.RED)
             }
         }
 
@@ -360,7 +365,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         if (XMLPrefsManager.getBoolean(Ui.show_restart_message)) {
             val s = getIntent().getCharSequenceExtra(Reloadable.MESSAGE)
             if (s != null) out.onOutput(
-                Tuils.span(
+                ViewTuils.span(
                     s,
                     XMLPrefsManager.getColor(Theme.restart_message_color)
                 )
@@ -428,23 +433,23 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
             }
             applicationContext.unregisterReceiver(publicIOReceiver)
         } catch (e: Exception) {
-            Tuils.log(e)
+            LogTuils.log(e)
         }
 
         try {
             stopService(Intent(this, NotificationMonitorService::class.java))
         } catch (e: NoClassDefFoundError) {
-            Tuils.log(e)
+            LogTuils.log(e)
         } catch (e: Exception) {
-            Tuils.log(e)
+            LogTuils.log(e)
         }
 
         try {
             stopService(Intent(this, KeeperService::class.java))
         } catch (e: NoClassDefFoundError) {
-            Tuils.log(e)
+            LogTuils.log(e)
         } catch (e: Exception) {
-            Tuils.log(e)
+            LogTuils.log(e)
         }
 
         try {
@@ -452,7 +457,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
             notificationIntent.putExtra(NotificationService.DESTROY, true)
             startService(notificationIntent)
         } catch (e: Throwable) {
-            Tuils.log(e)
+            LogTuils.log(e)
         }
 
         overridePendingTransition(0, 0)
@@ -489,7 +494,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
     override fun addMessage(header: String?, message: String?) {
         for (cs in categories) {
-            Tuils.log(cs.header, header)
+            LogTuils.log(cs.header, header)
             if (cs.header == header) {
                 cs.lines.add(message)
                 return
@@ -598,7 +603,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
                 Log.d(TAG, "Connectivity permissions granted, nothing more to do")
             }
             COMMAND_REQUEST_PERMISSION -> {
-                main?.let { it.onCommand(it.mainPack.lastCommand, null as String?, false) }
+                main?.let { it.onCommand(it.mainPack.lastCommand, null as String?) }
             }
             COMMAND_SUGGESTION_REQUEST_PERMISSION -> {
                 ui?.setOutput(

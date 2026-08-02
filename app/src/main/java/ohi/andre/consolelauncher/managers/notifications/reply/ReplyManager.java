@@ -36,6 +36,11 @@ import ohi.andre.consolelauncher.managers.xml.options.Reply;
 import ohi.andre.consolelauncher.tuils.PrivateIOReceiver;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.FileTuils;
+import ohi.andre.consolelauncher.tuils.LogTuils;
+import ohi.andre.consolelauncher.tuils.OutputTuils;
+import ohi.andre.consolelauncher.tuils.StringTuils;
+
 import static ohi.andre.consolelauncher.managers.xml.XMLPrefsManager.VALUE_ATTRIBUTE;
 import static ohi.andre.consolelauncher.managers.xml.XMLPrefsManager.set;
 import static ohi.andre.consolelauncher.managers.xml.XMLPrefsManager.writeTo;
@@ -114,7 +119,7 @@ public class ReplyManager implements XMLPrefsElement {
                         } catch (Exception e) {
                             BoundApp bapp = findApp(app);
                             if(bapp == null) {
-                                Tuils.sendOutput(context, context.getString(R.string.reply_app_not_found) + Tuils.SPACE + app);
+                                OutputTuils.sendOutput(context, context.getString(R.string.reply_app_not_found) + Tuils.SPACE + app);
                                 return;
                             }
 
@@ -145,20 +150,20 @@ public class ReplyManager implements XMLPrefsElement {
 
         List<Reply> enums = new ArrayList<>(Arrays.asList(Reply.values()));
 
-        File file = new File(Tuils.getFolder(context), PATH);
+        File file = new File(FileTuils.getFolder(context), PATH);
 
         Object[] o;
         try {
             o = XMLPrefsManager.buildDocument(file, NAME);
             if(o == null) {
-                Tuils.sendXMLParseError(context, PATH);
+                OutputTuils.sendXMLParseError(context, PATH);
                 return;
             }
         } catch (SAXParseException e) {
-            Tuils.sendXMLParseError(context, PATH, e);
+            OutputTuils.sendXMLParseError(context, PATH, e);
             return;
         } catch (Exception e) {
-            Tuils.log(e);
+            LogTuils.log(e);
             return;
         }
 
@@ -174,7 +179,7 @@ public class ReplyManager implements XMLPrefsElement {
                 final Node node = nodes.item(count);
                 String nn = node.getNodeName();
 
-                if (Tuils.find(nn, enums) != -1) {
+                if (StringTuils.find(nn, enums) != -1) {
                     if(loadPrefs) {
                         values.add(nn, node.getAttributes().getNamedItem(VALUE_ATTRIBUTE).getNodeValue());
 
@@ -192,7 +197,7 @@ public class ReplyManager implements XMLPrefsElement {
                     try {
                         info = mgr.getApplicationInfo(nn, 0);
                     } catch (Exception e) {
-                        Tuils.log(e);
+                        LogTuils.log(e);
                         continue;
                     }
 
@@ -215,7 +220,7 @@ public class ReplyManager implements XMLPrefsElement {
                 writeTo(d, file);
             }
         } catch (Exception e) {
-            Tuils.log(e);
+            LogTuils.log(e);
         }
 
         nextUsableId = nextUsableId();
@@ -247,13 +252,13 @@ public class ReplyManager implements XMLPrefsElement {
 
         BoundApp app = findApp(applicationId);
         if(app == null) {
-            Tuils.sendOutput(context, context.getString(R.string.reply_id_not_found) + Tuils.SPACE + applicationId);
+            OutputTuils.sendOutput(context, context.getString(R.string.reply_id_not_found) + Tuils.SPACE + applicationId);
             return;
         }
 
         NotificationWear wear = findNotificationWear(applicationId);
         if(wear != null) replyTo(context, wear, what);
-        else Tuils.sendOutput(context, R.string.reply_notification_not_found);
+        else OutputTuils.sendOutput(context, R.string.reply_notification_not_found);
     }
 
     @TargetApi(Build.VERSION_CODES.KITKAT_WATCH)
@@ -356,7 +361,7 @@ public class ReplyManager implements XMLPrefsElement {
 
     @Override
     public void write(Context c, XMLPrefsSave save, String value) {
-        set(new File(Tuils.getFolder(c), PATH), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
+        set(new File(FileTuils.getFolder(c), PATH), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
     }
 
     @Override
@@ -369,25 +374,25 @@ public class ReplyManager implements XMLPrefsElement {
 
         BoundApp app = findApp(id);
         if(app == null) {
-            Tuils.sendOutput(context, context.getString(R.string.reply_id_not_found) + Tuils.SPACE + id);
+            OutputTuils.sendOutput(context, context.getString(R.string.reply_id_not_found) + Tuils.SPACE + id);
             return;
         }
 
         NotificationWear wear = findNotificationWear(app);
         if(wear == null) {
-            Tuils.sendOutput(context, R.string.reply_notification_not_found);
+            OutputTuils.sendOutput(context, R.string.reply_notification_not_found);
             return;
         }
 
-        Tuils.sendOutput(context, wear.text);
+        OutputTuils.sendOutput(context, wear.text);
     }
 
     public static String bind(Context c, String pkg) {
-        return XMLPrefsManager.set(new File(Tuils.getFolder(c), PATH), pkg, new String[] {ID_ATTRIBUTE}, new String[] {String.valueOf(nextUsableId)});
+        return XMLPrefsManager.set(new File(FileTuils.getFolder(c), PATH), pkg, new String[] {ID_ATTRIBUTE}, new String[] {String.valueOf(nextUsableId)});
     }
 
     public static String unbind(Context c, String pkg) {
-        return XMLPrefsManager.removeNode(new File(Tuils.getFolder(c), PATH), pkg);
+        return XMLPrefsManager.removeNode(new File(FileTuils.getFolder(c), PATH), pkg);
     }
 
     private int nextUsableId() {
@@ -418,7 +423,7 @@ public class ReplyManager implements XMLPrefsElement {
         String s = builder.toString();
         if(s.length() == 0) s = "[]";
 
-        Tuils.sendOutput(context, s);
+        OutputTuils.sendOutput(context, s);
     }
 
 //    private static class NotificationHolder {

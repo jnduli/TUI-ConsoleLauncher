@@ -24,8 +24,6 @@ enum class Suggestions(
     alias_bg_color("red", XMLPrefsSave.PALETTE_REF, "Aliases suggestions background color"),
     cmd_text_color("black", XMLPrefsSave.PALETTE_REF, "Commands suggestions text color"),
     cmd_bg_color("bright_green", XMLPrefsSave.PALETTE_REF, "Commands suggestions background color"),
-    song_text_color("black", XMLPrefsSave.PALETTE_REF, "Songs suggestions text color"),
-    song_bg_color("bright_yellow", XMLPrefsSave.PALETTE_REF, "Songs suggestions background color"),
     contact_text_color("black", XMLPrefsSave.PALETTE_REF, "Contacts suggestions text color"),
     contact_bg_color("bright_cyan", XMLPrefsSave.PALETTE_REF, "Contacts suggestions background color"),
     file_text_color("black", XMLPrefsSave.PALETTE_REF, "Files suggestions text color"),

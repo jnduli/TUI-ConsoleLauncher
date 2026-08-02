@@ -9,6 +9,8 @@ import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.StringTuils;
+
 /**
  * Created by francescoandreuzzi on 29/04/2017.
  */
@@ -20,7 +22,7 @@ public class vibrate implements CommandAbstraction {
         String text = pack.getString();
         Context context = ((MainPack) pack).context;
 
-        char separator = Tuils.firstNonDigit(text);
+        char separator = StringTuils.firstNonDigit(text);
 
         if(separator == 0) {
             int ms;
@@ -35,9 +37,9 @@ public class vibrate implements CommandAbstraction {
             }
         } else {
             if(separator == ' ') {
-                char s2 = Tuils.firstNonDigit(Tuils.removeSpaces(text));
+                char s2 = StringTuils.firstNonDigit(StringTuils.removeSpaces(text));
                 if(s2 != 0) {
-                    text = Tuils.removeSpaces(text);
+                    text = StringTuils.removeSpaces(text);
                     separator = s2;
                 }
             }

@@ -109,7 +109,7 @@ public class LongClickableSpan extends ClickableSpan {
             try {
                 pi.send();
             } catch (PendingIntent.CanceledException e) {
-                Tuils.log(e);
+                LogTuils.log(e);
             }
         } else if(o instanceof Uri) {
             Intent i = new Intent(Intent.ACTION_VIEW, (Uri) o);
@@ -118,7 +118,7 @@ public class LongClickableSpan extends ClickableSpan {
             try {
                 v.getContext().startActivity(i);
             } catch (Exception e) {
-                Tuils.sendOutput(Color.RED, v.getContext(), e.toString());
+                OutputTuils.sendOutput(v.getContext(), e.toString(), Color.RED);
             }
         } else if(o instanceof NotificationService.Notification) {
             final NotificationService.Notification n = (NotificationService.Notification) o;
@@ -138,7 +138,7 @@ public class LongClickableSpan extends ClickableSpan {
                         if (id == R.id.exclude_app) {
                             NotificationManager.setState(v.getContext(), n.pkg, false);
                         } else if (id == R.id.exclude_notification) {
-                            Tuils.log(n.text);
+                            LogTuils.log(n.text);
                             NotificationManager.addFilter(v.getContext(), n.text, -1);
                         } else if (id == R.id.reply_notification) {
                             Intent intent = new Intent(PrivateIOReceiver.ACTION_INPUT);

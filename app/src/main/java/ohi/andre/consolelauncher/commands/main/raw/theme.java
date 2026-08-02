@@ -12,6 +12,8 @@ import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.ThemeManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.SystemUtils;
+
 /**
  * Created by francescoandreuzzi on 20/08/2017.
  */
@@ -49,14 +51,14 @@ public class theme extends ParamCommand {
         view {
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://tui.tarunshankerpandey.com"));
+                pack.context.startActivity(SystemUtils.webPage("https://tui.tarunshankerpandey.com"));
                 return null;
             }
         },
         create {
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://tui.tarunshankerpandey.com/create.php"));
+                pack.context.startActivity(SystemUtils.webPage("https://tui.tarunshankerpandey.com/create.php"));
                 return null;
             }
         },
@@ -70,7 +72,7 @@ public class theme extends ParamCommand {
         tutorial {
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Themes"));
+                pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Themes"));
                 return null;
             }
         };

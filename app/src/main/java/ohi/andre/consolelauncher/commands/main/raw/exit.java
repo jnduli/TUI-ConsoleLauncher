@@ -3,7 +3,7 @@ package ohi.andre.consolelauncher.commands.main.raw;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.ExecutePack;
-import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.SystemUtils;
 
 /**
  * Created by francescoandreuzzi on 21/05/2017.
@@ -12,7 +12,7 @@ import ohi.andre.consolelauncher.tuils.Tuils;
 public class exit implements CommandAbstraction {
     @Override
     public String exec(ExecutePack pack) throws Exception {
-        Tuils.resetPreferredLauncherAndOpenChooser(pack.context);
+        SystemUtils.resetPreferredLauncherAndOpenChooser(pack.context);
         return null;
     }
 

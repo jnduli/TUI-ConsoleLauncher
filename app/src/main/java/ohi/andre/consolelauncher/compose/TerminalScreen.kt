@@ -56,6 +56,9 @@ import ohi.andre.consolelauncher.managers.xml.options.Theme
 import ohi.andre.consolelauncher.managers.xml.options.Ui
 import ohi.andre.consolelauncher.tuils.Tuils
 
+import ohi.andre.consolelauncher.tuils.SystemUtils
+import ohi.andre.consolelauncher.tuils.ViewTuils
+
 /**
  * The terminal core: output history, input row (prefix + text field + submit) and toolbar
  * (back/next/delete/paste), in either order depending on [inputAtBottom] - replaces
@@ -74,7 +77,7 @@ fun TerminalScreen(
 ) {
     val context = LocalContext.current
     val ioSize = remember { XMLPrefsManager.getInt(Ui.input_output_size) }
-    val typeface = remember { Tuils.getTypeface(context)?.let { FontFamily(it) } ?: FontFamily.Default }
+    val typeface = remember { ViewTuils.getTypeface(context)?.let { FontFamily(it) } ?: FontFamily.Default }
 
     val output by terminalManager.output.collectAsStateWithLifecycle()
     val inputValue by terminalManager.inputValue.collectAsStateWithLifecycle()
@@ -248,7 +251,7 @@ private fun Toolbar(terminalManager: TerminalManager) {
         ToolbarIcon(R.drawable.ic_back, toolbarColor) { terminalManager.onBackPressed() }
         ToolbarIcon(R.drawable.ic_next, toolbarColor) { terminalManager.onNextPressed() }
         ToolbarIcon(R.drawable.ic_paste, toolbarColor) {
-            val text = Tuils.getTextFromClipboard(context)
+            val text = SystemUtils.getTextFromClipboard(context)
             if (!text.isNullOrEmpty()) terminalManager.input = terminalManager.input + text
         }
     }

@@ -10,7 +10,8 @@ import java.io.IOException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
 import ohi.andre.consolelauncher.R
-import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.SystemUtils
+
 import okhttp3.CacheControl
 
 @Serializable
@@ -52,9 +53,6 @@ class WeatherRepository {
 
     fun fetchWeather(url: String, callback: (WeatherResponse?) -> Unit) {
         Log.i(WEATHER_TAG, "Fetching data for: $url")
-        // if (!Tuils.hasInternetAccess()) {
-        //    return
-        // }
         val request = Request.Builder()
             .url(url)
             .cacheControl(CacheControl.FORCE_NETWORK)

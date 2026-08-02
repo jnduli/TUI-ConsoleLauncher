@@ -26,7 +26,7 @@ import ohi.andre.consolelauncher.BuildConfig;
 import ohi.andre.consolelauncher.LauncherActivity;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
-import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.LogTuils;
 
 public class TuiLocationManager {
 
@@ -141,8 +141,8 @@ public class TuiLocationManager {
             manager.requestLocationUpdates(XMLPrefsManager.getInt(Behavior.location_update_mintime) * 60 * 1000, XMLPrefsManager.getInt(Behavior.location_update_mindistance),
                     c, locationListener, Looper.getMainLooper());
         } catch (Exception e) {
-            Tuils.log(e);
-            Tuils.toFile(e);
+            LogTuils.log(e);
+            LogTuils.toFile(e);
         }
 
         handler = new Handler();

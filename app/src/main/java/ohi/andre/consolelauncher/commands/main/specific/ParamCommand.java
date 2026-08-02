@@ -9,6 +9,8 @@ import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.tuils.SimpleMutableEntry;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.LogTuils;
+
 /**
  * Created by francescoandreuzzi on 01/05/2017.
  */
@@ -102,10 +104,10 @@ public abstract class ParamCommand implements CommandAbstraction {
 
     @Override
     public String onArgNotFound(ExecutePack pack, int indexNotFound) {
-        Tuils.log("inf", indexNotFound);
+        LogTuils.log("inf", indexNotFound);
         if(indexNotFound == 0) {
             try {
-                Tuils.log("last");
+                LogTuils.log("last");
                 String param = pack.get(String.class, 0);
                 return pack.context.getString(R.string.output_invalid_param) + Tuils.SPACE + param;
             } catch (Exception e) {}

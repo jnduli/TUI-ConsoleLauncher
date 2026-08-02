@@ -15,6 +15,9 @@ import ohi.andre.consolelauncher.managers.HTMLExtractManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
+import ohi.andre.consolelauncher.tuils.SystemUtils;
+import ohi.andre.consolelauncher.tuils.FileTuils;
+
 /**
  * Created by francescoandreuzzi on 29/03/2018.
  */
@@ -159,7 +162,7 @@ public class htmlextract extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/HTMLExtract"));
+                pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/HTMLExtract"));
                 return null;
             }
         },
@@ -171,8 +174,8 @@ public class htmlextract extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                File file = new File(Tuils.getFolder(pack.context), HTMLExtractManager.PATH);
-                pack.context.startActivity(Tuils.openFile(pack.context, file));
+                File file = new File(FileTuils.getFolder(pack.context), HTMLExtractManager.PATH);
+                pack.context.startActivity(FileTuils.openFile(pack.context, file));
                 return null;
             }
         };

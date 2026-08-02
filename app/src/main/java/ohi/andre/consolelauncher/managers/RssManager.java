@@ -35,6 +35,14 @@ import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsList;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.tuils.StoppableThread;
 import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.SystemUtils;
+import ohi.andre.consolelauncher.tuils.FileTuils;
+import ohi.andre.consolelauncher.tuils.LogTuils;
+import ohi.andre.consolelauncher.tuils.MathTuils;
+import ohi.andre.consolelauncher.tuils.OutputTuils;
+import ohi.andre.consolelauncher.tuils.StringTuils;
+import ohi.andre.consolelauncher.tuils.ViewTuils;
+
 import ohi.andre.consolelauncher.tuils.html_escape.HtmlEscape;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -98,7 +106,7 @@ public class RssManager implements XMLPrefsElement {
 
     @Override
     public void write(Context c, XMLPrefsSave save, String value) {
-        set(new File(Tuils.getFolder(c), PATH), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
+        set(new File(FileTuils.getFolder(c), PATH), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
     }
 
     @Override
@@ -135,8 +143,8 @@ public class RssManager implements XMLPrefsElement {
 
         connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
 
-        root = new File(Tuils.getFolder(context), RSS_FOLDER);
-        rssIndexFile = new File(Tuils.getFolder(context), PATH);
+        root = new File(FileTuils.getFolder(context), RSS_FOLDER);
+        rssIndexFile = new File(FileTuils.getFolder(context), PATH);
 
         this.client = client;
 
@@ -171,14 +179,14 @@ public class RssManager implements XMLPrefsElement {
                 try {
                     o = XMLPrefsManager.buildDocument(rssIndexFile, NAME);
                     if(o == null) {
-                        Tuils.sendXMLParseError(context, PATH);
+                        OutputTuils.sendXMLParseError(context, PATH);
                         return;
                     }
                 } catch (SAXParseException e) {
-                    Tuils.sendXMLParseError(context, PATH, e);
+                    OutputTuils.sendXMLParseError(context, PATH, e);
                     return;
                 } catch (Exception e) {
-                    Tuils.log(e);
+                    LogTuils.log(e);
                     return;
                 }
 
@@ -198,7 +206,7 @@ public class RssManager implements XMLPrefsElement {
                         Node node = nodes.item(count);
 
                         String nn = node.getNodeName();
-                        if (Tuils.find(nn, (List) enums) != -1) {
+                        if (StringTuils.find(nn, (List) enums) != -1) {
 //                              is an enum value
                             values.add(nn, node.getAttributes().getNamedItem(VALUE_ATTRIBUTE).getNodeValue());
 
@@ -210,7 +218,7 @@ public class RssManager implements XMLPrefsElement {
                             }
                         } else {
 //                             deleted
-                            int index = deleted == null ? -1 : Tuils.find(nn, deleted);
+                            int index = deleted == null ? -1 : StringTuils.find(nn, deleted);
                             if(index != -1) {
                                 deleted[index] = null;
                                 Element e = (Element) node;
@@ -281,8 +289,8 @@ public class RssManager implements XMLPrefsElement {
                         writeTo(document, rssIndexFile);
                     }
                 } catch (Exception e) {
-                    Tuils.log(e);
-                    // Tuils.toFile(e);
+                    LogTuils.log(e);
+                    // LogTuils.toFile(e);
                 }
 
                 click = XMLPrefsManager.getBoolean(ohi.andre.consolelauncher.managers.xml.options.Rss.click_rss);
@@ -340,7 +348,7 @@ public class RssManager implements XMLPrefsElement {
                         try {
                             rg.regex = Pattern.compile(rg.literalPattern);
                         } catch (Exception e) {
-                            Tuils.sendOutput(Color.RED, context, context.getString(R.string.invalid_regex) + Tuils.SPACE + rg.literalPattern);
+                            OutputTuils.sendOutput(context, context.getString(R.string.invalid_regex) + Tuils.SPACE + rg.literalPattern, Color.RED);
                             rg.regex = null;
                         }
                     }
@@ -369,7 +377,7 @@ public class RssManager implements XMLPrefsElement {
                 updateRss(r, true);
                 feeds.add(r);
             } catch (Exception e) {
-                Tuils.log(e);
+                LogTuils.log(e);
                 return e.toString();
             }
 
@@ -430,8 +438,8 @@ public class RssManager implements XMLPrefsElement {
                     parse(feed, false);
                     return null;
                 } catch (Exception e) {
-                    Tuils.log(e);
-                    // Tuils.toFile(e);
+                    LogTuils.log(e);
+                    // LogTuils.toFile(e);
                     return e.toString();
                 }
             }
@@ -635,8 +643,8 @@ public class RssManager implements XMLPrefsElement {
             public void run() {
                 super.run();
 
-                if(!Tuils.hasInternetAccess()) {
-                    if(force) Tuils.sendOutput(Color.RED, context, R.string.no_internet);
+                if(!SystemUtils.hasInternetAccess()) {
+                    if(force) OutputTuils.sendOutput(context, R.string.no_internet, Color.RED);
                     return;
                 }
 
@@ -656,18 +664,18 @@ public class RssManager implements XMLPrefsElement {
                         ResponseBody body = response.body();
 
                         long bytes = 0;
-                        if(body != null) bytes = Tuils.download(new BufferedInputStream(body.byteStream()), new File(root, RSS_LABEL + feed.id + ".xml"));
+                        if(body != null) bytes = FileTuils.download(new BufferedInputStream(body.byteStream()), new File(root, RSS_LABEL + feed.id + ".xml"));
 
                         if(showDownloadMessage) {
-                            CharSequence c = Tuils.span(downloadFormat, downloadMessageColor);
+                            CharSequence c = ViewTuils.span(downloadFormat, downloadMessageColor);
 
                             double kb = (double) bytes / (double) 1024;
                             double mb = kb / (double) 1024;
                             double gb = mb / (double) 1024;
 
-                            kb = Tuils.round(kb, 2);
-                            mb = Tuils.round(mb, 2);
-                            gb = Tuils.round(gb, 2);
+                            kb = MathTuils.round(kb, 2);
+                            mb = MathTuils.round(mb, 2);
+                            gb = MathTuils.round(gb, 2);
 
                             c = urlPattern.matcher(c).replaceAll(feed.url);
                             c = idPattern.matcher(c).replaceAll(String.valueOf(feed.id));
@@ -678,11 +686,11 @@ public class RssManager implements XMLPrefsElement {
 
                             c = TimeManager.instance.replace(c);
 
-                            Tuils.sendOutput(downloadMessageColor, context, c);
+                            OutputTuils.sendOutput(context, c, downloadMessageColor);
                         }
 
                         if(bytes == 0) {
-                            Tuils.sendOutput(Color.RED, context, context.getString(R.string.rss_invalid_empty) + Tuils.SPACE + feed.id);
+                            OutputTuils.sendOutput(context, context.getString(R.string.rss_invalid_empty) + Tuils.SPACE + feed.id, Color.RED);
                             return;
                         }
 
@@ -701,8 +709,8 @@ public class RssManager implements XMLPrefsElement {
                     feed.updateFile(rssIndexFile);
 
                 } catch (Exception e) {
-                    Tuils.log(e);
-                    // Tuils.toFile(e);
+                    LogTuils.log(e);
+                    // LogTuils.toFile(e);
                 }
             }
         }.start();
@@ -721,7 +729,7 @@ public class RssManager implements XMLPrefsElement {
         try {
             doc = dBuilder.parse(rssFile);
         } catch (SAXParseException e) {
-            Tuils.sendXMLParseError(context, PATH, e);
+            OutputTuils.sendXMLParseError(context, PATH, e);
             return false;
         }
 
@@ -735,7 +743,7 @@ public class RssManager implements XMLPrefsElement {
 
         NodeList list = doc.getElementsByTagName(entryTag);
         if(list.getLength() == 0) {
-            Tuils.sendOutput(Color.RED, context, context.getString(R.string.rss_invalid_entry_tag) + Tuils.SPACE + (entryTag));
+            OutputTuils.sendOutput(context, context.getString(R.string.rss_invalid_entry_tag) + Tuils.SPACE + (entryTag), Color.RED);
             return false;
         }
 
@@ -758,7 +766,7 @@ public class RssManager implements XMLPrefsElement {
                 try {
                     d = feed.timeFormat != null ? feed.timeFormat.parse(date) : defaultRSSDateFormat.parse(date);
                 } catch (Exception e) {
-                    Tuils.sendOutput(Color.RED, context, rssFile.getName() + ": " + context.getString(R.string.rss_invalid_timeformat));
+                    OutputTuils.sendOutput(context, rssFile.getName() + ": " + context.getString(R.string.rss_invalid_timeformat), Color.RED);
                     return false;
                 }
 
@@ -777,7 +785,7 @@ public class RssManager implements XMLPrefsElement {
         }
 
         if(time && !foundOneDateAtLeast) {
-            Tuils.sendOutput(Color.RED, context, context.getString(R.string.rss_invalid_date) + Tuils.SPACE + (dateTag));
+            OutputTuils.sendOutput(context, context.getString(R.string.rss_invalid_date) + Tuils.SPACE + (dateTag), Color.RED);
         } else if(greatestTime != -1) {
             feed.lastShownItem = greatestTime;
             feed.updateLastShownItem(rssIndexFile);
@@ -798,9 +806,9 @@ public class RssManager implements XMLPrefsElement {
         if(item == null) return;
 
         String cp = feed.format != null ? feed.format : defaultFormat;
-        cp = Tuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE);
+        cp = StringTuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE);
 
-        CharSequence s = Tuils.span(cp, feed.color);
+        CharSequence s = ViewTuils.span(cp, feed.color);
 
         String dateTag = feed.dateTag == null ? PUBDATE_CHILD : feed.dateTag;
 
@@ -826,7 +834,7 @@ public class RssManager implements XMLPrefsElement {
                         try {
                             d = feed.timeFormat != null ? feed.timeFormat.parse(value) : defaultRSSDateFormat.parse(value);
                         } catch (ParseException e) {
-                            Tuils.log(e);
+                            LogTuils.log(e);
                             continue;
                         }
 
@@ -857,7 +865,7 @@ public class RssManager implements XMLPrefsElement {
 
                 CharSequence replace;
                 if(cl != feed.color && value.length() > 0) {
-                    replace = Tuils.span(value, cl);
+                    replace = ViewTuils.span(value, cl);
                 } else {
                     replace = value;
                 }
@@ -874,7 +882,7 @@ public class RssManager implements XMLPrefsElement {
 
         if(!userRequested) {
             for(CmdableRegex r : cmdRegexes) {
-                if(r.regex == null || !Tuils.arrayContains(r.on, feed.id)) continue;
+                if(r.regex == null || !StringTuils.arrayContains(r.on, feed.id)) continue;
 
                 String cmd = r.cmd;
 
@@ -909,7 +917,7 @@ public class RssManager implements XMLPrefsElement {
         if(url == null || url.length() == 0) action = null;
         else action = OPEN_URL + url;
 
-        Tuils.sendOutput(context, s, TerminalManager.CATEGORY_NO_COLOR, click ? action : null);
+        OutputTuils.sendOutput(context, s, Integer.MAX_VALUE, TerminalManager.CATEGORY_NO_COLOR, click ? action : null);
     }
 
     public static class Rss {
@@ -1025,9 +1033,9 @@ public class RssManager implements XMLPrefsElement {
         }
 
         public boolean needUpdate() {
-//            Tuils.log("lc", lastCheckedClient);
-//            Tuils.log(System.currentTimeMillis() - lastCheckedClient);
-//            Tuils.log("up", updateTimeSeconds * 1000);
+//            LogTuils.log("lc", lastCheckedClient);
+//            LogTuils.log(System.currentTimeMillis() - lastCheckedClient);
+//            LogTuils.log("up", updateTimeSeconds * 1000);
             return System.currentTimeMillis() - lastCheckedClient >= (updateTimeSeconds * 1000);
         }
 
@@ -1162,18 +1170,18 @@ public class RssManager implements XMLPrefsElement {
             this.literalPattern = regex;
             this.cmd = cmd;
 
-            char separator = Tuils.firstNonDigit(on);
+            char separator = StringTuils.firstNonDigit(on);
             if(separator == 0) {
                 try {
                     this.on = new int[] {Integer.parseInt(on)};
                 } catch (Exception e) {
-                    Tuils.log(e);
+                    LogTuils.log(e);
                 }
             } else {
                 if(separator == ' ') {
-                    char s2 = Tuils.firstNonDigit(Tuils.removeSpaces(on));
+                    char s2 = StringTuils.firstNonDigit(StringTuils.removeSpaces(on));
                     if(s2 != 0) {
-                        on = Tuils.removeSpaces(on);
+                        on = StringTuils.removeSpaces(on);
                         separator = s2;
                     }
                 }
@@ -1185,7 +1193,7 @@ public class RssManager implements XMLPrefsElement {
                     try {
                         this.on[c] = Integer.parseInt(split[c]);
                     } catch (Exception e) {
-                        Tuils.log(e);
+                        LogTuils.log(e);
                         this.on[c] = Integer.MAX_VALUE;
                     }
                 }

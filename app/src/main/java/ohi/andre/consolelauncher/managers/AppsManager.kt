@@ -42,6 +42,12 @@ import ohi.andre.consolelauncher.managers.xml.options.Theme
 import ohi.andre.consolelauncher.managers.xml.options.Ui
 import ohi.andre.consolelauncher.tuils.StoppableThread
 import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.SystemUtils
+import ohi.andre.consolelauncher.tuils.FileTuils
+import ohi.andre.consolelauncher.tuils.LogTuils
+import ohi.andre.consolelauncher.tuils.OutputTuils
+import ohi.andre.consolelauncher.tuils.StringTuils
+
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -91,7 +97,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
     override fun write(c: Context?, save: XMLPrefsSave, value: String?) {
         XMLPrefsManager.set(
-            File(Tuils.getFolder(c), PATH),
+            File(FileTuils.getFolder(c), PATH),
             save.label(),
             arrayOf<String>(XMLPrefsManager.VALUE_ATTRIBUTE),
             arrayOf<String?>(value)
@@ -142,7 +148,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
             pl = null
         }
 
-        val root = Tuils.getFolder(context)
+        val root = FileTuils.getFolder(context)
         if (root == null) this.file = null
         else this.file = File(root, PATH)
 
@@ -182,7 +188,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         groups.clear()
 
         val currentFile = file ?: run {
-            Tuils.sendOutput(Color.RED, context, R.string.tuinotfound_app)
+            OutputTuils.sendOutput(context, R.string.tuinotfound_app, Color.RED)
             return
         }
 
@@ -193,7 +199,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
             val o = XMLPrefsManager.buildDocument(currentFile, NAME)
             if (o == null) {
-                Tuils.sendXMLParseError(context, PATH)
+                OutputTuils.sendXMLParseError(context, PATH)
                 return
             }
             val document = o[0] as Document
@@ -211,8 +217,8 @@ class AppsManager(context: Context) : XMLPrefsElement {
             finalizeGroups()
 
         } catch (e: Exception) {
-            Tuils.log(e)
-            Tuils.toFile(this.context, e)
+            LogTuils.log(e)
+            LogTuils.toFile(this.context, e)
         }
     }
 
@@ -273,7 +279,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     private fun createGroupFromElement(e: Element, allApps: List<Launchable>) {
         val name = e.nodeName
         if (name.contains(Tuils.SPACE)) {
-            Tuils.sendOutput(Color.RED, context, "${PATH}: ${context?.getString(R.string.output_groupspace)}: $name")
+            OutputTuils.sendOutput(context, "${PATH}: ${context?.getString(R.string.output_groupspace)}: $name", Color.RED)
             return
         }
 
@@ -320,7 +326,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     private fun finalizeGroups() {
         Group.sorting = XMLPrefsManager.getInt(Apps.app_groups_sorting)
         groups.forEach { it.sort() }
-        groups.sortWith { o1, o2 -> Tuils.alphabeticCompare(o1.name()!!, o2.name()!!) }
+        groups.sortWith { o1, o2 -> StringTuils.alphabeticCompare(o1.name()!!, o2.name()!!) }
     }
 
     // Helper to extract color parsing logic
@@ -329,7 +335,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
             val colorStr = e.getAttribute(attr)
             if (colorStr.isNotEmpty()) {
                 return try { Color.parseColor(colorStr) } catch (err: Exception) {
-                    Tuils.sendOutput(Color.RED, context, "${PATH}: ${context?.getString(R.string.output_invalidcolor)}: $colorStr")
+                    OutputTuils.sendOutput(context, "${PATH}: ${context?.getString(R.string.output_invalidcolor)}: $colorStr", Color.RED)
                     null
                 }
             }
@@ -374,7 +380,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
         // Note: For SIM TOolkit, the name 'SIM Toolkit' is defined as one of the shortcuts so not the actual app name found by
         // resovleinfo.loadLabel(mgr), so ensure T-UI is the default for this to work
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1 && Tuils.isMyLauncherDefault(context!!.getPackageManager())) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1 && SystemUtils.isMyLauncherDefault(context!!.getPackageManager())) {
             val launcherApps =
                 context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
             for (ri in main) {
@@ -419,7 +425,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
     fun loadWebAppsForAppsManager(fileName: String = "web_app.xml"): List<WebLauncher> {
         return try {
-            val file = File(Tuils.getFolder(context), fileName)
+            val file = File(FileTuils.getFolder(context), fileName)
             if (file.exists()) {
                 val xmlString = file.readText()
                 Launchable.listFromXml(xmlString).filterIsInstance<WebLauncher>()
@@ -434,7 +440,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
     fun saveWebAppsForAppsManager(webLaunchers: List<WebLauncher>, fileName: String = "web_app.xml") {
         try {
-            val file = File(Tuils.getFolder(context), fileName)
+            val file = File(FileTuils.getFolder(context), fileName)
             val xmlString = Launchable.listToXml(webLaunchers)
             file.writeText(xmlString)
         } catch (e: Exception) {
@@ -486,9 +492,9 @@ class AppsManager(context: Context) : XMLPrefsElement {
                     }
                 }
 
-                cp = Tuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE)
+                cp = StringTuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE)
 
-                Tuils.sendOutput(appInstalledColor, context, cp)
+                OutputTuils.sendOutput(context, cp, appInstalledColor)
             }
 
             val i = manager.getLaunchIntentForPackage(packageName)
@@ -524,9 +530,9 @@ class AppsManager(context: Context) : XMLPrefsElement {
                     cp = pl!!.matcher(cp).replaceAll(packageName.substring(index + 1))
                 }
             }
-            cp = Tuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE)
+            cp = StringTuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE)
 
-            Tuils.sendOutput(appUninstalledColor, context, cp)
+            OutputTuils.sendOutput(context, cp, appUninstalledColor)
         }
 
         for (i in infos) appsHolder!!.remove(i)
@@ -545,11 +551,11 @@ class AppsManager(context: Context) : XMLPrefsElement {
         if (appList == null) return null
 
         val labelLower = label.lowercase(Locale.getDefault())
-        val unspacedLabel = Tuils.removeSpaces(labelLower)
+        val unspacedLabel = StringTuils.removeSpaces(labelLower)
         
         return appList.find { launchable ->
             launchable.names().any { it.lowercase(Locale.getDefault()) == labelLower } ||
-            Tuils.removeSpaces(launchable.name().lowercase(Locale.getDefault())) == unspacedLabel
+            StringTuils.removeSpaces(launchable.name().lowercase(Locale.getDefault())) == unspacedLabel
         }
     }
 
@@ -613,7 +619,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     }
 
     fun createGroup(name: String): String? {
-        val index = Tuils.find(name, groups)
+        val index = StringTuils.find(name, groups)
         if (index == -1) {
             groups.add(Group(name))
             return XMLPrefsManager.set(
@@ -628,7 +634,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     }
 
     fun groupBgColor(name: String?, color: String?): String? {
-        val index = Tuils.find(name, groups)
+        val index = StringTuils.find(name, groups)
         if (index == -1) {
             return context!!.getString(R.string.output_groupnotfound)
         }
@@ -643,7 +649,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     }
 
     fun groupForeColor(name: String?, color: String?): String? {
-        val index = Tuils.find(name, groups)
+        val index = StringTuils.find(name, groups)
         if (index == -1) {
             return context!!.getString(R.string.output_groupnotfound)
         }
@@ -663,7 +669,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         if (output == null) return null
         if (output.length == 0) return context!!.getString(R.string.output_groupnotfound)
 
-        val index = Tuils.find(name, groups)
+        val index = StringTuils.find(name, groups)
         if (index != -1) groups.removeAt(index)
 
         return output
@@ -674,7 +680,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         try {
             o = XMLPrefsManager.buildDocument(file, null)
             if (o == null) {
-                Tuils.sendXMLParseError(context, PATH)
+                OutputTuils.sendXMLParseError(context, PATH)
                 return null
             }
         } catch (e: Exception) {
@@ -690,7 +696,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         val e = node as Element
         var apps = e.getAttribute(APPS_ATTRIBUTE)
 
-        val groupIndex = Tuils.find(group, groups)
+        val groupIndex = StringTuils.find(group, groups)
         if (groupIndex != -1) {
             val existingApp = groups[groupIndex].apps.find { it.names().contains(launchable.name()) }
             if (existingApp != null) return null
@@ -703,7 +709,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
         XMLPrefsManager.writeTo(d, file)
 
-        val index = Tuils.find(group, groups)
+        val index = StringTuils.find(group, groups)
         if (index != -1) groups.get(index).add(launchable, true)
 
         return null
@@ -714,7 +720,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         try {
             o = XMLPrefsManager.buildDocument(file, null)
             if (o == null) {
-                Tuils.sendXMLParseError(context, PATH)
+                OutputTuils.sendXMLParseError(context, PATH)
                 return null
             }
         } catch (e: Exception) {
@@ -750,7 +756,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
             XMLPrefsManager.writeTo(d, file)
 
-            val index = Tuils.find(group, groups)
+            val index = StringTuils.find(group, groups)
             if (index != -1) groups.get(index).remove(launchable)
         }
 
@@ -762,7 +768,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         try {
             o = XMLPrefsManager.buildDocument(file, null)
             if (o == null) {
-                Tuils.sendXMLParseError(context, PATH)
+                OutputTuils.sendXMLParseError(context, PATH)
                 return null
             }
         } catch (e: Exception) {
@@ -816,7 +822,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         try {
             o = XMLPrefsManager.buildDocument(file, null)
             if (o == null) {
-                Tuils.sendXMLParseError(context, PATH)
+                OutputTuils.sendXMLParseError(context, PATH)
                 return null
             }
         } catch (e: Exception) {
@@ -899,7 +905,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
                 }
             }
 
-            return Tuils.printApps(labels)
+            return StringTuils.printApps(labels)
         } catch (e: NullPointerException) {
             return "[]"
         }
@@ -922,7 +928,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
                 }
             }
 
-            return Tuils.printApps(labels)
+            return StringTuils.printApps(labels)
         } catch (e: NullPointerException) {
             return "[]"
         }
@@ -985,7 +991,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
         override fun use(mainPack: MainPack?, input: String?): Boolean {
             if (mainPack == null || input == null) return false
-            val label = Tuils.removeSpaces(input)
+            val label = StringTuils.removeSpaces(input)
             val launchable = apps.find { it.names().contains(label) }
             return launchable?.let { mainPack.appsManager.performLaunch(it) } ?: false
         }
@@ -1018,8 +1024,8 @@ class AppsManager(context: Context) : XMLPrefsElement {
                         return 0
                     }
                     when (sorting) {
-                        ALPHABETIC_UP_DOWN -> return Tuils.alphabeticCompare(o1.name(), o2.name())
-                        ALPHABETIC_DOWN_UP -> return Tuils.alphabeticCompare(o2.name(), o1.name())
+                        ALPHABETIC_UP_DOWN -> return StringTuils.alphabeticCompare(o1.name(), o2.name())
+                        ALPHABETIC_DOWN_UP -> return StringTuils.alphabeticCompare(o2.name(), o1.name())
                         TIME_UP_DOWN -> return o1.launchTimes - o2.launchTimes
                         TIME_DOWN_UP -> return o2.launchTimes - o1.launchTimes
                         MOSTUSED_UP_DOWN -> return o1.launchTimes - o2.launchTimes
@@ -1120,7 +1126,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
                 if (info == null) return
 
                 if (suggested.size == 0) return
-                val index = Tuils.find(info, suggested)
+                val index = StringTuils.find(info, suggested)
                 if (index == -1) {
                     if (suggested.size < 5) {
                         suggested.add(SuggestedApp(info, USER_DEFINIED, suggested.size + 1))

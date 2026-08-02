@@ -27,9 +27,7 @@ public class PublicIOReceiver extends BroadcastReceiver {
             Bundle remoteInput = RemoteInput.getResultsFromIntent(intent);
             if (remoteInput != null) {
                 String cmd = remoteInput.getString(PrivateIOReceiver.TEXT);
-                boolean wasMusic = remoteInput.getBoolean(MainManager.MUSIC_SERVICE) || intent.getBooleanExtra(MainManager.MUSIC_SERVICE, false);
 
-                intent.putExtra(MainManager.MUSIC_SERVICE, wasMusic);
                 intent.putExtra(MainManager.CMD, cmd);
             } else {
                 return;

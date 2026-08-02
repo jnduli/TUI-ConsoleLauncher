@@ -26,7 +26,6 @@ import ohi.andre.consolelauncher.managers.FileManager
 import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.RssManager
 import ohi.andre.consolelauncher.managers.TerminalManager
-import ohi.andre.consolelauncher.managers.music.Song
 import ohi.andre.consolelauncher.managers.notifications.NotificationManager
 import ohi.andre.consolelauncher.managers.notifications.reply.BoundApp
 import ohi.andre.consolelauncher.managers.notifications.reply.ReplyManager
@@ -41,6 +40,10 @@ import ohi.andre.consolelauncher.managers.xml.options.Rss
 import ohi.andre.consolelauncher.managers.xml.options.Suggestions
 import ohi.andre.consolelauncher.tuils.StoppableThread
 import ohi.andre.consolelauncher.tuils.Tuils
+import ohi.andre.consolelauncher.tuils.LogTuils
+import ohi.andre.consolelauncher.tuils.OutputTuils
+import ohi.andre.consolelauncher.tuils.StringTuils
+
 import java.io.File
 import java.util.Arrays
 import java.util.Collections
@@ -104,7 +107,6 @@ class SuggestionsManager(
         Suggestion.TYPE_CONTACT to XMLPrefsManager.getColor(Suggestions.contact_bg_color),
         Suggestion.TYPE_FILE to XMLPrefsManager.getColor(Suggestions.file_bg_color),
         Suggestion.TYPE_CONFIGFILE to XMLPrefsManager.getColor(Suggestions.file_bg_color),
-        Suggestion.TYPE_SONG to XMLPrefsManager.getColor(Suggestions.song_bg_color),
     )
     private val suggDefaultBg: Int = XMLPrefsManager.getColor(Suggestions.default_bg_color)
     private val suggText: Map<Int, Int> = mapOf(
@@ -115,7 +117,6 @@ class SuggestionsManager(
         Suggestion.TYPE_CONTACT to XMLPrefsManager.getColor(Suggestions.contact_text_color),
         Suggestion.TYPE_FILE to XMLPrefsManager.getColor(Suggestions.file_text_color),
         Suggestion.TYPE_CONFIGFILE to XMLPrefsManager.getColor(Suggestions.file_text_color),
-        Suggestion.TYPE_SONG to XMLPrefsManager.getColor(Suggestions.song_text_color),
     )
     private val suggDefaultText: Int = XMLPrefsManager.getColor(Suggestions.default_text_color)
 
@@ -263,7 +264,7 @@ class SuggestionsManager(
             val type = m.group(1).toInt()
 
             if (type >= indexes.size) {
-                Tuils.sendOutput(Color.RED, pack.context, "Invalid suggestion type: " + type)
+                OutputTuils.sendOutput(pack.context, "Invalid suggestion type: " + type, Color.RED)
 
                 indexes = null
                 counts = null
@@ -291,7 +292,7 @@ class SuggestionsManager(
             val type = m.group(1).toInt()
 
             if (type >= noInputIndexes.size) {
-                Tuils.sendOutput(Color.RED, pack.context, "Invalid suggestion type: " + type)
+                OutputTuils.sendOutput(pack.context, "Invalid suggestion type: " + type, Color.RED)
 
                 noInputIndexes = null
                 noInputCounts = null
@@ -412,8 +413,8 @@ class SuggestionsManager(
             }
         } catch (e: Exception) {
 //            this will trigger an error when there's a single space in the input field, but it's not a problem
-            Tuils.log(e)
-            Tuils.toFile(e)
+            LogTuils.log(e)
+            LogTuils.toFile(e)
         }
 
         lastSuggestionThread = object : StoppableThread() {
@@ -446,8 +447,8 @@ class SuggestionsManager(
                 try {
                     suggestions = getSuggestions(before, lastWord)
                 } catch (e: Exception) {
-                    Tuils.log(e)
-                    Tuils.toFile(e)
+                    LogTuils.log(e)
+                    LogTuils.toFile(e)
                     return
                 }
 
@@ -474,8 +475,8 @@ class SuggestionsManager(
         try {
             lastSuggestionThread?.start()
         } catch (e: InternalError) {
-            Tuils.log(e)
-            // Tuils.toFile(e);
+            LogTuils.log(e)
+            // LogTuils.toFile(e);
         }
     }
 
@@ -799,13 +800,6 @@ class SuggestionsManager(
                 beforeLastSpace
             )
 
-            CommandAbstraction.SONG -> suggestSong(
-                info,
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace
-            )
-
             CommandAbstraction.BOOLEAN -> suggestBoolean(suggestions, beforeLastSpace)
             CommandAbstraction.HIDDEN_PACKAGE -> suggestHiddenApp(
                 info,
@@ -1014,9 +1008,9 @@ class SuggestionsManager(
             return
         }
 
-        //        Tuils.log("bls", beforeLastSpace);
-//        Tuils.log("als", afterLastSeparator);
-//        Tuils.log("alsals", afterLastSpaceWithoutALS);
+        //        LogTuils.log("bls", beforeLastSpace);
+//        LogTuils.log("als", afterLastSeparator);
+//        LogTuils.log("alsals", afterLastSpaceWithoutALS);
         val temp = rmQuotes.matcher(afterLastSeparator).replaceAll(Tuils.EMPTYSTRING)
 
         val counter = quickCompare(
@@ -1159,7 +1153,7 @@ class SuggestionsManager(
                 )
             }
         } catch (e: NullPointerException) {
-            Tuils.log(e)
+            LogTuils.log(e)
         }
     }
 
@@ -1249,66 +1243,6 @@ class SuggestionsManager(
                 Suggestion.Companion.TYPE_BOOLEAN
             )
         )
-    }
-
-    private fun suggestSong(
-        info: MainPack,
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ) {
-        if (info.player == null) return
-
-        val songs = info.player.getSongs()
-        if (songs == null || songs.size == 0) return
-
-        if (afterLastSpace == null || afterLastSpace.length == 0) {
-            for (s in songs) {
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        s.getTitle(),
-                        clickToLaunch,
-                        Suggestion.Companion.TYPE_SONG
-                    )
-                )
-            }
-        } else {
-            val counter = quickCompare(
-                afterLastSpace,
-                songs,
-                suggestions,
-                beforeLastSpace,
-                suggestionsPerCategory,
-                clickToLaunch,
-                Suggestion.Companion.TYPE_SONG,
-                false
-            )
-            if (suggestionsPerCategory - counter <= 0) return
-
-            val ss = CompareObjects.topMatchesWithDeadline<Song?>(
-                Song::class.java,
-                afterLastSpace,
-                songs.size,
-                songs,
-                suggestionsPerCategory - counter,
-                suggestionsDeadline,
-                SPLITTERS,
-                algInstance,
-                alg
-            )
-            for (s in ss) {
-                if (s == null) break
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        s.getTitle(),
-                        clickToLaunch,
-                        Suggestion.Companion.TYPE_SONG
-                    )
-                )
-            }
-        }
     }
 
     private fun suggestCommand(
@@ -1731,7 +1665,7 @@ class SuggestionsManager(
         var app: String? = Tuils.EMPTYSTRING
 
         if (!beforeLastSpace.contains(Tuils.SPACE)) {
-            index = Tuils.find(beforeLastSpace, pack.appsManager.groups)
+            index = StringTuils.find(beforeLastSpace, pack.appsManager.groups)
             app = afterLastSpace
             if (!keepGroupName) beforeLastSpace = Tuils.EMPTYSTRING
         } else {
@@ -1739,7 +1673,7 @@ class SuggestionsManager(
                 .toTypedArray()
             var count = 0
             while (count < split.size) {
-                index = Tuils.find(split[count], pack.appsManager.groups)
+                index = StringTuils.find(split[count], pack.appsManager.groups)
                 if (index != -1) {
                     beforeLastSpace = Tuils.EMPTYSTRING
                     var i = 0
@@ -1934,11 +1868,11 @@ class SuggestionsManager(
                     (text == File.separator || text == DOUBLE_QUOTES || text == SINGLE_QUOTE)
                 val appendLastWord = lastWord.endsWith(File.separator) || textIsSpecial
 
-                //                Tuils.log("-------------");
-//                Tuils.log("tspe", textIsSpecial);
-//                Tuils.log("tbe", textBefore.replaceAll(" ", "#"));
-//                Tuils.log("lw", lastWord);
-//                Tuils.log("txt", text);
+                //                LogTuils.log("-------------");
+//                LogTuils.log("tspe", textIsSpecial);
+//                LogTuils.log("tbe", textBefore.replaceAll(" ", "#"));
+//                LogTuils.log("lw", lastWord);
+//                LogTuils.log("txt", text);
                 return textBefore +
                         Tuils.SPACE +
                         (if (appendLastWord) lastWord else Tuils.EMPTYSTRING) +
@@ -1967,7 +1901,6 @@ class SuggestionsManager(
             //        these suggestions will appear only in some special moments, ALONE
             const val TYPE_FILE: Int = 10
             const val TYPE_BOOLEAN: Int = 11
-            const val TYPE_SONG: Int = 12
             const val TYPE_CONTACT: Int = 13
             const val TYPE_COLOR: Int = 14
             const val TYPE_PERMANENT: Int = 15
