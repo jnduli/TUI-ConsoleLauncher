@@ -50,6 +50,10 @@ android {
     }
     kotlinOptions {
         jvmTarget = '1.8'
+        // Emit real JVM 8 default methods for Kotlin interface methods with bodies, so the
+        // many Java classes implementing CommandAbstraction/Param aren't forced to override
+        // new default methods (e.g. the execResult()/onArgNotFoundResult() bridges).
+        freeCompilerArgs += ['-Xjvm-default=all']
     }
     android.applicationVariants.all { variant ->
         def formattedDate = new Date().format('hh.mm')

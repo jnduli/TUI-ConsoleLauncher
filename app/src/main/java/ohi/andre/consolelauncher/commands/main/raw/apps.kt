@@ -44,7 +44,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val ls = object : Param("ls") {
-        override fun args(): IntArray? = intArrayOf(PLAIN_TEXT)
+        override fun args(): IntArray = intArrayOf(PLAIN_TEXT)
 
         override fun exec(pack: CommandContext): String? {
             return appsManager.printApps(AppsManager.SHOWN_APPS, pack.getString())
@@ -56,7 +56,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val lsh = object : Param("lsh") {
-        override fun args(): IntArray? = intArrayOf(PLAIN_TEXT)
+        override fun args(): IntArray = intArrayOf(PLAIN_TEXT)
 
         override fun exec(pack: CommandContext): String? {
             return appsManager.printApps(AppsManager.HIDDEN_APPS, pack.getString())
@@ -68,7 +68,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val show = object : Param("show") {
-        override fun args(): IntArray? = intArrayOf(HIDDEN_PACKAGE)
+        override fun args(): IntArray = intArrayOf(HIDDEN_PACKAGE)
 
         override fun exec(pack: CommandContext): String? {
             val i = pack.getLaunchable()
@@ -78,7 +78,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val hide = object : Param("hide") {
-        override fun args(): IntArray? = intArrayOf(VISIBLE_PACKAGE)
+        override fun args(): IntArray = intArrayOf(VISIBLE_PACKAGE)
 
         override fun exec(pack: CommandContext): String? {
             val i = pack.getLaunchable()
@@ -88,7 +88,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val l = object : Param("l") {
-        override fun args(): IntArray? = intArrayOf(VISIBLE_PACKAGE)
+        override fun args(): IntArray = intArrayOf(VISIBLE_PACKAGE)
 
         override fun exec(pack: CommandContext): String {
             try {
@@ -106,7 +106,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val ps = object : Param("ps") {
-        override fun args(): IntArray? = intArrayOf(VISIBLE_PACKAGE)
+        override fun args(): IntArray = intArrayOf(VISIBLE_PACKAGE)
 
         override fun exec(pack: CommandContext): String? {
             openPlaystore(pack.context, pack.getLaunchable().componentName?.packageName)
@@ -115,7 +115,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val default_app = object : Param("default_app") {
-        override fun args(): IntArray? = intArrayOf(INT, DEFAULT_APP)
+        override fun args(): IntArray = intArrayOf(INT, DEFAULT_APP)
 
         override fun exec(pack: CommandContext): String? {
             val index = pack.getInt()
@@ -149,7 +149,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val st = object : Param("st") {
-        override fun args(): IntArray? = intArrayOf(VISIBLE_PACKAGE)
+        override fun args(): IntArray = intArrayOf(VISIBLE_PACKAGE)
 
         override fun exec(pack: CommandContext): String? {
             openSettings(pack.context, pack.getLaunchable().componentName?.packageName)
@@ -158,7 +158,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val frc = object : Param("frc") {
-        override fun args(): IntArray? = intArrayOf(ALL_PACKAGES)
+        override fun args(): IntArray = intArrayOf(ALL_PACKAGES)
 
         override fun exec(pack: CommandContext): String? {
             val intent = appsManager.getIntent(pack.getLaunchable())
@@ -169,7 +169,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val file = object : Param("file") {
-        override fun args(): IntArray? = IntArray(0)
+        override fun args(): IntArray = IntArray(0)
 
         override fun exec(pack: CommandContext): String? {
             pack.context.startActivity(
@@ -183,7 +183,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val reset = object : Param("reset") {
-        override fun args(): IntArray? = intArrayOf(VISIBLE_PACKAGE)
+        override fun args(): IntArray = intArrayOf(VISIBLE_PACKAGE)
 
         override fun exec(pack: CommandContext): String? {
             val app = pack.getLaunchable()
@@ -195,7 +195,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val mkgp = object : Param("mkgp") {
-        override fun args(): IntArray? = intArrayOf(NO_SPACE_STRING)
+        override fun args(): IntArray = intArrayOf(NO_SPACE_STRING)
 
         override fun exec(pack: CommandContext): String? {
             val name = pack.getString()
@@ -204,7 +204,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val rmgp = object : Param("rmgp") {
-        override fun args(): IntArray? = intArrayOf(APP_GROUP)
+        override fun args(): IntArray = intArrayOf(APP_GROUP)
 
         override fun exec(pack: CommandContext): String? {
             val name = pack.getString()
@@ -213,7 +213,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val gp_bg_color = object : Param("gp_bg_color") {
-        override fun args(): IntArray? = intArrayOf(APP_GROUP, COLOR)
+        override fun args(): IntArray = intArrayOf(APP_GROUP, COLOR)
 
         override fun exec(pack: CommandContext): String? {
             val name = pack.getString()
@@ -235,7 +235,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val gp_fore_color = object : Param("gp_fore_color") {
-        override fun args(): IntArray? = intArrayOf(APP_GROUP, COLOR)
+        override fun args(): IntArray = intArrayOf(APP_GROUP, COLOR)
 
         override fun exec(pack: CommandContext): String? {
             val name = pack.getString()
@@ -257,7 +257,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val lsgp = object : Param("lsgp") {
-        override fun args(): IntArray? = intArrayOf(APP_GROUP)
+        override fun args(): IntArray = intArrayOf(APP_GROUP)
 
         override fun exec(pack: CommandContext): String? {
             val name = pack.getString()
@@ -270,7 +270,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val addtogp = object : Param("addtogp") {
-        override fun args(): IntArray? = intArrayOf(APP_GROUP, VISIBLE_PACKAGE)
+        override fun args(): IntArray = intArrayOf(APP_GROUP, VISIBLE_PACKAGE)
 
         override fun exec(pack: CommandContext): String? {
             val name = pack.getString()
@@ -280,7 +280,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val rmfromgp = object : Param("rmfromgp") {
-        override fun args(): IntArray? = intArrayOf(APP_GROUP, APP_INSIDE_GROUP)
+        override fun args(): IntArray = intArrayOf(APP_GROUP, APP_INSIDE_GROUP)
 
         override fun exec(pack: CommandContext): String? {
             val name = pack.getString()
@@ -290,7 +290,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val addweb = object : Param("addweb") {
-        override fun args(): IntArray? = intArrayOf(PLAIN_TEXT, PLAIN_TEXT)
+        override fun args(): IntArray = intArrayOf(PLAIN_TEXT, PLAIN_TEXT)
 
         override fun exec(pack: CommandContext): String? {
             val name = pack.getString()
@@ -301,7 +301,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val listweb = object : Param("listweb") {
-        override fun args(): IntArray? = IntArray(0)
+        override fun args(): IntArray = IntArray(0)
 
         override fun exec(pack: CommandContext): String? {
             return appsManager.listWebApps()
@@ -309,7 +309,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private val tutorial = object : Param("tutorial") {
-        override fun args(): IntArray? = IntArray(0)
+        override fun args(): IntArray = IntArray(0)
 
         override fun exec(pack: CommandContext): String? {
             pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Apps"))
@@ -341,7 +341,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
         return 4
     }
 
-    override fun params(): Array<String?> {
+    override fun params(): Array<String> {
         return ohi.andre.consolelauncher.commands.main.Param.labels(values())
     }
 
