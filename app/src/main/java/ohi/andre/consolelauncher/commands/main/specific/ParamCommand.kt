@@ -16,10 +16,9 @@ abstract class ParamCommand : CommandAbstraction {
 
     // Legacy String? path kept for the many Java callers still on CommandAbstraction.exec();
     // the real dispatch logic lives in execResult() now.
-    final override fun exec(pack: CommandContext?): String? = CommandResult.toLegacyString(execResult(pack))
+    final override fun exec(pack: CommandContext): String? = CommandResult.toLegacyString(execResult(pack))
 
-    final override fun execResult(pack: CommandContext?): CommandResult {
-        pack!!
+    final override fun execResult(pack: CommandContext): CommandResult {
         val o = doThings(pack)
         if (o != null) return CommandResult.Output(o)
 
@@ -33,7 +32,7 @@ abstract class ParamCommand : CommandAbstraction {
         return param.execResult(pack)
     }
 
-    open fun getParam(pack: CommandContext?, param: String): SimpleMutableEntry<Boolean, Param?> {
+    open fun getParam(pack: CommandContext, param: String): SimpleMutableEntry<Boolean, Param?> {
         val p = paramForString(pack, param)
         if (p == null && defaultParamReference() != null) {
             return SimpleMutableEntry(true, paramForString(pack, defaultParam(pack)))
@@ -41,18 +40,17 @@ abstract class ParamCommand : CommandAbstraction {
         return SimpleMutableEntry(false, p)
     }
 
-    open fun defaultParam(pack: CommandContext?): String {
-        var def = pack!!.cmdPrefs.get(defaultParamReference())
+    open fun defaultParam(pack: CommandContext): String {
+        var def = pack.cmdPrefs.get(defaultParamReference())
         if (!def.startsWith("-")) def = "-$def"
         return def
     }
 
-    override fun onNotArgEnough(pack: CommandContext?, nArgs: Int): String {
-        return pack!!.context.getString(helpRes())
+    override fun onNotArgEnough(pack: CommandContext, nArgs: Int): String {
+        return pack.context.getString(helpRes())
     }
 
-    override fun onArgNotFound(pack: CommandContext?, indexNotFound: Int): String {
-        pack!!
+    override fun onArgNotFound(pack: CommandContext, indexNotFound: Int): String {
         LogTuils.log("inf", indexNotFound)
         if (indexNotFound == 0) {
             try {
@@ -67,7 +65,7 @@ abstract class ParamCommand : CommandAbstraction {
     }
 
     abstract fun params(): Array<String>
-    protected abstract fun paramForString(pack: CommandContext?, param: String): Param?
-    protected abstract fun doThings(pack: CommandContext?): String?
+    protected abstract fun paramForString(pack: CommandContext, param: String): Param?
+    protected abstract fun doThings(pack: CommandContext): String?
     open fun defaultParamReference(): XMLPrefsSave? = null
 }

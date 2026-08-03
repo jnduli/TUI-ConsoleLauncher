@@ -9,8 +9,10 @@ interface Param {
     fun exec(pack: CommandContext): String?
     fun label(): String
 
-    fun onNotArgEnough(pack: CommandContext, n: Int): String?
-    fun onArgNotFound(pack: CommandContext, index: Int): String?
+    // Most params have nothing extra to say on these paths; override only when there's a
+    // real message (an error, a help hint) to return.
+    fun onNotArgEnough(pack: CommandContext, n: Int): String? = null
+    fun onArgNotFound(pack: CommandContext, index: Int): String? = null
 
     /**
      * Richer counterpart to [exec]. Defaults to adapting [exec]'s legacy `String?` return, so

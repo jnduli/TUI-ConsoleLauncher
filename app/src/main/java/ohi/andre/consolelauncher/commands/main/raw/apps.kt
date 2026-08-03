@@ -323,13 +323,13 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     )
 
     override fun paramForString(
-        pack: CommandContext?,
+        pack: CommandContext,
         param: String
     ): ohi.andre.consolelauncher.commands.main.Param? {
         return ohi.andre.consolelauncher.commands.main.Param.find(values(), param)
     }
 
-    override fun doThings(pack: CommandContext?): String? {
+    override fun doThings(pack: CommandContext): String? {
         return null
     }
 

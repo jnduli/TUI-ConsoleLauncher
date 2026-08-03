@@ -2,12 +2,14 @@ package ohi.andre.consolelauncher.commands
 
 interface CommandAbstraction {
     @Throws(Exception::class)
-    fun exec(pack: CommandContext?): String?
+    fun exec(pack: CommandContext): String?
     fun argType(): IntArray?
     fun priority(): Int
     fun helpRes(): Int
-    fun onArgNotFound(pack: CommandContext?, indexNotFound: Int): String?
-    fun onNotArgEnough(pack: CommandContext?, nArgs: Int): String?
+    // Most commands have nothing extra to say on these paths; override only when there's a
+    // real message (an error, a help hint) to return.
+    fun onArgNotFound(pack: CommandContext, indexNotFound: Int): String? = null
+    fun onNotArgEnough(pack: CommandContext, nArgs: Int): String? = null
 
     /**
      * Richer counterpart to [exec]. Defaults to adapting [exec]'s legacy `String?` return, so
@@ -15,12 +17,12 @@ interface CommandAbstraction {
      * distinguish output/empty/error explicitly.
      */
     @Throws(Exception::class)
-    fun execResult(pack: CommandContext?): CommandResult = CommandResult.of(exec(pack))
+    fun execResult(pack: CommandContext): CommandResult = CommandResult.of(exec(pack))
 
-    fun onArgNotFoundResult(pack: CommandContext?, indexNotFound: Int): CommandResult =
+    fun onArgNotFoundResult(pack: CommandContext, indexNotFound: Int): CommandResult =
         CommandResult.errorOf(onArgNotFound(pack, indexNotFound))
 
-    fun onNotArgEnoughResult(pack: CommandContext?, nArgs: Int): CommandResult =
+    fun onNotArgEnoughResult(pack: CommandContext, nArgs: Int): CommandResult =
         CommandResult.errorOf(onNotArgEnough(pack, nArgs))
 
     companion object {

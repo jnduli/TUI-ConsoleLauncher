@@ -550,10 +550,11 @@ class SuggestionsManager(
                         )
                     }
 
-                    if (cmd.mArgs != null && cmd.mArgs.size > 0 && cmd.cmd is ParamCommand && cmd.nArgs >= 1 && cmd.mArgs[0] is Param && (cmd.mArgs[0] as Param).args().size + 1 == cmd.nArgs) {
+                    val cmdArgs = cmd.mArgs
+                    if (cmdArgs.isNotEmpty() && cmd.cmd is ParamCommand && cmd.nArgs >= 1 && cmdArgs[0] is Param && (cmdArgs[0] as Param).args().size + 1 == cmd.nArgs) {
 //                        nothing
                     } else {
-                        if (cmd.cmd is ParamCommand && (cmd.mArgs == null || cmd.mArgs.size == 0 || cmd.mArgs[0] is String)) suggestParams(
+                        if (cmd.cmd is ParamCommand && (cmdArgs.isEmpty() || cmdArgs[0] is String)) suggestParams(
                             pack,
                             suggestionList,
                             cmd.cmd as ParamCommand,
@@ -617,7 +618,8 @@ class SuggestionsManager(
 //
 //                        lastWord = beforeLastSpace .substring(index) + lastWord;
 //                    }
-                    if (cmd.cmd is ParamCommand && (cmd.mArgs == null || cmd.mArgs.size == 0 || cmd.mArgs[0] is String)) {
+                    val cmdArgs = cmd.mArgs
+                    if (cmd.cmd is ParamCommand && (cmdArgs.isEmpty() || cmdArgs[0] is String)) {
                         suggestParams(
                             pack,
                             suggestionList,
@@ -722,7 +724,7 @@ class SuggestionsManager(
     }
 
     private fun suggestParams(
-        pack: CommandContext?,
+        pack: CommandContext,
         suggestions: MutableList<Suggestion?>,
         cmd: ParamCommand,
         beforeLastSpace: String?,

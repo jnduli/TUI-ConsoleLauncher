@@ -13,6 +13,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import ohi.andre.consolelauncher.commands.CommandAbstraction
 import ohi.andre.consolelauncher.commands.CommandContext
 import ohi.andre.consolelauncher.commands.CommandGroup
+import ohi.andre.consolelauncher.commands.CommandResult
 import ohi.andre.consolelauncher.commands.CommandTuils
 import ohi.andre.consolelauncher.commands.main.raw.*
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
@@ -542,9 +543,20 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                 override fun run() {
                     super.run()
                     try {
-                        val output = command.exec(mainPack)
-                        if (output != null) {
-                            OutputTuils.sendOutput(mainPack.context, output, mainPack.commandColor, TerminalManager.CATEGORY_OUTPUT)
+                        when (val result = command.execResult(mainPack)) {
+                            is CommandResult.Output -> OutputTuils.sendOutput(
+                                mainPack.context,
+                                result.text,
+                                if (result.color != Integer.MAX_VALUE) result.color else mainPack.commandColor,
+                                TerminalManager.CATEGORY_OUTPUT
+                            )
+                            is CommandResult.Error -> OutputTuils.sendOutput(
+                                mainPack.context,
+                                result.text,
+                                Color.RED,
+                                TerminalManager.CATEGORY_OUTPUT
+                            )
+                            CommandResult.Empty -> {}
                         }
                     } catch (e: Exception) {
                         OutputTuils.sendOutput(mContext, LogTuils.getStackTrace(e))

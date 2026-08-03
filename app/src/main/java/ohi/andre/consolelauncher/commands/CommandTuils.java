@@ -64,7 +64,7 @@ public class CommandTuils {
                 ArgInfo arg = param(info, (ParamCommand) cmd, input);
                 if(arg == null || !arg.found) {
 
-                    command.indexNotFound = 0;
+                    command.parseOutcome = Command.ParseOutcome.InvalidParam.INSTANCE;
                     args.add(input);
                     command.nArgs = 1;
                     command.mArgs = args.toArray(new Object[args.size()]);
@@ -96,7 +96,7 @@ public class CommandTuils {
                     }
 
                     if (!arg.found) {
-                        command.indexNotFound = cmd instanceof ParamCommand ? count + 1 : count;
+                        command.parseOutcome = new Command.ParseOutcome.ArgNotFound(cmd instanceof ParamCommand ? count + 1 : count);
                         args.add(input);
                         command.mArgs = args.toArray(new Object[args.size()]);
                         command.nArgs = nArgs;
