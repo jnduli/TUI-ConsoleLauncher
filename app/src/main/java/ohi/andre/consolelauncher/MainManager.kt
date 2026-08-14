@@ -103,8 +103,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     private val showAliasValue: Boolean
     private val aliasContentColor: Int
 
-    private val multipleCmdSeparator: String
-
     val aliasManager: AliasManager
     private val rssManager: RssManager?
     val appsManager: AppsManager
@@ -184,33 +182,20 @@ class MainManager constructor(private var mContext: LauncherActivity) {
             OutputTuils.sendOutput(mContext, aliasManager.formatLabel(alias, input), aliasContentColor)
         }
 
-        val (cmds, colors) = splitAndColorize(input ?: return)
-        for (c in cmds.indices) {
-            executeCmd(cmds[c], colors[c])
-        }
+        val (cmd, color) = colorize(input ?: return)
+        executeCmd(cmd, color)
     }
 
-    private fun splitAndColorize(input: String): Pair<Array<String?>, IntArray> {
-        val cmds: Array<String?> = if (multipleCmdSeparator.isNotEmpty()) {
-            input.split(multipleCmdSeparator.toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-        } else {
-            arrayOf(input)
-        }
-        val colors = IntArray(cmds.size)
-        for (c in cmds.indices) {
-            val m = colorExtractor.matcher(cmds[c])
-            if (m.matches()) {
-                try {
-                    colors[c] = Color.parseColor(m.group(1))
-                    cmds[c] = m.group(2)
-                } catch (e: Exception) {
-                    colors[c] = TerminalManager.NO_COLOR
-                }
-            } else {
-                colors[c] = TerminalManager.NO_COLOR
+    private fun colorize(input: String): Pair<String?, Int> {
+        val m = colorExtractor.matcher(input)
+        if (m.matches()) {
+            try {
+                return Pair(m.group(2), Color.parseColor(m.group(1)))
+            } catch (e: Exception) {
+                return Pair(input, TerminalManager.NO_COLOR)
             }
         }
-        return Pair(cmds, colors)
+        return Pair(input, TerminalManager.NO_COLOR)
     }
 
     private fun executeCmd(cmd: String?, color: Int) {
@@ -291,8 +276,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
 
         showAliasValue = XMLPrefsManager.getBoolean(Behavior.show_alias_content)
         aliasContentColor = XMLPrefsManager.getColor(Theme.alias_content_color)
-
-        multipleCmdSeparator = XMLPrefsManager.get(Behavior.multiple_cmd_separator)
 
         try {
             contactManager = ContactManager(mContext)

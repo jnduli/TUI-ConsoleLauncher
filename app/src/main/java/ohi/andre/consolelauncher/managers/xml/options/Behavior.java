@@ -335,22 +335,6 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.BOOLEAN;
         }
     },
-    multiple_cmd_separator {
-        @Override
-        public String defaultValue() {
-            return ";";
-        }
-
-        @Override
-        public String info() {
-            return "The separator between two or more commands in a single input";
-        }
-
-        @Override
-        public String type() {
-            return XMLPrefsSave.TEXT;
-        }
-    },
     alias_content_format {
         @Override
         public String defaultValue() {

@@ -1,63 +1,31 @@
 package ohi.andre.consolelauncher.managers.suggestions
 
-import android.graphics.Color
-import android.os.Build
-import it.andreuzzi.comparestring2.AlgMap
-import it.andreuzzi.comparestring2.AlgMap.Alg
-import it.andreuzzi.comparestring2.CompareObjects
-import it.andreuzzi.comparestring2.CompareStrings
-import it.andreuzzi.comparestring2.StringableObject
-import it.andreuzzi.comparestring2.algs.interfaces.Algorithm
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.launch
 import ohi.andre.consolelauncher.UIManager.Companion.getListOfIntValues
-import ohi.andre.consolelauncher.commands.Command
-import ohi.andre.consolelauncher.commands.CommandAbstraction
 import ohi.andre.consolelauncher.commands.CommandContext
-import ohi.andre.consolelauncher.commands.CommandTuils
-import ohi.andre.consolelauncher.commands.main.Param
-import ohi.andre.consolelauncher.commands.main.specific.ParamCommand
-import ohi.andre.consolelauncher.commands.main.specific.PermanentSuggestionCommand
 import ohi.andre.consolelauncher.managers.AliasManager
 import ohi.andre.consolelauncher.managers.AppsManager
 import ohi.andre.consolelauncher.managers.ContactManager
-import ohi.andre.consolelauncher.managers.ContactManager.Contact
-import ohi.andre.consolelauncher.managers.FileManager
-import ohi.andre.consolelauncher.managers.launchable.Launchable
-import ohi.andre.consolelauncher.managers.RssManager
 import ohi.andre.consolelauncher.managers.TerminalManager
-import ohi.andre.consolelauncher.managers.notifications.NotificationManager
-import ohi.andre.consolelauncher.managers.notifications.reply.BoundApp
-import ohi.andre.consolelauncher.managers.notifications.reply.ReplyManager
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
-import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager.XMLPrefsRoot
-import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave
-import ohi.andre.consolelauncher.managers.xml.options.Apps
-import ohi.andre.consolelauncher.managers.xml.options.Behavior
-import ohi.andre.consolelauncher.managers.xml.options.Notifications
-import ohi.andre.consolelauncher.managers.xml.options.Reply
-import ohi.andre.consolelauncher.managers.xml.options.Rss
 import ohi.andre.consolelauncher.managers.xml.options.Suggestions
-import ohi.andre.consolelauncher.tuils.StoppableThread
 import ohi.andre.consolelauncher.tuils.Tuils
 import ohi.andre.consolelauncher.tuils.LogTuils
-import ohi.andre.consolelauncher.tuils.OutputTuils
-import ohi.andre.consolelauncher.tuils.StringTuils
 
-import java.io.File
-import java.util.Arrays
-import java.util.Collections
 import java.util.Locale
-import java.util.regex.Pattern
-import kotlin.collections.ArrayList
-import kotlin.collections.MutableIterator
-import kotlin.collections.MutableList
-import kotlin.collections.dropLastWhile
-import kotlin.collections.indices
-import kotlin.collections.toTypedArray
-import kotlin.math.abs
-import kotlin.math.max
 
 /**
  * Created by francescoandreuzzi on 25/12/15.
@@ -69,26 +37,9 @@ class SuggestionsManager(
     private val appsManager: AppsManager,
     private val contacts: ContactManager?
 ) {
+    private val generator = SuggestionGenerator(pack, aliasManager, appsManager, contacts)
+
     private var hideViewValue: HideSuggestionViewValues? = null
-
-    private val FIRST_INTERVAL = 6
-
-    /** [Alg.NormSimAlg.JAROWRINKLER]'s id - was user-configurable via Suggestions.suggestions_algorithm. */
-    private val DEFAULT_ALGORITHM = 13
-    private val DEFAULT_QUICKCOMPARE_N = 3
-    private val DEFAULT_DEADLINE = 0.45f
-
-    private val SPLITTERS = arrayOf<String?>(Tuils.SPACE)
-    private val FILE_SPLITTERS = arrayOf<String?>(Tuils.SPACE, "-", "_")
-    private val XML_PREFS_SPLITTERS = arrayOf<String?>("_")
-
-    private val showAliasDefault: Boolean
-    private val clickToLaunch: Boolean
-    private val showAppsGpDefault: Boolean
-    private var enabled: Boolean
-    private val minCmdPriority: Int
-
-    private val multipleCmdSeparator: String
 
     private val doubleSpaceFirstSuggestion: Boolean
     private var lastFirst: Suggestion? = null
@@ -99,52 +50,53 @@ class SuggestionsManager(
     private val _visible = MutableStateFlow(true)
     val visible: StateFlow<Boolean> = _visible.asStateFlow()
 
-    private var lastSuggestionThread: StoppableThread? = null
+    private var enabled: Boolean
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val inputFlow =
+        MutableSharedFlow<String>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     data class SuggestionColors(val background: Int, val foreground: Int)
 
-    private val suggBg: Map<Int, Int> = mapOf(
-        Suggestion.TYPE_APP to XMLPrefsManager.getColor(Suggestions.apps_bg_color),
-        Suggestion.TYPE_APPGP to XMLPrefsManager.getColor(Suggestions.apps_bg_color),
-        Suggestion.TYPE_ALIAS to XMLPrefsManager.getColor(Suggestions.alias_bg_color),
-        Suggestion.TYPE_COMMAND to XMLPrefsManager.getColor(Suggestions.cmd_bg_color),
-        Suggestion.TYPE_CONTACT to XMLPrefsManager.getColor(Suggestions.contact_bg_color),
-        Suggestion.TYPE_FILE to XMLPrefsManager.getColor(Suggestions.file_bg_color),
-        Suggestion.TYPE_CONFIGFILE to XMLPrefsManager.getColor(Suggestions.file_bg_color),
+    private val suggBg: Map<SuggestionCategory, Int> = mapOf(
+        SuggestionCategory.APP to XMLPrefsManager.getColor(Suggestions.apps_bg_color),
+        SuggestionCategory.APP_GROUP to XMLPrefsManager.getColor(Suggestions.apps_bg_color),
+        SuggestionCategory.ALIAS to XMLPrefsManager.getColor(Suggestions.alias_bg_color),
+        SuggestionCategory.COMMAND to XMLPrefsManager.getColor(Suggestions.cmd_bg_color),
+        SuggestionCategory.CONTACT to XMLPrefsManager.getColor(Suggestions.contact_bg_color),
+        SuggestionCategory.FILE to XMLPrefsManager.getColor(Suggestions.file_bg_color),
+        SuggestionCategory.CONFIG_FILE to XMLPrefsManager.getColor(Suggestions.file_bg_color),
     )
     private val suggDefaultBg: Int = XMLPrefsManager.getColor(Suggestions.default_bg_color)
-    private val suggText: Map<Int, Int> = mapOf(
-        Suggestion.TYPE_APP to XMLPrefsManager.getColor(Suggestions.apps_text_color),
-        Suggestion.TYPE_APPGP to XMLPrefsManager.getColor(Suggestions.apps_text_color),
-        Suggestion.TYPE_ALIAS to XMLPrefsManager.getColor(Suggestions.alias_text_color),
-        Suggestion.TYPE_COMMAND to XMLPrefsManager.getColor(Suggestions.cmd_text_color),
-        Suggestion.TYPE_CONTACT to XMLPrefsManager.getColor(Suggestions.contact_text_color),
-        Suggestion.TYPE_FILE to XMLPrefsManager.getColor(Suggestions.file_text_color),
-        Suggestion.TYPE_CONFIGFILE to XMLPrefsManager.getColor(Suggestions.file_text_color),
+    private val suggText: Map<SuggestionCategory, Int> = mapOf(
+        SuggestionCategory.APP to XMLPrefsManager.getColor(Suggestions.apps_text_color),
+        SuggestionCategory.APP_GROUP to XMLPrefsManager.getColor(Suggestions.apps_text_color),
+        SuggestionCategory.ALIAS to XMLPrefsManager.getColor(Suggestions.alias_text_color),
+        SuggestionCategory.COMMAND to XMLPrefsManager.getColor(Suggestions.cmd_text_color),
+        SuggestionCategory.CONTACT to XMLPrefsManager.getColor(Suggestions.contact_text_color),
+        SuggestionCategory.FILE to XMLPrefsManager.getColor(Suggestions.file_text_color),
+        SuggestionCategory.CONFIG_FILE to XMLPrefsManager.getColor(Suggestions.file_text_color),
     )
     private val suggDefaultText: Int = XMLPrefsManager.getColor(Suggestions.default_text_color)
 
     /** Background/foreground for a suggestion chip - an app/app-group suggestion belonging to a
      * user-defined [AppsManager.Group] uses the group's colors instead of the type default. */
     fun colorsFor(suggestion: Suggestion): SuggestionColors {
-        if (suggestion.type == Suggestion.TYPE_APP || suggestion.type == Suggestion.TYPE_APPGP) {
-            var o = suggestion.`object`
-            if (o is Launchable) {
-                for (g in appsManager.groups) {
-                    if (g.contains(o as Launchable)) {
-                        o = g
-                        break
-                    }
-                }
+        val group = when (val kind = suggestion.kind) {
+            is SuggestionKind.App -> kind.launchable?.let { launchable ->
+                appsManager.groups.firstOrNull { it.contains(launchable) }
             }
-            if (o is AppsManager.Group) {
-                return SuggestionColors(o.bgColor, o.foreColor)
-            }
+            is SuggestionKind.AppGroup -> kind.group
+            else -> null
+        }
+        if (group != null) {
+            return SuggestionColors(group.bgColor, group.foreColor)
         }
 
+        val category = suggestion.kind.category
         return SuggestionColors(
-            background = suggBg[suggestion.type] ?: suggDefaultBg,
-            foreground = suggText[suggestion.type] ?: suggDefaultText,
+            background = suggBg[category] ?: suggDefaultBg,
+            foreground = suggText[category] ?: suggDefaultText,
         )
     }
 
@@ -153,86 +105,23 @@ class SuggestionsManager(
     val chipSpacing: ChipSpacing
     val chipTextSizeSp: Int = XMLPrefsManager.getInt(Suggestions.suggestions_size)
 
-    var counts: IntArray?
-    var noInputCounts: IntArray?
-
-    private val rmQuotes: Pattern = Pattern.compile("['\"]")
-
-    var suggestionsPerCategory: Int
-    var suggestionsDeadline: Float
-
-    private val comparator: CustomComparator
-
-    private var algInstance: Algorithm? = null
-    private var alg: Alg? = null
-
-    private val quickCompare: Int
-
-    private fun setAlgorithm(id: Int) {
-        when (id) {
-            0 -> alg = AlgMap.DistAlg.LCS
-            1 -> alg = AlgMap.DistAlg.OSA
-            2 -> alg = AlgMap.DistAlg.QGRAM
-            4 -> alg = AlgMap.NormDistAlg.COSINE
-            5 -> alg = AlgMap.NormDistAlg.JACCARD
-            6 -> alg = AlgMap.NormDistAlg.JAROWRINKLER
-            7 -> alg = AlgMap.NormDistAlg.METRICLCS
-            8 -> alg = AlgMap.NormDistAlg.NGRAM
-            9 -> alg = AlgMap.NormDistAlg.NLEVENSHTEIN
-            10 -> alg = AlgMap.NormDistAlg.SORENSENDICE
-            11 -> alg = AlgMap.NormSimAlg.COSINE
-            12 -> alg = AlgMap.NormSimAlg.JACCARD
-            13 -> alg = AlgMap.NormSimAlg.JAROWRINKLER
-            14 -> alg = AlgMap.NormSimAlg.NLEVENSHTEIN
-            15 -> alg = AlgMap.NormSimAlg.SORENSENDICE
-            16 -> alg = AlgMap.MetricDistAlg.DAMERAU
-            17 -> alg = AlgMap.MetricDistAlg.JACCARD
-            18 -> alg = AlgMap.MetricDistAlg.LEVENSHTEIN
-            19 -> alg = AlgMap.MetricDistAlg.METRICLCS
-        }
-
-        algInstance = alg?.buildAlg(id)
-    }
-
-    private fun stop() {
-        lastSuggestionThread?.interrupt()
-    }
-
     fun dispose() {
-        stop()
+        scope.cancel()
     }
 
     fun clear() {
-        stop()
         _suggestions.value = emptyList()
     }
 
     fun hide() {
         _visible.value = false
-        stop()
     }
 
     init {
-        setAlgorithm(DEFAULT_ALGORITHM)
-
-        quickCompare = DEFAULT_QUICKCOMPARE_N
-
-        this.suggestionsPerCategory = XMLPrefsManager.getInt(Suggestions.suggestions_per_category)
-        this.suggestionsDeadline = DEFAULT_DEADLINE
-
         doubleSpaceFirstSuggestion =
             XMLPrefsManager.getBoolean(Suggestions.double_space_click_first_suggestion)
-        Suggestion.Companion.appendQuotesBeforeFile =
-            XMLPrefsManager.getBoolean(Behavior.append_quote_before_file)
-        multipleCmdSeparator = XMLPrefsManager.get(Behavior.multiple_cmd_separator)
 
         enabled = true
-
-        showAliasDefault = XMLPrefsManager.getBoolean(Suggestions.suggest_alias_default)
-        showAppsGpDefault = XMLPrefsManager.getBoolean(Suggestions.suggest_appgp_default)
-        clickToLaunch = XMLPrefsManager.getBoolean(Suggestions.click_to_launch)
-
-        minCmdPriority = XMLPrefsManager.getInt(Suggestions.noinput_min_command_priority)
 
         val spaces = getListOfIntValues(XMLPrefsManager.get(Suggestions.suggestions_spaces), 4, 0)
         chipSpacing = ChipSpacing(
@@ -256,63 +145,12 @@ class SuggestionsManager(
             )
         }
 
-        var s = XMLPrefsManager.get(Suggestions.suggestions_order)
-        var orderPattern = Pattern.compile("(\\d+)\\((\\d+)\\)")
-        var m = orderPattern.matcher(s)
-
-        var indexes: IntArray? = IntArray(4)
-        counts = IntArray(4)
-
-        var index = 0
-        while (m.find() && index < indexes!!.size) {
-            val type = m.group(1).toInt()
-
-            if (type >= indexes.size) {
-                OutputTuils.sendOutput(pack.context, "Invalid suggestion type: " + type, Color.RED)
-
-                indexes = null
-                counts = null
-
-                break
-            }
-
-            val count = m.group(2).toInt()
-
-            indexes[type] = index
-            counts!![type] = count
-
-            index++
+        scope.launch {
+            inputFlow
+                .debounce(SUGGESTION_DEBOUNCE_MS)
+                .mapLatest { input -> input to computeSuggestions(input) }
+                .collect { (input, suggestions) -> applyResult(input, suggestions) }
         }
-
-        s = XMLPrefsManager.get(Suggestions.noinput_suggestions_order)
-        orderPattern = Pattern.compile("(\\d+)\\((\\d+)\\)")
-        m = orderPattern.matcher(s)
-
-        var noInputIndexes: IntArray? = IntArray(4)
-        noInputCounts = IntArray(4)
-
-        index = 0
-        while (m.find() && index < noInputIndexes!!.size) {
-            val type = m.group(1).toInt()
-
-            if (type >= noInputIndexes.size) {
-                OutputTuils.sendOutput(pack.context, "Invalid suggestion type: " + type, Color.RED)
-
-                noInputIndexes = null
-                noInputCounts = null
-
-                break
-            }
-
-            val count = m.group(2).toInt()
-
-            noInputIndexes[type] = index
-            noInputCounts!![type] = count
-
-            index++
-        }
-
-        comparator = CustomComparator(noInputIndexes!!, indexes!!)
     }
 
     fun show() {
@@ -334,45 +172,22 @@ class SuggestionsManager(
     fun clickSuggestion(suggestion: Suggestion) {
         val execOnClick = suggestion.exec
 
-        val text = suggestion.getText()
+        val text = suggestion.resolvedText()
         val input = mTerminalAdapter.input
 
-        if (suggestion.type == Suggestion.Companion.TYPE_PERMANENT) {
+        if (suggestion.kind is SuggestionKind.Permanent) {
             mTerminalAdapter.input = input + text
         } else {
             val addSpace =
-                suggestion.type != Suggestion.Companion.TYPE_FILE && suggestion.type != Suggestion.Companion.TYPE_COLOR
+                suggestion.kind !is SuggestionKind.File && suggestion.kind !is SuggestionKind.Color
 
-            if (multipleCmdSeparator.length > 0) {
-//                try to understand if the user is using a multiple cmd
-                val split =
-                    input.split(multipleCmdSeparator.toRegex()).dropLastWhile { it.isEmpty() }
-                        .toTypedArray()
+            // TerminalManager only cares about a Launchable payload (to fast-relaunch on enter).
+            val launchable = (suggestion.kind as? SuggestionKind.App)?.launchable
 
-                //                not using it
-                if (split.size == 1) mTerminalAdapter.setInput(
-                    text + (if (addSpace) Tuils.SPACE else Tuils.EMPTYSTRING),
-                    suggestion.`object`
-                )
-                else {
-                    split[split.size - 1] = Tuils.EMPTYSTRING
-
-                    var beforeInputs = Tuils.EMPTYSTRING
-                    for (count in 0..<split.size - 1) {
-                        beforeInputs = beforeInputs + split[count] + multipleCmdSeparator
-                    }
-
-                    mTerminalAdapter.setInput(
-                        beforeInputs + text + (if (addSpace) Tuils.SPACE else Tuils.EMPTYSTRING),
-                        suggestion.`object`
-                    )
-                }
-            } else {
-                mTerminalAdapter.setInput(
-                    text + (if (addSpace) Tuils.SPACE else Tuils.EMPTYSTRING),
-                    suggestion.`object`
-                )
-            }
+            mTerminalAdapter.setInput(
+                text + (if (addSpace) Tuils.SPACE else Tuils.EMPTYSTRING),
+                launchable
+            )
         }
 
         if (execOnClick) {
@@ -385,8 +200,6 @@ class SuggestionsManager(
     fun requestSuggestion(input: String) {
         if (!enabled) return
 
-        lastSuggestionThread?.interrupt()
-
         try {
             val l = input.length
             if (doubleSpaceFirstSuggestion && l > 0 && input.get(l - 1) == ' ') {
@@ -394,7 +207,7 @@ class SuggestionsManager(
 //                    double space
                     if (lastFirst == null) {
                         val s = _suggestions.value.firstOrNull()
-                        if (s != null && !input.trim { it <= ' ' }.endsWith(s.getText().orEmpty())) lastFirst = s
+                        if (s != null && !input.trim { it <= ' ' }.endsWith(s.resolvedText())) lastFirst = s
                     }
 
                     val lf = lastFirst
@@ -408,7 +221,7 @@ class SuggestionsManager(
 //                    single space
                     val newFirst = _suggestions.value.firstOrNull()
                     lastFirst = newFirst
-                    if (newFirst?.getText() == input.trim { it <= ' ' }) {
+                    if (newFirst?.resolvedText() == input.trim { it <= ' ' }) {
                         lastFirst = null
                     }
                 }
@@ -421,1526 +234,53 @@ class SuggestionsManager(
             LogTuils.toFile(e)
         }
 
-        lastSuggestionThread = object : StoppableThread() {
-            override fun run() {
-                super.run()
+        inputFlow.tryEmit(input)
+    }
 
-                val before: String?
-                val lastWord: String?
-                val lastInput: String?
-                if (multipleCmdSeparator.length > 0) {
-                    val split =
-                        input.split(multipleCmdSeparator.toRegex()).dropLastWhile { it.isEmpty() }
-                            .toTypedArray()
-                    if (split.size == 0) lastInput = input
-                    else lastInput = split[split.size - 1]
-                } else {
-                    lastInput = input
-                }
+    /** Runs off the UI thread; cancelled mid-flight (via [mapLatest]) the moment a newer [inputFlow] value arrives. */
+    private suspend fun computeSuggestions(input: String): List<Suggestion?>? {
+        val before: String
+        val lastWord: String
 
-                val lastSpace = lastInput.lastIndexOf(Tuils.SPACE)
-                if (lastSpace == -1) {
-                    before = Tuils.EMPTYSTRING
-                    lastWord = lastInput
-                } else {
-                    before = lastInput.substring(0, lastSpace)
-                    lastWord = lastInput.substring(lastSpace + 1, lastInput.length)
-                }
-
-                val suggestions: MutableList<Suggestion?>
-                try {
-                    suggestions = getSuggestions(before, lastWord)
-                } catch (e: Exception) {
-                    LogTuils.log(e)
-                    LogTuils.toFile(e)
-                    return
-                }
-
-                if (interrupted()) return
-
-                if (suggestions.size == 0) {
-                    _suggestions.value = emptyList()
-
-                    if (hideViewValue == HideSuggestionViewValues.ALWAYS || (hideViewValue == HideSuggestionViewValues.TRUE && input.length == 0)) {
-                        hide()
-                    }
-
-                    return
-                }
-
-                show()
-
-                if (interrupted()) return
-
-                _suggestions.value = suggestions.filterNotNull()
-            }
+        val lastSpace = input.lastIndexOf(Tuils.SPACE)
+        if (lastSpace == -1) {
+            before = Tuils.EMPTYSTRING
+            lastWord = input
+        } else {
+            before = input.substring(0, lastSpace)
+            lastWord = input.substring(lastSpace + 1, input.length)
         }
 
-        try {
-            lastSuggestionThread?.start()
-        } catch (e: InternalError) {
+        return try {
+            generator.getSuggestions(before, lastWord, currentCoroutineContext())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             LogTuils.log(e)
-            // LogTuils.toFile(e);
+            LogTuils.toFile(e)
+            null
         }
     }
 
-    //    there's always a space between beforelastspace and lastword
-    fun getSuggestions(beforeLastSpace: String, lastWord: String): MutableList<Suggestion?> {
-        var beforeLastSpace = beforeLastSpace
-        var lastWord = lastWord
-        val suggestionList: MutableList<Suggestion?> = ArrayList<Suggestion?>()
+    private fun applyResult(input: String, suggestions: List<Suggestion?>?) {
+        if (!enabled || suggestions == null) return
 
-        beforeLastSpace = beforeLastSpace.trim { it <= ' ' }
-        lastWord = lastWord.trim { it <= ' ' }
+        if (suggestions.isEmpty()) {
+            _suggestions.value = emptyList()
 
-        //        lastword = 0
-        if (lastWord.length == 0) {
-            //            lastword = 0 && beforeLastSpace = 0
-
-            if (beforeLastSpace.length == 0) {
-                comparator.noInput = true
-
-                val apps = appsManager.suggestedApps
-                if (apps != null) {
-                    var count = 0
-                    while (count < apps.size && count < (noInputCounts?.get(Suggestion.Companion.TYPE_APP) ?: 0)) {
-                        val app = apps[count]
-                        if (app == null) {
-                            count++
-                            continue
-                        }
-
-                        suggestionList.add(
-                            Suggestion(
-                                beforeLastSpace,
-                                app.name(),
-                                clickToLaunch,
-                                Suggestion.Companion.TYPE_APP,
-                                app
-                            )
-                        )
-                        count++
-                    }
-                }
-
-                suggestCommand(pack, suggestionList, null)
-
-                if (showAliasDefault) suggestAlias(aliasManager, suggestionList, lastWord)
-                if (showAppsGpDefault) suggestAppGroup(
-                    pack,
-                    suggestionList,
-                    lastWord,
-                    beforeLastSpace
-                )
-            } else {
-                comparator.noInput = false
-
-                //                check if this is a command
-                var cmd: Command? = null
-                try {
-                    cmd = CommandTuils.parse(beforeLastSpace, pack, appsManager, contacts)
-                } catch (e: Exception) {
-                }
-
-                if (cmd != null) {
-                    if (cmd.cmd is PermanentSuggestionCommand) {
-                        suggestPermanentSuggestions(
-                            suggestionList,
-                            cmd.cmd as PermanentSuggestionCommand
-                        )
-                    }
-
-                    val cmdArgs = cmd.mArgs
-                    if (cmdArgs.isNotEmpty() && cmd.cmd is ParamCommand && cmd.nArgs >= 1 && cmdArgs[0] is Param && (cmdArgs[0] as Param).args().size + 1 == cmd.nArgs) {
-//                        nothing
-                    } else {
-                        if (cmd.cmd is ParamCommand && (cmdArgs.isEmpty() || cmdArgs[0] is String)) suggestParams(
-                            pack,
-                            suggestionList,
-                            cmd.cmd as ParamCommand,
-                            beforeLastSpace,
-                            null
-                        )
-                        else suggestArgs(pack, cmd.nextArg(), suggestionList, beforeLastSpace)
-                    }
-                } else {
-                    val split = rmQuotes.matcher(beforeLastSpace).replaceAll(Tuils.EMPTYSTRING)
-                        .split(Tuils.SPACE.toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-                    var isShellCmd = false
-                    for (s in split) {
-                        if (needsFileSuggestion(s)) {
-                            isShellCmd = true
-                            break
-                        }
-                    }
-
-                    if (isShellCmd) {
-                        suggestFile(pack, suggestionList, Tuils.EMPTYSTRING, beforeLastSpace)
-                    } else {
-//                        ==> app
-                        if (!suggestAppInsideGroup(
-                                pack,
-                                suggestionList,
-                                Tuils.EMPTYSTRING,
-                                beforeLastSpace,
-                                false
-                            )
-                        ) suggestApp(
-                            pack,
-                            suggestionList,
-                            beforeLastSpace + Tuils.SPACE,
-                            Tuils.EMPTYSTRING
-                        )
-                    }
-                }
+            if (hideViewValue == HideSuggestionViewValues.ALWAYS || (hideViewValue == HideSuggestionViewValues.TRUE && input.isEmpty())) {
+                hide()
             }
-        } else {
-            comparator.noInput = false
 
-            if (beforeLastSpace.length > 0) {
-//                lastword > 0 && beforeLastSpace  > 0
-                var cmd: Command? = null
-                try {
-                    cmd = CommandTuils.parse(beforeLastSpace, pack, appsManager, contacts)
-                } catch (e: Exception) {
-                }
-
-                if (cmd != null) {
-                    if (cmd.cmd is PermanentSuggestionCommand) {
-                        suggestPermanentSuggestions(
-                            suggestionList,
-                            cmd.cmd as PermanentSuggestionCommand
-                        )
-                    }
-
-                    //                    if (cmd.cmd.maxArgs() == 1 && beforeLastSpace .contains(Tuils.SPACE)) {
-//                        int index = cmd.cmd.getClass().getSimpleName().length() + 1;
-//
-//                        lastWord = beforeLastSpace .substring(index) + lastWord;
-//                    }
-                    val cmdArgs = cmd.mArgs
-                    if (cmd.cmd is ParamCommand && (cmdArgs.isEmpty() || cmdArgs[0] is String)) {
-                        suggestParams(
-                            pack,
-                            suggestionList,
-                            cmd.cmd as ParamCommand,
-                            beforeLastSpace,
-                            lastWord
-                        )
-                    } else suggestArgs(
-                        pack,
-                        cmd.nextArg(),
-                        suggestionList,
-                        lastWord,
-                        beforeLastSpace
-                    )
-                } else {
-                    val split = beforeLastSpace.replace("['\"]".toRegex(), Tuils.EMPTYSTRING)
-                        .split(Tuils.SPACE.toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-                    var isShellCmd = false
-                    for (s in split) {
-                        if (needsFileSuggestion(s)) {
-                            isShellCmd = true
-                            break
-                        }
-                    }
-
-                    if (isShellCmd) {
-                        suggestFile(pack, suggestionList, lastWord, beforeLastSpace)
-                    } else {
-                        if (!suggestAppInsideGroup(
-                                pack,
-                                suggestionList,
-                                lastWord,
-                                beforeLastSpace,
-                                false
-                            )
-                        ) suggestApp(
-                            pack,
-                            suggestionList,
-                            beforeLastSpace + Tuils.SPACE + lastWord,
-                            Tuils.EMPTYSTRING
-                        )
-                    }
-                }
-
-                //                lastword > 0 && beforeLastSpace  = 0
-            } else {
-                suggestCommand(pack, suggestionList, lastWord, beforeLastSpace)
-                suggestAlias(aliasManager, suggestionList, lastWord)
-                suggestApp(pack, suggestionList, lastWord, Tuils.EMPTYSTRING)
-                suggestAppGroup(pack, suggestionList, lastWord, beforeLastSpace)
-            }
-        }
-
-        Collections.sort<Suggestion?>(suggestionList, comparator)
-        return suggestionList
-    }
-
-    private fun needsFileSuggestion(cmd: String): Boolean {
-        return cmd.equals("ls", ignoreCase = true) || cmd.equals(
-            "cd",
-            ignoreCase = true
-        ) || cmd.equals("mv", ignoreCase = true) || cmd.equals(
-            "cp",
-            ignoreCase = true
-        ) || cmd.equals("rm", ignoreCase = true) || cmd.equals("cat", ignoreCase = true)
-    }
-
-    private fun suggestPermanentSuggestions(
-        suggestions: MutableList<Suggestion?>,
-        cmd: PermanentSuggestionCommand
-    ) {
-        for (s in cmd.permanentSuggestions()) {
-            val sugg = Suggestion(null, s, false, Suggestion.Companion.TYPE_PERMANENT)
-            suggestions.add(sugg)
-        }
-    }
-
-    private fun suggestAlias(
-        aliasManager: AliasManager,
-        suggestions: MutableList<Suggestion?>,
-        lastWord: String?
-    ) {
-        var canInsert =
-            if (lastWord.isNullOrEmpty()) noInputCounts?.get(Suggestion.Companion.TYPE_ALIAS) ?: 0
-            else counts?.get(Suggestion.Companion.TYPE_ALIAS) ?: 0
-
-        for (a in aliasManager.getAliases(true)) {
-            if (lastWord.isNullOrEmpty() || a.aliasName.startsWith(lastWord)) {
-                if (canInsert == 0) return
-                canInsert--
-
-                suggestions.add(
-                    Suggestion(
-                        Tuils.EMPTYSTRING,
-                        a.aliasName,
-                        clickToLaunch && !a.isParametrized,
-                        Suggestion.Companion.TYPE_ALIAS
-                    )
-                )
-            }
-        }
-    }
-
-    private fun suggestParams(
-        pack: CommandContext,
-        suggestions: MutableList<Suggestion?>,
-        cmd: ParamCommand,
-        beforeLastSpace: String?,
-        lastWord: String?
-    ) {
-        val params = cmd.params()
-        if (params == null) {
             return
         }
 
-        if (lastWord == null || lastWord.length == 0) {
-            for (s in cmd.params()) {
-                val p = cmd.getParam(pack, s).value
-                if (p == null) continue
+        show()
 
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        s,
-                        p.args().size == 0 && clickToLaunch,
-                        0
-                    )
-                )
-            }
-        } else {
-            for (s in cmd.params()) {
-                val p = cmd.getParam(pack, s).value
-                if (p == null) continue
-
-                if (s.startsWith(lastWord) || s.replace("-", Tuils.EMPTYSTRING)
-                        .startsWith(lastWord)
-                ) {
-                    suggestions.add(
-                        Suggestion(
-                            beforeLastSpace,
-                            s,
-                            p.args().size == 0 && clickToLaunch,
-                            0
-                        )
-                    )
-                }
-            }
-        }
+        _suggestions.value = suggestions.filterNotNull()
     }
 
-    private fun suggestArgs(
-        info: CommandContext,
-        type: Int,
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String
-    ) {
-        when (type) {
-            CommandAbstraction.FILE -> suggestFile(
-                info,
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace
-            )
-
-            CommandAbstraction.VISIBLE_PACKAGE -> suggestApp(
-                info,
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace
-            )
-
-            CommandAbstraction.COMMAND -> suggestCommand(
-                info,
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace
-            )
-
-            CommandAbstraction.CONTACTNUMBER -> suggestContact(
-                info,
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace
-            )
-
-            CommandAbstraction.BOOLEAN -> suggestBoolean(suggestions, beforeLastSpace)
-            CommandAbstraction.HIDDEN_PACKAGE -> suggestHiddenApp(
-                info,
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace
-            )
-
-            CommandAbstraction.COLOR -> suggestColor(suggestions, afterLastSpace, beforeLastSpace)
-            CommandAbstraction.CONFIG_ENTRY -> suggestConfigEntry(
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace
-            )
-
-            CommandAbstraction.CONFIG_FILE -> suggestConfigFile(
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace
-            )
-
-            CommandAbstraction.DEFAULT_APP -> suggestDefaultApp(
-                info,
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace
-            )
-
-            CommandAbstraction.ALL_PACKAGES -> suggestAllPackages(
-                info,
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace
-            )
-
-            CommandAbstraction.APP_GROUP -> suggestAppGroup(
-                info,
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace
-            )
-
-            CommandAbstraction.APP_INSIDE_GROUP -> suggestAppInsideGroup(
-                info,
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace,
-                true
-            )
-
-            CommandAbstraction.BOUND_REPLY_APP -> suggestBoundReplyApp(
-                suggestions,
-                afterLastSpace,
-                beforeLastSpace
-            )
-
-            CommandAbstraction.DATASTORE_PATH_TYPE -> suggestDataStoreType(
-                suggestions,
-                beforeLastSpace
-            )
-        }
-    }
-
-    private fun suggestArgs(
-        info: CommandContext,
-        type: Int,
-        suggestions: MutableList<Suggestion?>,
-        beforeLastSpace: String
-    ) {
-        suggestArgs(info, type, suggestions, null, beforeLastSpace)
-    }
-
-    private fun suggestBoolean(suggestions: MutableList<Suggestion?>, beforeLastSpace: String?) {
-        suggestions.add(
-            Suggestion(
-                beforeLastSpace,
-                "true",
-                clickToLaunch,
-                Suggestion.Companion.TYPE_BOOLEAN
-            )
-        )
-        suggestions.add(
-            Suggestion(
-                beforeLastSpace,
-                "false",
-                clickToLaunch,
-                Suggestion.Companion.TYPE_BOOLEAN
-            )
-        )
-    }
-
-    private fun suggestFile(
-        info: CommandContext,
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ) {
-        var afterLastSpace = afterLastSpace
-        val noAfterLastSpace = afterLastSpace == null || afterLastSpace.length == 0
-        val afterLastSpaceNotEndsWithSeparator =
-            noAfterLastSpace || !afterLastSpace.endsWith(File.separator)
-
-        if (noAfterLastSpace || afterLastSpaceNotEndsWithSeparator) {
-            suggestions.add(
-                Suggestion(
-                    beforeLastSpace,
-                    File.separator,
-                    false,
-                    Suggestion.Companion.TYPE_FILE,
-                    afterLastSpace
-                )
-            )
-        }
-
-        if (Suggestion.Companion.appendQuotesBeforeFile && !noAfterLastSpace && !afterLastSpace.endsWith(
-                SINGLE_QUOTE
-            ) && !afterLastSpace.endsWith(DOUBLE_QUOTES)
-        ) suggestions.add(
-            Suggestion(
-                beforeLastSpace,
-                SINGLE_QUOTE,
-                false,
-                Suggestion.Companion.TYPE_FILE,
-                afterLastSpace
-            )
-        )
-
-        if (noAfterLastSpace) {
-            suggestFilesInDir(null, suggestions, info.currentDirectory, beforeLastSpace)
-            return
-        }
-
-        if (!afterLastSpace.contains(File.separator)) {
-            suggestFilesInDir(
-                suggestions,
-                info.currentDirectory,
-                afterLastSpace,
-                beforeLastSpace,
-                null
-            )
-        } else {
-            //            if it's ../../
-
-            if (!afterLastSpaceNotEndsWithSeparator) {
-                val total = beforeLastSpace + Tuils.SPACE + afterLastSpace
-                val quotesCount: Int =
-                    total.length - total.replace(DOUBLE_QUOTES, Tuils.EMPTYSTRING).replace(
-                        SINGLE_QUOTE, Tuils.EMPTYSTRING
-                    ).length
-
-                if (quotesCount > 0) {
-                    val singleQIndex: Int = total.lastIndexOf(SINGLE_QUOTE)
-                    val doubleQIndex: Int = total.lastIndexOf(DOUBLE_QUOTES)
-
-                    val lastQuote = max(singleQIndex, doubleQIndex)
-
-                    val file = total.substring(lastQuote + abs(quotesCount % 2 - 2))
-                    val dirInfo = FileManager.cd(info.currentDirectory, file)
-                    suggestFilesInDir(afterLastSpace, suggestions, dirInfo.file, beforeLastSpace)
-                } else {
-//                    removes the /
-                    afterLastSpace = afterLastSpace.substring(0, afterLastSpace.length - 1)
-                    val dirInfo = FileManager.cd(info.currentDirectory, afterLastSpace)
-                    suggestFilesInDir(
-                        afterLastSpace + File.separator,
-                        suggestions,
-                        dirInfo.file,
-                        beforeLastSpace
-                    )
-                }
-            } else {
-                val originalAfterLastSpace: String = afterLastSpace
-                afterLastSpace = rmQuotes.matcher(afterLastSpace).replaceAll(Tuils.EMPTYSTRING)
-
-                val index = afterLastSpace.lastIndexOf(File.separator)
-                val dirInfo =
-                    FileManager.cd(info.currentDirectory, afterLastSpace.substring(0, index))
-
-                val originalIndex = originalAfterLastSpace.lastIndexOf(File.separator)
-
-                val alsals = originalAfterLastSpace.substring(0, originalIndex + 1)
-                val als = originalAfterLastSpace.substring(originalIndex + 1)
-
-                //                beforeLastSpace  = beforeLastSpace + Tuils.SPACE + hold;
-                suggestFilesInDir(suggestions, dirInfo.file, als, beforeLastSpace, alsals)
-            }
-        }
-    }
-
-    private fun suggestFilesInDir(
-        suggestions: MutableList<Suggestion?>,
-        dir: File?,
-        afterLastSeparator: String?,
-        beforeLastSpace: String?,
-        afterLastSpaceWithoutALS: String?
-    ) {
-        if (dir == null || !dir.isDirectory()) return
-
-        if (afterLastSeparator == null || afterLastSeparator.length == 0) {
-            suggestFilesInDir(null, suggestions, dir, beforeLastSpace)
-            return
-        }
-
-        val files = dir.list()
-        if (files == null) {
-            return
-        }
-
-        //        LogTuils.log("bls", beforeLastSpace);
-//        LogTuils.log("als", afterLastSeparator);
-//        LogTuils.log("alsals", afterLastSpaceWithoutALS);
-        val temp = rmQuotes.matcher(afterLastSeparator).replaceAll(Tuils.EMPTYSTRING)
-
-        val counter = quickCompare(
-            temp,
-            files,
-            suggestions,
-            beforeLastSpace,
-            suggestionsPerCategory,
-            false,
-            Suggestion.Companion.TYPE_FILE,
-            false
-        )
-        if (suggestionsPerCategory - counter <= 0) return
-
-        val fs = CompareStrings.topMatchesWithDeadline(
-            temp,
-            files,
-            suggestionsPerCategory - counter,
-            suggestionsDeadline,
-            FILE_SPLITTERS,
-            algInstance,
-            alg
-        )
-        for (f in fs) {
-            suggestions.add(
-                Suggestion(
-                    beforeLastSpace,
-                    f,
-                    false,
-                    Suggestion.Companion.TYPE_FILE,
-                    afterLastSpaceWithoutALS
-                )
-            )
-        }
-    }
-
-    private fun quickCompare(
-        s1: String,
-        ss: Array<String>,
-        suggestions: MutableList<Suggestion?>,
-        beforeLastSpace: String?,
-        max: Int,
-        exec: Boolean,
-        type: Int,
-        tag: Any?
-    ): Int {
-        if (s1.length > quickCompare) return 0
-
-        var counter = 0
-
-        for (c in ss.indices) {
-            if (counter >= max) break
-
-            if (s1.length <= quickCompare && ss[c].lowercase(Locale.getDefault()).startsWith(s1)) {
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        ss[c],
-                        exec,
-                        type,
-                        if (tag is Boolean) (if (tag) ss[c] else null) else tag
-                    )
-                )
-
-                ss[c] = Tuils.EMPTYSTRING
-
-                counter++
-            }
-        }
-
-        return counter
-    }
-
-    private fun quickCompare(
-        s1: String,
-        ss: MutableList<out StringableObject>,
-        suggestions: MutableList<Suggestion?>,
-        beforeLastSpace: String?,
-        max: Int,
-        exec: Boolean,
-        type: Int,
-        tag: Any?
-    ): Int {
-        if (s1.length > quickCompare) return 0
-
-        var counter = 0
-
-        val it: MutableIterator<out StringableObject> = ss.iterator()
-
-        while (it.hasNext()) {
-            if (counter >= max) break
-
-            val o = it.next()
-
-            if (s1.length <= quickCompare && o.getLowercaseString().startsWith(s1)) {
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        o.getString(),
-                        exec,
-                        type,
-                        if (tag is Boolean) (if (tag) o else null) else tag
-                    )
-                )
-
-                it.remove()
-
-                counter++
-            }
-        }
-
-        return counter
-    }
-
-    private fun suggestFilesInDir(
-        afterLastSpaceHolder: String?,
-        suggestions: MutableList<Suggestion?>,
-        dir: File?,
-        beforeLastSpace: String?
-    ) {
-        if (dir == null || !dir.isDirectory()) {
-            return
-        }
-
-        try {
-            val files = dir.list()
-            if (files == null) {
-                return
-            }
-            Arrays.sort(files)
-            for (s in files) {
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        s,
-                        false,
-                        Suggestion.Companion.TYPE_FILE,
-                        afterLastSpaceHolder
-                    )
-                )
-            }
-        } catch (e: NullPointerException) {
-            LogTuils.log(e)
-        }
-    }
-
-    private fun suggestContact(
-        info: CommandContext,
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ) {
-        val contactList = contacts?.getContacts()
-        if (contactList == null || contactList.size == 0) return
-
-        if (afterLastSpace == null || afterLastSpace.length == 0) {
-            for (contact in contactList) suggestions.add(
-                Suggestion(
-                    beforeLastSpace,
-                    contact.name,
-                    true,
-                    Suggestion.Companion.TYPE_CONTACT,
-                    contact
-                )
-            )
-        } else {
-            val counter = quickCompare(
-                afterLastSpace,
-                contactList,
-                suggestions,
-                beforeLastSpace,
-                suggestionsPerCategory,
-                true,
-                Suggestion.Companion.TYPE_CONTACT,
-                true
-            )
-            if (suggestionsPerCategory - counter <= 0) return
-
-            val cts = CompareObjects.topMatchesWithDeadline<Contact?>(
-                Contact::class.java,
-                afterLastSpace,
-                contactList.size,
-                contactList,
-                suggestionsPerCategory - counter,
-                suggestionsDeadline,
-                SPLITTERS,
-                algInstance,
-                alg
-            )
-            for (c in cts) {
-                if (c == null) break
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        c.name,
-                        clickToLaunch,
-                        Suggestion.Companion.TYPE_CONTACT,
-                        c
-                    )
-                )
-            }
-        }
-    }
-
-    private fun suggestDataStoreType(
-        suggestions: MutableList<Suggestion?>,
-        beforeLastSpace: String?
-    ) {
-        suggestions.add(
-            Suggestion(
-                beforeLastSpace,
-                "json",
-                false,
-                Suggestion.Companion.TYPE_BOOLEAN
-            )
-        )
-        suggestions.add(
-            Suggestion(
-                beforeLastSpace,
-                "xpath",
-                false,
-                Suggestion.Companion.TYPE_BOOLEAN
-            )
-        )
-        suggestions.add(
-            Suggestion(
-                beforeLastSpace,
-                "format",
-                false,
-                Suggestion.Companion.TYPE_BOOLEAN
-            )
-        )
-    }
-
-    private fun suggestCommand(
-        info: CommandContext,
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ) {
-        var afterLastSpace = afterLastSpace
-        if (afterLastSpace == null || afterLastSpace.length == 0) {
-            suggestCommand(info, suggestions, beforeLastSpace)
-            return
-        }
-
-        if (afterLastSpace.length <= FIRST_INTERVAL) {
-            afterLastSpace = afterLastSpace.lowercase(Locale.getDefault()).trim { it <= ' ' }
-
-            val cmds = info.commandGroup.getCommandNames()
-            if (cmds == null) return
-
-            var canInsert = counts?.get(Suggestion.Companion.TYPE_COMMAND) ?: 0
-            for (s in cmds) {
-                if (canInsert == 0 || Thread.currentThread().isInterrupted()) return
-
-                if (s.startsWith(afterLastSpace)) {
-                    val cmd = info.commandGroup.getCommandByName(s)
-                    val args = cmd.argType()
-                    val exec = args == null || args.size == 0
-                    suggestions.add(
-                        Suggestion(
-                            beforeLastSpace,
-                            s,
-                            exec && clickToLaunch,
-                            Suggestion.Companion.TYPE_COMMAND
-                        )
-                    )
-                    canInsert--
-                }
-            }
-        }
-    }
-
-    private fun suggestCommand(
-        info: CommandContext,
-        suggestions: MutableList<Suggestion?>,
-        beforeLastSpace: String?
-    ) {
-        val cmds = info.commandGroup.getCommands()
-        if (cmds == null) return
-
-        //        if there's a beforelastspace -> help ...
-        var canInsert =
-            if (beforeLastSpace != null && beforeLastSpace.length > 0) Int.MAX_VALUE else noInputCounts?.get(Suggestion.Companion.TYPE_COMMAND) ?: 0
-
-        for (cmd in cmds) {
-            if (canInsert == 0 || Thread.currentThread().isInterrupted()) return
-
-            if (info.cmdPrefs.getPriority(cmd) >= minCmdPriority) {
-                val args = cmd.argType()
-                val exec = args == null || args.size == 0
-
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        cmd.javaClass.getSimpleName(),
-                        exec && clickToLaunch,
-                        Suggestion.Companion.TYPE_COMMAND
-                    )
-                )
-                canInsert--
-            }
-        }
-    }
-
-    private fun suggestColor(
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ) {
-        if (afterLastSpace == null || afterLastSpace.length == 0 || (afterLastSpace.length == 1 && afterLastSpace.get(
-                0
-            ) != '#')
-        ) {
-            suggestions.add(
-                Suggestion(
-                    beforeLastSpace,
-                    "#",
-                    false,
-                    Suggestion.Companion.TYPE_COLOR
-                )
-            )
-        }
-    }
-
-    private fun suggestApp(
-        info: CommandContext,
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ) {
-        suggestApp(appsManager.shownApps(), suggestions, afterLastSpace, beforeLastSpace, true)
-    }
-
-    private fun suggestHiddenApp(
-        info: CommandContext,
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ) {
-        suggestApp(
-            appsManager.hiddenApps(),
-            suggestions,
-            afterLastSpace,
-            beforeLastSpace,
-            false
-        )
-    }
-
-    private fun suggestAllPackages(
-        info: CommandContext,
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ) {
-        val apps: MutableList<Launchable> = ArrayList<Launchable>(appsManager.shownApps())
-        apps.addAll(appsManager.hiddenApps())
-        suggestApp(apps, suggestions, afterLastSpace, beforeLastSpace, true)
-    }
-
-    private fun suggestDefaultApp(
-        info: CommandContext,
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ) {
-        suggestions.add(
-            Suggestion(
-                beforeLastSpace,
-                "most_used",
-                false,
-                Suggestion.Companion.TYPE_PERMANENT
-            )
-        )
-        suggestions.add(
-            Suggestion(
-                beforeLastSpace,
-                "null",
-                false,
-                Suggestion.Companion.TYPE_PERMANENT
-            )
-        )
-
-        suggestApp(appsManager.shownApps(), suggestions, afterLastSpace, beforeLastSpace, true)
-    }
-
-    private fun suggestApp(
-        apps: MutableList<Launchable>?,
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?,
-        canClickToLaunch: Boolean
-    ) {
-        var apps = apps
-        if (apps == null || apps.size == 0) return
-
-        apps = ArrayList<Launchable?>(apps) as MutableList<Launchable>?
-
-        var canInsert = counts?.get(Suggestion.Companion.TYPE_APP) ?: 0
-        if (afterLastSpace == null || afterLastSpace.length == 0) {
-            for (l in apps!!) {
-                if (canInsert == 0) return
-                canInsert--
-
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        l.name(),
-                        canClickToLaunch && clickToLaunch,
-                        Suggestion.Companion.TYPE_APP,
-                        l
-                    )
-                )
-            }
-        } else {
-            val counter = quickCompare(
-                afterLastSpace,
-                apps!!,
-                suggestions,
-                beforeLastSpace,
-                canInsert,
-                canClickToLaunch && clickToLaunch,
-                Suggestion.Companion.TYPE_APP,
-                canClickToLaunch && clickToLaunch
-            )
-            if (canInsert - counter <= 0) return
-
-            val infos = CompareObjects.topMatchesWithDeadline<Launchable?>(
-                Launchable::class.java,
-                afterLastSpace,
-                apps!!.size,
-                apps,
-                canInsert - counter,
-                suggestionsDeadline,
-                SPLITTERS,
-                algInstance,
-                alg
-            )
-            for (i in infos) {
-                if (i == null) break
-
-                if (canInsert == 0) return
-                canInsert--
-
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        i.name(),
-                        canClickToLaunch && clickToLaunch,
-                        Suggestion.Companion.TYPE_APP,
-                        if (canClickToLaunch && clickToLaunch) i else null
-                    )
-                )
-            }
-        }
-    }
-
-    private fun suggestConfigEntry(
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ) {
-        if (CommandTuils.xmlPrefsEntrys == null) {
-            CommandTuils.xmlPrefsEntrys = ArrayList<XMLPrefsSave?>()
-
-            for (element in XMLPrefsRoot.entries.toTypedArray()) CommandTuils.xmlPrefsEntrys.addAll(
-                element.enums
-            )
-
-            Collections.addAll<Apps?>(CommandTuils.xmlPrefsEntrys, *Apps.entries.toTypedArray())
-            Collections.addAll<Notifications?>(
-                CommandTuils.xmlPrefsEntrys,
-                *Notifications.entries.toTypedArray()
-            )
-            Collections.addAll<Rss?>(CommandTuils.xmlPrefsEntrys, *Rss.entries.toTypedArray())
-            Collections.addAll<Reply?>(CommandTuils.xmlPrefsEntrys, *Reply.entries.toTypedArray())
-        }
-
-        val list: MutableList<XMLPrefsSave> = ArrayList<XMLPrefsSave>(CommandTuils.xmlPrefsEntrys)
-
-        if (afterLastSpace == null || afterLastSpace.length == 0) {
-            for (s in list) {
-                val sg =
-                    Suggestion(beforeLastSpace, s.label(), false, Suggestion.Companion.TYPE_COMMAND)
-                suggestions.add(sg)
-            }
-        } else {
-            val counter = quickCompare(
-                afterLastSpace,
-                list,
-                suggestions,
-                beforeLastSpace,
-                suggestionsPerCategory,
-                false,
-                Suggestion.Companion.TYPE_COMMAND,
-                false
-            )
-            if (suggestionsPerCategory - counter <= 0) return
-
-            val saves = CompareObjects.topMatchesWithDeadline<XMLPrefsSave?>(
-                XMLPrefsSave::class.java,
-                afterLastSpace,
-                list.size,
-                list,
-                suggestionsPerCategory - counter,
-                suggestionsDeadline,
-                XML_PREFS_SPLITTERS,
-                algInstance,
-                alg
-            )
-            for (s in saves) {
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        s.label(),
-                        false,
-                        Suggestion.Companion.TYPE_COMMAND
-                    )
-                )
-            }
-        }
-    }
-
-    private fun suggestConfigFile(
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ) {
-        var afterLastSpace = afterLastSpace
-        if (CommandTuils.xmlPrefsFiles == null) {
-            CommandTuils.xmlPrefsFiles = ArrayList<String?>()
-            for (element in XMLPrefsRoot.entries.toTypedArray()) CommandTuils.xmlPrefsFiles.add(
-                element.path
-            )
-            CommandTuils.xmlPrefsFiles.add(AppsManager.PATH)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) CommandTuils.xmlPrefsFiles.add(
-                ReplyManager.PATH
-            )
-            CommandTuils.xmlPrefsFiles.add(NotificationManager.PATH)
-            CommandTuils.xmlPrefsFiles.add(RssManager.PATH)
-        }
-
-        if (afterLastSpace == null || afterLastSpace.length == 0) {
-            for (s in CommandTuils.xmlPrefsFiles) {
-                val sg = Suggestion(
-                    beforeLastSpace,
-                    s,
-                    false,
-                    Suggestion.Companion.TYPE_CONFIGFILE,
-                    afterLastSpace
-                )
-                suggestions.add(sg)
-            }
-        } else if (afterLastSpace.length <= FIRST_INTERVAL) {
-            afterLastSpace = afterLastSpace.trim { it <= ' ' }.lowercase(Locale.getDefault())
-            for (s in CommandTuils.xmlPrefsFiles) {
-                if (Thread.currentThread().isInterrupted()) return
-
-                if (s.startsWith(afterLastSpace)) {
-                    suggestions.add(
-                        Suggestion(
-                            beforeLastSpace,
-                            s,
-                            false,
-                            Suggestion.Companion.TYPE_CONFIGFILE,
-                            afterLastSpace
-                        )
-                    )
-                }
-            }
-        }
-    }
-
-    private fun suggestAppGroup(
-        pack: CommandContext,
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ) {
-        val groups: MutableList<AppsManager.Group> =
-            ArrayList<AppsManager.Group>(appsManager.groups)
-        if (groups.size == 0) return
-
-        var canInsert: Int
-        if (afterLastSpace == null || afterLastSpace.length == 0) {
-            canInsert = noInputCounts?.get(Suggestion.Companion.TYPE_APPGP) ?: 0
-            for (g in groups) {
-                if (canInsert == 0) return
-                canInsert--
-
-                val sg = Suggestion(
-                    beforeLastSpace,
-                    g.name() ?: continue,
-                    false,
-                    Suggestion.Companion.TYPE_APPGP,
-                    g
-                )
-                suggestions.add(sg)
-            }
-        } else {
-            canInsert = counts?.get(Suggestion.Companion.TYPE_APPGP) ?: 0
-
-            val counter = quickCompare(
-                afterLastSpace,
-                groups,
-                suggestions,
-                beforeLastSpace,
-                canInsert,
-                false,
-                Suggestion.Companion.TYPE_APPGP,
-                true
-            )
-            if (canInsert - counter <= 0) return
-
-            val gps = CompareObjects.topMatchesWithDeadline<AppsManager.Group?>(
-                AppsManager.Group::class.java,
-                afterLastSpace,
-                groups.size,
-                groups,
-                canInsert,
-                suggestionsDeadline,
-                SPLITTERS,
-                algInstance,
-                alg
-            )
-            for (g in gps) {
-                if (g == null) break
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        g.name() ?: continue,
-                        false,
-                        Suggestion.Companion.TYPE_APPGP,
-                        g
-                    )
-                )
-            }
-        }
-    }
-
-    private fun suggestAppInsideGroup(
-        pack: CommandContext,
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String,
-        keepGroupName: Boolean
-    ): Boolean {
-        var beforeLastSpace = beforeLastSpace
-        var index = -1
-
-        var app: String? = Tuils.EMPTYSTRING
-
-        if (!beforeLastSpace.contains(Tuils.SPACE)) {
-            index = StringTuils.find(beforeLastSpace, appsManager.groups)
-            app = afterLastSpace
-            if (!keepGroupName) beforeLastSpace = Tuils.EMPTYSTRING
-        } else {
-            val split = beforeLastSpace.split(Tuils.SPACE.toRegex()).dropLastWhile { it.isEmpty() }
-                .toTypedArray()
-            var count = 0
-            while (count < split.size) {
-                index = StringTuils.find(split[count], appsManager.groups)
-                if (index != -1) {
-                    beforeLastSpace = Tuils.EMPTYSTRING
-                    var i = 0
-                    while ((if (keepGroupName) i <= count else i < count)) {
-                        beforeLastSpace = beforeLastSpace + split[i] + Tuils.SPACE
-                        i++
-                    }
-                    beforeLastSpace = beforeLastSpace.trim { it <= ' ' }
-
-                    count += 1
-                    while (count < split.size) {
-                        app = app + split[count] + Tuils.SPACE
-                        count++
-                    }
-                    if (afterLastSpace != null) app = app + Tuils.SPACE + afterLastSpace
-                    app = app?.trim { it <= ' ' }
-
-                    break
-                }
-                count++
-            }
-        }
-
-        if (index == -1) return false
-
-        val g = appsManager.groups.get(index)
-
-        val apps: MutableList<Launchable> =
-            ArrayList((g.members() as? Collection<Launchable>) ?: emptyList())
-        if (apps.size > 0) {
-            if (app == null || app.length == 0) {
-                for (o in apps) {
-                    suggestions.add(
-                        Suggestion(
-                            beforeLastSpace,
-                            o.name(),
-                            clickToLaunch,
-                            Suggestion.Companion.TYPE_APP,
-                            o
-                        )
-                    )
-                }
-            } else {
-                val counter = quickCompare(
-                    app,
-                    apps,
-                    suggestions,
-                    beforeLastSpace,
-                    Int.Companion.MAX_VALUE,
-                    clickToLaunch,
-                    Suggestion.Companion.TYPE_APP,
-                    true
-                )
-                if (counter == apps.size) return true
-
-                val infos = CompareObjects.topMatchesWithDeadline<Launchable?>(
-                    Launchable::class.java,
-                    app,
-                    apps.size,
-                    apps,
-                    apps.size,
-                    suggestionsDeadline,
-                    SPLITTERS,
-                    algInstance,
-                    alg
-                )
-                for (gli in infos) {
-                    if (gli == null) break
-                    suggestions.add(
-                        Suggestion(
-                            beforeLastSpace,
-                            gli.name(),
-                            clickToLaunch,
-                            Suggestion.Companion.TYPE_APP,
-                            gli
-                        )
-                    )
-                }
-            }
-        }
-
-        return true
-    }
-
-    private fun suggestBoundReplyApp(
-        suggestions: MutableList<Suggestion?>,
-        afterLastSpace: String?,
-        beforeLastSpace: String?
-    ): Boolean {
-        val apps: MutableList<BoundApp> = ArrayList<BoundApp>(ReplyManager.boundApps)
-        if (apps.size == 0) return false
-
-        if (afterLastSpace == null || afterLastSpace.length == 0) {
-            for (b in apps) {
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        b.label,
-                        false,
-                        Suggestion.Companion.TYPE_APP
-                    )
-                )
-            }
-        } else {
-            val counter = quickCompare(
-                afterLastSpace,
-                apps,
-                suggestions,
-                beforeLastSpace,
-                suggestionsPerCategory,
-                false,
-                Suggestion.Companion.TYPE_APP,
-                false
-            )
-            if (suggestionsPerCategory - counter <= 0) return true
-
-            val b = CompareObjects.topMatchesWithDeadline<BoundApp?>(
-                BoundApp::class.java,
-                afterLastSpace,
-                apps.size,
-                apps,
-                suggestionsPerCategory - counter,
-                suggestionsDeadline,
-                SPLITTERS,
-                algInstance,
-                alg
-            )
-            for (ba in b) {
-                if (ba == null) break
-                suggestions.add(
-                    Suggestion(
-                        beforeLastSpace,
-                        ba.label,
-                        false,
-                        Suggestion.Companion.TYPE_APP
-                    )
-                )
-            }
-        }
-
-        return true
-    }
-
-    class Suggestion {
-        @JvmField
-        var text: String?
-        var textBefore: String?
-
-        var exec: Boolean
-        @JvmField
-        var type: Int
-
-        @JvmField
-        var `object`: Any?
-
-        constructor(beforeLastSpace: String?, text: String, exec: Boolean, type: Int) {
-            this.textBefore = beforeLastSpace
-            this.text = text
-
-            this.exec = exec
-            this.type = type
-
-            this.`object` = null
-        }
-
-        constructor(beforeLastSpace: String?, text: String, exec: Boolean, type: Int, tag: Any?) {
-            this.textBefore = beforeLastSpace
-            this.text = text
-
-            this.exec = exec
-            this.type = type
-
-            this.`object` = tag
-        }
-
-        fun getText(): String? {
-            if (type == TYPE_CONTACT) {
-                val c = `object` as Contact
-
-                if (c.numbers.size <= c.getSelectedNumber()) c.setSelectedNumber(0)
-
-                return textBefore + Tuils.SPACE + c.numbers.get(c.getSelectedNumber())
-            } else if (type == TYPE_PERMANENT) {
-                return text
-            } else if (type == TYPE_FILE) {
-                var lastWord = if (`object` == null) null else `object` as String
-                if (lastWord == null) {
-                    lastWord = Tuils.EMPTYSTRING
-                }
-
-                val textIsSpecial =
-                    (text == File.separator || text == DOUBLE_QUOTES || text == SINGLE_QUOTE)
-                val appendLastWord = lastWord.endsWith(File.separator) || textIsSpecial
-
-                //                LogTuils.log("-------------");
-//                LogTuils.log("tspe", textIsSpecial);
-//                LogTuils.log("tbe", textBefore.replaceAll(" ", "#"));
-//                LogTuils.log("lw", lastWord);
-//                LogTuils.log("txt", text);
-                return textBefore +
-                        Tuils.SPACE +
-                        (if (appendLastWord) lastWord else Tuils.EMPTYSTRING) +
-                        (if (appendQuotesBeforeFile && !appendLastWord) SINGLE_QUOTE else Tuils.EMPTYSTRING) +
-                        text
-            }
-
-            if (textBefore.isNullOrEmpty()) {
-                return text
-            } else {
-                return textBefore + Tuils.SPACE + text
-            }
-        }
-
-        override fun toString(): String {
-            return text.orEmpty()
-        }
-
-        companion object {
-            //        these suggestions will appear together
-            const val TYPE_APP: Int = 0
-            const val TYPE_ALIAS: Int = 1
-            const val TYPE_COMMAND: Int = 2
-            const val TYPE_APPGP: Int = 3
-
-            //        these suggestions will appear only in some special moments, ALONE
-            const val TYPE_FILE: Int = 10
-            const val TYPE_BOOLEAN: Int = 11
-            const val TYPE_CONTACT: Int = 13
-            const val TYPE_COLOR: Int = 14
-            const val TYPE_PERMANENT: Int = 15
-            const val TYPE_CONFIGFILE: Int = 16
-
-            var appendQuotesBeforeFile: Boolean = false
-        }
-    }
-
-    private inner class CustomComparator(var noInputIndexes: IntArray, var inputIndexes: IntArray) :
-        Comparator<Suggestion?> {
-        var noInput: Boolean = false
-
-        override fun compare(o1: Suggestion?, o2: Suggestion?): Int {
-            if ((o1 == null) || (o2 == null)) return 0
-            if (o1.type == o2.type) return 0
-
-            if (noInput) {
-                    return noInputIndexes[o1.type] - noInputIndexes[o2.type]
-            } else {
-                if (o1.type < inputIndexes.size) {
-                    if (o2.type < inputIndexes.size) return inputIndexes[o1.type] - inputIndexes[o2.type]
-                    else return -1
-                } else {
-                    if (o2.type < inputIndexes.size) return 1
-                    else return 0
-                }
-            }
-        }
-
-    }
-
-    companion object {
-        const val SINGLE_QUOTE: String = "'"
-        const val DOUBLE_QUOTES: String = "\""
+    private companion object {
+        const val SUGGESTION_DEBOUNCE_MS = 50L
     }
 }

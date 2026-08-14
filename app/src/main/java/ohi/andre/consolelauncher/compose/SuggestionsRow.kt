@@ -23,9 +23,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ohi.andre.consolelauncher.managers.ContactManager.Contact
+import ohi.andre.consolelauncher.managers.suggestions.Suggestion
+import ohi.andre.consolelauncher.managers.suggestions.SuggestionKind
 import ohi.andre.consolelauncher.managers.suggestions.SuggestionsManager
-import ohi.andre.consolelauncher.managers.suggestions.SuggestionsManager.Suggestion
 import ohi.andre.consolelauncher.tuils.OutputTuils
 
 @Composable
@@ -64,7 +64,7 @@ private fun SuggestionChip(manager: SuggestionsManager, suggestion: Suggestion) 
         ),
     ) {
         Text(
-            text = suggestion.text.orEmpty(),
+            text = suggestion.text,
             color = Color(colors.foreground),
             fontSize = manager.chipTextSizeSp.sp,
             maxLines = 1,
@@ -78,21 +78,21 @@ private fun SuggestionChip(manager: SuggestionsManager, suggestion: Suggestion) 
                     detectTapGestures(
                         onTap = { manager.clickSuggestion(suggestion) },
                         onLongPress = {
-                            if (suggestion.type == Suggestion.TYPE_CONTACT) showContactMenu = true
+                            if (suggestion.kind is SuggestionKind.Contact) showContactMenu = true
                         },
                     )
                 },
         )
 
-        if (suggestion.type == Suggestion.TYPE_CONTACT) {
-            val contact = suggestion.`object` as Contact
+        if (suggestion.kind is SuggestionKind.Contact) {
+            val contact = suggestion.kind.contact
             DropdownMenu(expanded = showContactMenu, onDismissRequest = { showContactMenu = false }) {
                 contact.numbers.forEachIndexed { index, number ->
                     DropdownMenuItem(
                         text = { Text(number) },
                         onClick = {
                             contact.setSelectedNumber(index)
-                            OutputTuils.sendInput(context, suggestion.getText())
+                            OutputTuils.sendInput(context, suggestion.resolvedText())
                             showContactMenu = false
                         },
                     )
