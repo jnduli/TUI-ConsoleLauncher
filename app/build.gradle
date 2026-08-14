@@ -26,8 +26,7 @@ android {
         release {
             minifyEnabled true
             shrinkResources true
-            getDefaultProguardFile('proguard-android-optimize.txt')
-            // proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             zipAlignEnabled true
         }
     }
