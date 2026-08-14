@@ -49,19 +49,6 @@ enum class Suggestions(
         XMLPrefsSave.BOOLEAN,
         "If true, t-ui will simulate a click on the current first suggestion if you double-click the space bar",
     ),
-    noinput_suggestions_order(
-        "app(5)alias(5)cmd(2)appgroup(5)",
-        XMLPrefsSave.TEXT,
-        "The order and the number of suggestions that appears on-screen when the input field is empty. " +
-            "Valid types: app, alias, cmd, appgroup. Put between round brackets the maximum number of " +
-            "suggestions of the leading type",
-    ),
-    suggestions_order(
-        "cmd(2)app(5)alias(5)appgroup(3)",
-        XMLPrefsSave.TEXT,
-        "The order and the number of suggestions that appears on-screen. Valid types: app, alias, cmd, " +
-            "appgroup. Put between round brackets the maximum number of suggestions of the leading type",
-    ),
     noinput_min_command_priority(
         "5",
         XMLPrefsSave.INTEGER,
@@ -70,8 +57,8 @@ enum class Suggestions(
     suggestions_per_category(
         "5",
         XMLPrefsSave.INTEGER,
-        "The number of suggestions shown per category. This doesn't affect \"noinput_suggestions_order\" " +
-            "and \"suggestions_order\"",
+        "The number of suggestions shown per category. This doesn't affect the ordering/count " +
+            "entries in \"suggestions_order.xml\"",
     ),
     hide_suggestions_when_empty(
         "always",

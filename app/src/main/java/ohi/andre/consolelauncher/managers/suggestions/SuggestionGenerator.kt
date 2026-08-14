@@ -1,6 +1,5 @@
 package ohi.andre.consolelauncher.managers.suggestions
 
-import android.graphics.Color
 import android.os.Build
 import it.andreuzzi.comparestring2.AlgMap
 import kotlinx.coroutines.ensureActive
@@ -36,7 +35,6 @@ import ohi.andre.consolelauncher.managers.xml.options.Reply
 import ohi.andre.consolelauncher.managers.xml.options.Rss
 import ohi.andre.consolelauncher.managers.xml.options.Suggestions
 import ohi.andre.consolelauncher.tuils.LogTuils
-import ohi.andre.consolelauncher.tuils.OutputTuils
 import ohi.andre.consolelauncher.tuils.StringTuils
 import ohi.andre.consolelauncher.tuils.Tuils
 
@@ -135,43 +133,17 @@ class SuggestionGenerator(
 
         minCmdPriority = XMLPrefsManager.getInt(Suggestions.noinput_min_command_priority)
 
-        val (indexes, parsedCounts) = parseSuggestionOrder(XMLPrefsManager.get(Suggestions.suggestions_order))!!
-        counts = parsedCounts
+        val orderEntries = SuggestionOrderConfig.load(pack.context)
+        val inputEntries = orderEntries.filter { it.mode == SuggestionOrderMode.INPUT }
+        val noInputEntries = orderEntries.filter { it.mode == SuggestionOrderMode.NO_INPUT }
 
-        val (noInputIndexes, parsedNoInputCounts) =
-            parseSuggestionOrder(XMLPrefsManager.get(Suggestions.noinput_suggestions_order))!!
-        noInputCounts = parsedNoInputCounts
+        counts = inputEntries.associate { it.category to it.count }
+        val indexes = inputEntries.associate { it.category to it.order }
+
+        noInputCounts = noInputEntries.associate { it.category to it.count }
+        val noInputIndexes = noInputEntries.associate { it.category to it.order }
 
         comparator = CustomComparator(noInputIndexes, indexes)
-    }
-
-    /** Parses a `suggestions_order`-style string (e.g. `"cmd(2)app(5)alias(5)"`) into a
-     * (position-in-string, max-count) pair of maps keyed by category name. Returns null - and
-     * reports an error - if a name doesn't match any [SuggestionCategory.configKey]. */
-    private fun parseSuggestionOrder(
-        raw: String
-    ): Pair<Map<SuggestionCategory, Int>, Map<SuggestionCategory, Int>>? {
-        val indexes = mutableMapOf<SuggestionCategory, Int>()
-        val counts = mutableMapOf<SuggestionCategory, Int>()
-
-        val matcher = Pattern.compile("(\\w+)\\((\\d+)\\)").matcher(raw)
-
-        var index = 0
-        while (matcher.find()) {
-            val name = matcher.group(1)
-            val category = SuggestionCategory.entries.firstOrNull { it.configKey == name }
-            if (category == null) {
-                OutputTuils.sendOutput(pack.context, "Invalid suggestion type: " + name, Color.RED)
-                return null
-            }
-
-            counts[category] = matcher.group(2).toInt()
-            indexes[category] = index
-
-            index++
-        }
-
-        return indexes to counts
     }
 
     //    there's always a space between beforelastspace and lastword
