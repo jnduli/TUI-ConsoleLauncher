@@ -40,12 +40,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-    dependencies {
-        implementation 'com.android.support:appcompat-v7:27.1.1'
-    }
     namespace 'ohi.andre.consolelauncher'
     lint {
         checkReleaseBuilds false
+    }
+    packaging {
+        resources {
+            excludes += ['okhttp3/internal/publicsuffix/publicsuffixes.gz', 'okhttp3/internal/publicsuffix/NOTICE', 'META-INF/*.version']
+        }
     }
     kotlinOptions {
         jvmTarget = '1.8'
@@ -85,7 +87,6 @@ dependencies {
     implementation("io.github.pdvrieze.xmlutil:serialization:1.0.0-rc2")
     implementation 'net.sourceforge.htmlcleaner:htmlcleaner:2.6'
     implementation 'com.jayway.jsonpath:json-path:2.4.0'
-    implementation 'org.jsoup:jsoup:1.11.3'
     implementation 'it.andreuzzi:CompareString2:1.0.9'
     implementation "androidx.activity:activity-ktx:1.7.2"
     implementation "androidx.fragment:fragment-ktx:1.6.1"
@@ -95,7 +96,6 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.10.0'
     implementation 'androidx.activity:activity:1.7.2'
-    implementation 'androidx.activity:activity-ktx:1.7.2'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.10.3")

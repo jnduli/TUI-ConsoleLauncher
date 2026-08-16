@@ -33,9 +33,9 @@ import ohi.andre.consolelauncher.tuils.ViewTuils
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import android.text.Html
 import org.htmlcleaner.HtmlCleaner
 import org.htmlcleaner.TagNode
-import org.jsoup.Jsoup
 import org.w3c.dom.Element
 import org.xml.sax.SAXParseException
 import java.io.File
@@ -817,7 +817,12 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
 
         fun replaceNodeValue(original: CharSequence?, nodeValue: String): CharSequence {
             var nodeValue = nodeValue
-            nodeValue = Jsoup.parse(nodeValue).text()
+            nodeValue = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                Html.fromHtml(nodeValue, Html.FROM_HTML_MODE_LEGACY).toString()
+            } else {
+                @Suppress("DEPRECATION")
+                Html.fromHtml(nodeValue).toString()
+            }
             return TextUtils.replace(
                 original,
                 arrayOf<String?>(nodeValuePattern),
