@@ -35,6 +35,11 @@
 
     <!-- web menu -->
     <string name="refresh_page">Refresh</string>
+    <string name="web_no_app_for_link">No app found to open this link</string>
+    <string name="web_download_started">Downloading file…</string>
+    <string name="web_download_failed">Could not start download</string>
+    <string name="web_load_error_title">Page failed to load</string>
+    <string name="web_retry">Retry</string>
 
     <!-- notifications menu -->
     <string name="exclude_notification">Exclude notification</string>
