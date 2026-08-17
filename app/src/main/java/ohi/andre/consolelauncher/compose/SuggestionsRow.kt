@@ -56,6 +56,7 @@ private fun SuggestionChip(manager: SuggestionsManager, suggestion: Suggestion) 
     val spacing = manager.chipSpacing
     val colors = remember(suggestion) { manager.colorsFor(suggestion) }
     var showContactMenu by remember { mutableStateOf(false) }
+    var showPinMenu by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier.padding(
@@ -79,6 +80,7 @@ private fun SuggestionChip(manager: SuggestionsManager, suggestion: Suggestion) 
                         onTap = { manager.clickSuggestion(suggestion) },
                         onLongPress = {
                             if (suggestion.kind is SuggestionKind.Contact) showContactMenu = true
+                            else if (suggestion.kind is SuggestionKind.App && suggestion.kind.launchable != null) showPinMenu = true
                         },
                     )
                 },
@@ -94,6 +96,22 @@ private fun SuggestionChip(manager: SuggestionsManager, suggestion: Suggestion) 
                             contact.setSelectedNumber(index)
                             OutputTuils.sendInput(context, suggestion.resolvedText())
                             showContactMenu = false
+                        },
+                    )
+                }
+            }
+        }
+
+        if (suggestion.kind is SuggestionKind.App && suggestion.kind.launchable != null) {
+            val launchable = suggestion.kind.launchable
+            DropdownMenu(expanded = showPinMenu, onDismissRequest = { showPinMenu = false }) {
+                for (index in 1..manager.defaultAppSlotCount) {
+                    DropdownMenuItem(
+                        text = { Text("Slot $index: ${manager.defaultAppSlotLabel(index)}") },
+                        onClick = {
+                            manager.pinDefaultApp(context, index, launchable)
+                            OutputTuils.sendOutput(context, "Pinned ${suggestion.text} to no-input suggestion slot $index")
+                            showPinMenu = false
                         },
                     )
                 }

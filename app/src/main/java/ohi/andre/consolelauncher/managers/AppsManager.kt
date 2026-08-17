@@ -164,11 +164,6 @@ class AppsManager(context: Context) : XMLPrefsElement {
                 super.run()
 
                 fill()
-                LocalBroadcastManager.getInstance(context.getApplicationContext()).sendBroadcast(
-                    Intent(
-                        UIManager.ACTION_UPDATE_SUGGESTIONS
-                    )
-                )
             }
         }.start()
     }
@@ -215,6 +210,10 @@ class AppsManager(context: Context) : XMLPrefsElement {
             appsHolder = AppsHolder(allApps, prefsList!!)
 
             finalizeGroups()
+
+            LocalBroadcastManager.getInstance(context!!.applicationContext).sendBroadcast(
+                Intent(UIManager.ACTION_UPDATE_SUGGESTIONS)
+            )
 
         } catch (e: Exception) {
             LogTuils.log(e)
@@ -1218,7 +1217,35 @@ class AppsManager(context: Context) : XMLPrefsElement {
         const val PATH: String = "apps.xml"
         const val APPS_SEPARATOR = ";"
 
+        const val DEFAULT_APP_SLOT_COUNT: Int = 5
+
         @JvmField
         var instance: AppsManager? = null
+    }
+
+    /** The raw stored value (a [Launchable.storageKey], [Apps.MOST_USED] or [Apps.NULL]) of a `default_app_nX` slot. */
+    fun defaultAppSlotValue(index: Int): String? {
+        return prefsList?.get(Apps.valueOf("default_app_n$index"))?.value
+    }
+
+    /** A user-facing label for what's currently pinned (or not) in a `default_app_nX` slot. */
+    fun defaultAppSlotLabel(index: Int): String {
+        return when (val marker = defaultAppSlotValue(index)) {
+            null, Apps.NULL -> "Empty"
+            Apps.MOST_USED -> "Most used"
+            else -> appsHolder?.launchables?.find { it.storageKey() == marker }?.name() ?: marker
+        }
+    }
+
+    /** Pins [launchable] (or clears the slot, if null) into the `default_app_nX` no-input suggestion slot at [index] (1-based). */
+    fun pinDefaultApp(context: Context, index: Int, launchable: Launchable?) {
+        if (index < 1 || index > DEFAULT_APP_SLOT_COUNT) return
+
+        val save: XMLPrefsSave = Apps.valueOf("default_app_n$index")
+        write(context, save, launchable?.storageKey() ?: Apps.NULL)
+
+        // write() only persists to disk; fill() reloads prefsList/appsHolder (and its cached
+        // suggestedAppMgr) from disk so the no-input suggestion row reflects the change live.
+        fill()
     }
 }

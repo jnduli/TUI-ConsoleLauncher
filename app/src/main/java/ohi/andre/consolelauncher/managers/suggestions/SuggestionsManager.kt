@@ -1,5 +1,6 @@
 package ohi.andre.consolelauncher.managers.suggestions
 
+import android.content.Context
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +21,7 @@ import ohi.andre.consolelauncher.managers.AliasManager
 import ohi.andre.consolelauncher.managers.AppsManager
 import ohi.andre.consolelauncher.managers.ContactManager
 import ohi.andre.consolelauncher.managers.TerminalManager
+import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Suggestions
 import ohi.andre.consolelauncher.tuils.Tuils
@@ -194,6 +196,17 @@ class SuggestionsManager(
             mTerminalAdapter.simulateEnter()
         } else {
             mTerminalAdapter.focusInputEnd()
+        }
+    }
+
+    val defaultAppSlotCount: Int get() = AppsManager.DEFAULT_APP_SLOT_COUNT
+
+    fun defaultAppSlotLabel(index: Int): String = appsManager.defaultAppSlotLabel(index)
+
+    /** Pins (or unpins, if [launchable] is null) an app into a no-input suggestion slot. Runs off the UI thread. */
+    fun pinDefaultApp(context: Context, index: Int, launchable: Launchable?) {
+        scope.launch {
+            appsManager.pinDefaultApp(context, index, launchable)
         }
     }
 
