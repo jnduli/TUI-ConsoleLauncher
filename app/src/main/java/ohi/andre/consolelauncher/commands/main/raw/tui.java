@@ -8,8 +8,6 @@ import android.net.Uri;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import java.io.File;
-
 import ohi.andre.consolelauncher.BuildConfig;
 import ohi.andre.consolelauncher.LauncherActivity;
 import ohi.andre.consolelauncher.R;
@@ -87,8 +85,9 @@ public class tui extends ParamCommand {
 
             @Override
             public String exec(CommandContext pack) {
-                File file = new File(FileTuils.getFolder(pack.context), "cmd.xml");
-                return XMLPrefsManager.set(file, pack.get().getClass().getSimpleName() + CommandsPreferences.PRIORITY_SUFFIX, new String[] {XMLPrefsManager.VALUE_ATTRIBUTE}, new String[] {String.valueOf(pack.getInt())});
+                String key = pack.get().getClass().getSimpleName() + CommandsPreferences.PRIORITY_SUFFIX;
+                XMLPrefsManager.XMLPrefsRoot.CMD.getValues().add(key, String.valueOf(pack.getInt()));
+                return null;
             }
 
             @Override

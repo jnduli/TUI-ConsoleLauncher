@@ -33,6 +33,7 @@ import ohi.andre.consolelauncher.managers.launchable.AppLauncher
 import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.launchable.WebLauncher
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
+import ohi.andre.consolelauncher.managers.xml.classes.DomXMLPrefsList
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsElement
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsList
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave
@@ -241,7 +242,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     }
 
     private fun processXmlNodes(root: Element, allApps: MutableList<Launchable>, enums: MutableList<Apps>) {
-        prefsList = XMLPrefsList()
+        prefsList = DomXMLPrefsList()
         val nodes = root.getElementsByTagName("*")
 
         for (i in 0 until nodes.length) {
@@ -1055,7 +1056,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
                 val PREFIX = "default_app_n"
                 for (count in 0..4) {
-                    val vl = values.get(Apps.valueOf(PREFIX + (count + 1))).value
+                    val vl = values.get(Apps.valueOf(PREFIX + (count + 1)))!!.value
 
                     if (vl == Apps.NULL) continue
                     if (vl == Apps.MOST_USED) suggested.add(SuggestedApp(null, MOST_USED, count + 1))

@@ -472,7 +472,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
         val o: Array<Any?>?
         try {
             o = XMLPrefsManager.buildDocument(file, NAME)
-            val root = o[1] as Element
+            val root = o!![1] as Element
             val nodes = root.getElementsByTagName("*")
             for (count in 0..<nodes.getLength()) {
                 val n = nodes.item(count)

@@ -25,6 +25,7 @@ import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.managers.RegexManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsElement;
+import ohi.andre.consolelauncher.managers.xml.classes.DomXMLPrefsList;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsList;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.managers.xml.options.Notifications;
@@ -94,7 +95,7 @@ public class NotificationManager implements XMLPrefsElement {
         apps = new ArrayList<>();
         filters = new ArrayList<>();
         formats = new ArrayList<>();
-        values = new XMLPrefsList();
+        values = new DomXMLPrefsList();
 
         try {
             File r = FileTuils.getFolder(context);
@@ -247,7 +248,7 @@ public class NotificationManager implements XMLPrefsElement {
     public void dispose() {
 
         if(values != null) {
-            values.list.clear();
+            values.clear();
             values = null;
         }
 

@@ -13,7 +13,6 @@ import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.AppsManager;
-import ohi.andre.consolelauncher.managers.RssManager;
 import ohi.andre.consolelauncher.managers.notifications.NotificationManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsElement;
@@ -21,7 +20,6 @@ import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.managers.xml.options.Apps;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 import ohi.andre.consolelauncher.managers.xml.options.Notifications;
-import ohi.andre.consolelauncher.managers.xml.options.Rss;
 import ohi.andre.consolelauncher.managers.xml.options.Ui;
 import ohi.andre.consolelauncher.tuils.Tuils;
 import ohi.andre.consolelauncher.tuils.SystemUtils;
@@ -206,13 +204,6 @@ public class config extends ParamCommand {
                     return StringTuils.toPlanString(strings, Tuils.NEWLINE);
                 }
 
-                if(name.equalsIgnoreCase(RssManager.PATH)) {
-                    List<String> strings = NotificationManager.instance.getValues().values();
-                    StringTuils.addPrefix(strings, Tuils.DOUBLE_SPACE);
-                    strings.add(0, RssManager.PATH);
-                    return StringTuils.toPlanString(strings, Tuils.NEWLINE);
-                }
-
                 return "[]";
             }
 
@@ -237,10 +228,6 @@ public class config extends ParamCommand {
                 }
                 ss.add(NotificationManager.PATH);
                 for(XMLPrefsSave save : Notifications.values()) {
-                    ss.add(Tuils.DOUBLE_SPACE + save.label());
-                }
-                ss.add(RssManager.PATH);
-                for(XMLPrefsSave save : Rss.values()) {
                     ss.add(Tuils.DOUBLE_SPACE + save.label());
                 }
 
@@ -299,15 +286,16 @@ public class config extends ParamCommand {
                 File folder = FileTuils.getFolder(pack.context);
 
                 for(XMLPrefsManager.XMLPrefsRoot root : XMLPrefsManager.XMLPrefsRoot.values()) {
-                    File file = new File(folder, root.path);
-                    FileTuils.insertOld(pack.context, file);
-                    XMLPrefsManager.resetFile(file, root.name());
+                    if (root.getSharedPrefsBacked()) {
+                        root.getValues().clear();
+                    } else {
+                        File file = new File(folder, root.path);
+                        FileTuils.insertOld(pack.context, file);
+                        XMLPrefsManager.resetFile(file, root.name());
+                    }
                 }
 
                 for(XMLPrefsSave save : Notifications.values()) {
-                    save.parent().write(pack.context, save, save.defaultValue());
-                }
-                for(XMLPrefsSave save : Rss.values()) {
                     save.parent().write(pack.context, save, save.defaultValue());
                 }
 

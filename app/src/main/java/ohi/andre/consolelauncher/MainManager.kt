@@ -26,7 +26,6 @@ import ohi.andre.consolelauncher.managers.ContactManager
 import ohi.andre.consolelauncher.managers.HTMLExtractManager
 import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.MessagesManager
-import ohi.andre.consolelauncher.managers.RssManager
 import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.ThemeManager
 import ohi.andre.consolelauncher.managers.TimeManager
@@ -104,7 +103,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     private val aliasContentColor: Int
 
     val aliasManager: AliasManager
-    private val rssManager: RssManager?
     val appsManager: AppsManager
     var contactManager: ContactManager? = null
         private set
@@ -231,7 +229,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
 
     fun destroy() {
         appsManager.onDestroy()
-        rssManager?.dispose()
         contactManager?.destroy(mContext)
 
         TuiLocationManager.disposeStatic()
@@ -290,7 +287,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
             .cache(Cache(mContext.getCacheDir(), (10 * 1024 * 1024).toLong()))
             .build()
 
-        rssManager = RssManager(mContext, client)
         themeManager = ThemeManager(client, mContext, mContext)
         ChangelogManager.printLog(mContext, client)
         htmlExtractManager = HTMLExtractManager(mContext, client)
@@ -327,11 +323,10 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                 notifications(),
                 open(),
                 rate(),
-                refresh(aliasManager, rssManager, appsManager, contactManager),
+                refresh(aliasManager, appsManager, contactManager),
                 regex(),
                 reply(),
                 restart(),
-                rss(rssManager),
                 search(),
                 share(),
                 shellcommands(),

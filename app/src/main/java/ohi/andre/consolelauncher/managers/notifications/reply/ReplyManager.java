@@ -30,6 +30,7 @@ import ohi.andre.consolelauncher.BuildConfig;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsElement;
+import ohi.andre.consolelauncher.managers.xml.classes.DomXMLPrefsList;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsList;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.managers.xml.options.Reply;
@@ -87,7 +88,7 @@ public class ReplyManager implements XMLPrefsElement {
         if(!enabled) return;
 
         notificationWears = new HashSet<>();
-        values = new XMLPrefsList();
+        values = new DomXMLPrefsList();
         this.context = context;
 
         instance = this;
@@ -347,7 +348,7 @@ public class ReplyManager implements XMLPrefsElement {
             boundApps = null;
         }
         if(values != null) {
-            values.list.clear();
+            values.clear();
             values = null;
         }
 

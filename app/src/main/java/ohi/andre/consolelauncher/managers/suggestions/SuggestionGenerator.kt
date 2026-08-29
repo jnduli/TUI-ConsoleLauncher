@@ -21,7 +21,6 @@ import ohi.andre.consolelauncher.managers.ContactManager
 import ohi.andre.consolelauncher.managers.ContactManager.Contact
 import ohi.andre.consolelauncher.managers.FileManager
 import ohi.andre.consolelauncher.managers.launchable.Launchable
-import ohi.andre.consolelauncher.managers.RssManager
 import ohi.andre.consolelauncher.managers.notifications.NotificationManager
 import ohi.andre.consolelauncher.managers.notifications.reply.BoundApp
 import ohi.andre.consolelauncher.managers.notifications.reply.ReplyManager
@@ -32,7 +31,6 @@ import ohi.andre.consolelauncher.managers.xml.options.Apps
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Notifications
 import ohi.andre.consolelauncher.managers.xml.options.Reply
-import ohi.andre.consolelauncher.managers.xml.options.Rss
 import ohi.andre.consolelauncher.managers.xml.options.Suggestions
 import ohi.andre.consolelauncher.tuils.LogTuils
 import ohi.andre.consolelauncher.tuils.StringTuils
@@ -1079,7 +1077,6 @@ class SuggestionGenerator(
                 CommandTuils.xmlPrefsEntrys,
                 *Notifications.entries.toTypedArray()
             )
-            Collections.addAll<Rss?>(CommandTuils.xmlPrefsEntrys, *Rss.entries.toTypedArray())
             Collections.addAll<Reply?>(CommandTuils.xmlPrefsEntrys, *Reply.entries.toTypedArray())
         }
 
@@ -1142,7 +1139,6 @@ class SuggestionGenerator(
                 ReplyManager.PATH
             )
             CommandTuils.xmlPrefsFiles.add(NotificationManager.PATH)
-            CommandTuils.xmlPrefsFiles.add(RssManager.PATH)
         }
 
         if (afterLastSpace == null || afterLastSpace.length == 0) {

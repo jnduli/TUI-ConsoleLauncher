@@ -6,7 +6,7 @@
     <string name="share_label">Share</string>
     <string name="output_about">Francesco Andreuzzi (Italy)\n\t-> Programmer
         \n\nThanks to Luke Winward for his original idea</string>
-    <string name="output_refresh">Refresh: apps, alias, contacts, rss feeds</string>
+    <string name="output_refresh">Refresh: apps, alias, contacts</string>
     <string name="output_rate">Thank you!</string>
     <string name="start_notification">T-UI started</string>
     <string name="tui_running">T-UI is running</string>
@@ -149,14 +149,6 @@
     <!-- id -->
     <string name="id_already">Busy ID</string>
     <string name="id_notfound">Invalid ID</string>
-
-    <!-- rss -->
-    <string name="rss_not_found">Invalid ID: no RSS feed found</string>
-    <string name="rss_never_checked">This RSS feed hasn\'t been checked yet</string>
-    <string name="rss_invalid_timeformat">The time format couldn\'t be parsed</string>
-    <string name="rss_invalid_date">Invalid publication date tag:</string>
-    <string name="rss_invalid_entry_tag">Invalid entry tag:</string>
-    <string name="rss_invalid_empty">Invalid RSS: the file is empty:</string>
 
     <!-- alias -->
     <string name="output_aliasnotfound">Alias not found:</string>
@@ -383,28 +375,6 @@
         \n-edit [contactName] -> edit an existing contact
         \n-rm [contactName] -> remove a contact</string>
     <string name="help_exit">Close T-UI and reset the default launcher</string>
-    <string name="help_rss">-add [ID] [update_time_in_seconds] [url] -> add a new RSS feed. t-ui will try to get new contents every [update_time_in_seconds] seconds
-        \n-rm [ID] -> remove this RSS feed
-        \n-ls -> list your RSS feeds
-        \n-l [ID] -> show the whole content of the corresponding RSS feed
-        \n-show [ID] [boolean] -> toggle the [show] property of the given saved RSS feed
-        \n-update_time [ID] [update_time_in_seconds] -> set the update time of the corresponding RSS feed
-        \n-format [ID] [format] -> set the format of the corresponding RSS feed ([format] can be both a string or the ID of an existing format)
-        \n-color [ID] [color] -> set the base color of the corresponding RSS feed
-        \n-wifi_only [ID] [boolean] -> if [boolean] is true, the corresponding feed will be updated only if your device is connected to a WiFi network
-        \n-last_check [ID] -> show the last time t-ui checked this RSS feed
-        \n-entry_tag [ID] -> set the base tag for every single entry (default: \"item\")
-        \n-date_tag [ID] [tag] -> set the tag which holds info about the publication date (default: \"pubDate\")
-        \n-add_command [ID] [IDs (comma separated)] [regex] [cmd] -> create a new regex command that will be applied on the RSS feeds corresponding to IDs
-        \n-rm_command [ID] -> rm the corresponding regex command
-        \n-frc [ID] -> update the corresponding RSS feed
-        \n-info [ID] -> show info about the corresponding RSS feed settings
-        \n-include_if_matches [ID] [regex] -> if the given regex matches on an RSS feed item, it will be shown ([regex] can be both a string or the ID of a regex saved inside regex.xml)
-        \n-exclude_if_matches [ID] [regex] -> if the given regex matches on an RSS feed item, it won\'t be shown ([regex] can be both a string or the ID of a regex saved inside regex.xml)
-        \n-add_format [ID] [format] -> create a new format that you will be able to use for more than one RSS feed
-        \n-rm_format [ID] [format] -> remove an existing format
-        \n-file -> open the file rss.xml</string>
-
     <!-- linux -->
     <string name="help_ctrlc">Interrupt the current shell process and create a new one</string>
     <string name="help_open">Open a file
