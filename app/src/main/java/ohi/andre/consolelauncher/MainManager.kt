@@ -14,7 +14,7 @@ import ohi.andre.consolelauncher.commands.CommandAbstraction
 import ohi.andre.consolelauncher.commands.CommandContext
 import ohi.andre.consolelauncher.commands.CommandGroup
 import ohi.andre.consolelauncher.commands.CommandResult
-import ohi.andre.consolelauncher.commands.CommandTuils
+import ohi.andre.consolelauncher.commands.CommandParser
 import ohi.andre.consolelauncher.commands.main.raw.*
 import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
 import ohi.andre.consolelauncher.managers.AliasManager
@@ -515,7 +515,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
 
     private inner class TuiCommandTrigger : CmdTrigger {
         override fun trigger(input: String): Boolean {
-            val command = CommandTuils.parse(input, mainPack, appsManager, contactManager)
+            val command = CommandParser.parse(input, mainPack, appsManager, contactManager)
             if (command == null) return false
             mainPack.lastCommand = input
             object : StoppableThread() {

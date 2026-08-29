@@ -6,7 +6,7 @@ import ohi.andre.consolelauncher.commands.main.specific.ParamCommand
 import ohi.andre.consolelauncher.tuils.Tuils
 
 /**
- * Built by [CommandTuils.parse], which always assigns [cmd] and [mArgs] via direct field access
+ * Built by [CommandParser.parse], which always assigns [cmd] and [mArgs] via direct field access
  * before returning the instance to any caller. `lateinit` documents that these have no meaningful
  * default rather than modeling "unset" as a null every reader has to keep checking for; a caller
  * that somehow got a [Command] before parsing finished would hit [kotlin.UninitializedPropertyAccessException]
@@ -14,7 +14,7 @@ import ohi.andre.consolelauncher.tuils.Tuils
  */
 class Command {
 
-    /** Where [CommandTuils.parse] gave up, if it did. */
+    /** Where [CommandParser.parse] gave up, if it did. */
     sealed class ParseOutcome {
         object Ok : ParseOutcome()
 

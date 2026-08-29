@@ -13,7 +13,7 @@ import ohi.andre.consolelauncher.managers.xml.options.Behavior
 /**
  * Carries per-invocation command state only (arg cursor, current directory, output color).
  * Managers are constructor-injected into whichever command or infrastructure piece
- * (e.g. [CommandTuils], [ohi.andre.consolelauncher.managers.suggestions.SuggestionsManager])
+ * (e.g. [CommandParser], [ohi.andre.consolelauncher.managers.suggestions.SuggestionsManager])
  * actually needs them — see how [CommandGroup] is built in MainManager.
  */
 class CommandContext(

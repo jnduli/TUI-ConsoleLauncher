@@ -11,7 +11,8 @@ import it.andreuzzi.comparestring2.algs.interfaces.Algorithm
 import ohi.andre.consolelauncher.commands.Command
 import ohi.andre.consolelauncher.commands.CommandAbstraction
 import ohi.andre.consolelauncher.commands.CommandContext
-import ohi.andre.consolelauncher.commands.CommandTuils
+import ohi.andre.consolelauncher.commands.CommandParser
+import ohi.andre.consolelauncher.commands.ConfigEntryLookup
 import ohi.andre.consolelauncher.commands.main.Param
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand
 import ohi.andre.consolelauncher.commands.main.specific.PermanentSuggestionCommand
@@ -267,7 +268,7 @@ class SuggestionGenerator(
 
     private fun tryParseCommand(beforeLastSpace: String): Command? {
         return try {
-            CommandTuils.parse(beforeLastSpace, pack, appsManager, contacts)
+            CommandParser.parse(beforeLastSpace, pack, appsManager, contacts)
         } catch (e: Exception) {
             null
         }
@@ -1065,22 +1066,19 @@ class SuggestionGenerator(
         afterLastSpace: String?,
         beforeLastSpace: String?
     ) {
-        if (CommandTuils.xmlPrefsEntrys == null) {
-            CommandTuils.xmlPrefsEntrys = ArrayList<XMLPrefsSave?>()
+        if (ConfigEntryLookup.xmlPrefsEntrys == null) {
+            val entries = ArrayList<XMLPrefsSave>()
 
-            for (element in XMLPrefsRoot.entries.toTypedArray()) CommandTuils.xmlPrefsEntrys.addAll(
-                element.enums
-            )
+            for (element in XMLPrefsRoot.entries.toTypedArray()) entries.addAll(element.enums)
 
-            Collections.addAll<Apps?>(CommandTuils.xmlPrefsEntrys, *Apps.entries.toTypedArray())
-            Collections.addAll<Notifications?>(
-                CommandTuils.xmlPrefsEntrys,
-                *Notifications.entries.toTypedArray()
-            )
-            Collections.addAll<Reply?>(CommandTuils.xmlPrefsEntrys, *Reply.entries.toTypedArray())
+            Collections.addAll(entries, *Apps.values())
+            Collections.addAll(entries, *Notifications.values())
+            Collections.addAll(entries, *Reply.values())
+
+            ConfigEntryLookup.xmlPrefsEntrys = entries
         }
 
-        val list: MutableList<XMLPrefsSave> = ArrayList<XMLPrefsSave>(CommandTuils.xmlPrefsEntrys)
+        val list: MutableList<XMLPrefsSave> = ArrayList(ConfigEntryLookup.xmlPrefsEntrys!!)
 
         if (afterLastSpace == null || afterLastSpace.length == 0) {
             for (s in list) {
@@ -1129,20 +1127,19 @@ class SuggestionGenerator(
         beforeLastSpace: String?
     ) {
         var afterLastSpace = afterLastSpace
-        if (CommandTuils.xmlPrefsFiles == null) {
-            CommandTuils.xmlPrefsFiles = ArrayList<String?>()
-            for (element in XMLPrefsRoot.entries.toTypedArray()) CommandTuils.xmlPrefsFiles.add(
-                element.path
-            )
-            CommandTuils.xmlPrefsFiles.add(AppsManager.PATH)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) CommandTuils.xmlPrefsFiles.add(
-                ReplyManager.PATH
-            )
-            CommandTuils.xmlPrefsFiles.add(NotificationManager.PATH)
+        if (ConfigEntryLookup.xmlPrefsFiles == null) {
+            val files = ArrayList<String>()
+            for (element in XMLPrefsRoot.entries.toTypedArray()) files.add(element.path)
+            files.add(AppsManager.PATH)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) files.add(ReplyManager.PATH)
+            files.add(NotificationManager.PATH)
+
+            ConfigEntryLookup.xmlPrefsFiles = files
         }
+        val xmlPrefsFiles = ConfigEntryLookup.xmlPrefsFiles!!
 
         if (afterLastSpace == null || afterLastSpace.length == 0) {
-            for (s in CommandTuils.xmlPrefsFiles) {
+            for (s in xmlPrefsFiles) {
                 val sg = Suggestion(
                     beforeLastSpace,
                     s,
@@ -1153,7 +1150,7 @@ class SuggestionGenerator(
             }
         } else if (afterLastSpace.length <= FIRST_INTERVAL) {
             afterLastSpace = afterLastSpace.trim { it <= ' ' }.lowercase(Locale.getDefault())
-            for (s in CommandTuils.xmlPrefsFiles) {
+            for (s in xmlPrefsFiles) {
                 activeContext.ensureActive()
 
                 if (s.startsWith(afterLastSpace)) {
