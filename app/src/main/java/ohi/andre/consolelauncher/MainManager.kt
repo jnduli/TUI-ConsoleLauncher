@@ -345,6 +345,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                 tutorial(),
                 uninstall(),
                 vibrate(),
+                wacall(),
                 apps(appsManager)
             ) + flavorOnlyCommands()
         )

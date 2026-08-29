@@ -237,6 +237,13 @@
         \n\nUsage:
         \n$ call [number] OR [contactName]
     </string>
+    <string name="help_wacall">Call someone on WhatsApp
+        \n\nUsage:
+        \n$ wacall [number] OR [contactName]
+        \n\nPlaces a direct WhatsApp voice call when the contact is synced with
+        WhatsApp; otherwise opens the WhatsApp chat so you can tap the call
+        button yourself.
+    </string>
     <string name="help_changelog">Show the changelog of the current version</string>
     <string name="help_config">-set [option] [value] -> set the value of an option
         \n-append [option] [value] -> append the given string to the value of the selected option
