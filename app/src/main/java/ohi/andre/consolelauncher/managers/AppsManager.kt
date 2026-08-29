@@ -25,6 +25,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import it.andreuzzi.comparestring2.StringableObject
 import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.RawValue
+import kotlinx.serialization.Serializable
 import ohi.andre.consolelauncher.MainManager
 import ohi.andre.consolelauncher.R
 import ohi.andre.consolelauncher.UIManager
@@ -33,10 +34,12 @@ import ohi.andre.consolelauncher.managers.launchable.AppLauncher
 import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.launchable.WebLauncher
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
-import ohi.andre.consolelauncher.managers.xml.classes.DomXMLPrefsList
+import ohi.andre.consolelauncher.managers.xml.classes.SharedPrefsXMLPrefsList
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsElement
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsList
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave
+import ohi.andre.consolelauncher.managers.xml.classes.loadJsonList
+import ohi.andre.consolelauncher.managers.xml.classes.saveJsonList
 import ohi.andre.consolelauncher.managers.xml.options.Apps
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Theme
@@ -49,28 +52,15 @@ import ohi.andre.consolelauncher.tuils.LogTuils
 import ohi.andre.consolelauncher.tuils.OutputTuils
 import ohi.andre.consolelauncher.tuils.StringTuils
 
-import org.w3c.dom.Document
-import org.w3c.dom.Element
-import org.w3c.dom.Node
-import org.xml.sax.SAXParseException
 import java.io.File
-import java.util.Arrays
 import java.util.Collections
 import java.util.Locale
-import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 
 private val APP_TAG: String = "AppsManager"
 
 class AppsManager(context: Context) : XMLPrefsElement {
-    private val NAME = "APPS"
-    private var file: File? = null
-
-    private val SHOW_ATTRIBUTE = "show"
-    private val APPS_ATTRIBUTE = "apps"
-    private val BGCOLOR_ATTRIBUTE = "bgColor"
-    private val FORECOLOR_ATTRIBUTE = "foreColor"
     private val context: Context?
 
     private var appsHolder: AppsHolder? = null
@@ -80,7 +70,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     private val preferences: SharedPreferences
     private val editor: SharedPreferences.Editor
 
-    private var prefsList: XMLPrefsList? = null
+    private var prefsList: XMLPrefsList
 
     @JvmField
     var groups: MutableList<Group>
@@ -97,12 +87,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     }
 
     override fun write(c: Context?, save: XMLPrefsSave, value: String?) {
-        XMLPrefsManager.set(
-            File(FileTuils.getFolder(c), PATH),
-            save.label(),
-            arrayOf<String>(XMLPrefsManager.VALUE_ATTRIBUTE),
-            arrayOf<String?>(value)
-        )
+        prefsList.add(save.label(), value)
     }
 
     override fun path(): String {
@@ -110,7 +95,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     }
 
     override fun getValues(): XMLPrefsList {
-        return prefsList!!
+        return prefsList
     }
 
     private val appsBroadcast: BroadcastReceiver = object : BroadcastReceiver() {
@@ -149,9 +134,9 @@ class AppsManager(context: Context) : XMLPrefsElement {
             pl = null
         }
 
-        val root = FileTuils.getFolder(context)
-        if (root == null) this.file = null
-        else this.file = File(root, PATH)
+        val appsPrefs = context.getSharedPreferences(PATH, Context.MODE_PRIVATE)
+        this.prefsList = SharedPrefsXMLPrefsList(appsPrefs)
+        XMLPrefsManager.seedSharedPrefsDefaults(appsPrefs, Apps.entries.toList())
 
         this.preferences = context.getSharedPreferences(PREFS, 0)
         this.editor = preferences.edit()
@@ -183,32 +168,16 @@ class AppsManager(context: Context) : XMLPrefsElement {
         hiddenLaunchables = ArrayList()
         groups.clear()
 
-        val currentFile = file ?: run {
-            OutputTuils.sendOutput(context, R.string.tuinotfound_app, Color.RED)
-            return
-        }
-
         try {
-            if (!currentFile.exists()) {
-                XMLPrefsManager.resetFile(currentFile, NAME)
-            }
+            val prefs = appsPrefs()
+            XMLPrefsManager.seedSharedPrefsDefaults(prefs, Apps.entries.toList())
 
-            val o = XMLPrefsManager.buildDocument(currentFile, NAME)
-            if (o == null) {
-                OutputTuils.sendXMLParseError(context, PATH)
-                return
-            }
-            val document = o[0] as Document
-            val root = o[1] as Element
-
-            val remainingEnums = Apps.entries.toMutableList()
-
-            processXmlNodes(root, allApps, remainingEnums)
-            handleMissingPreferences(document, root, currentFile, remainingEnums)
+            applyHiddenApps(prefs, allApps)
+            loadGroups(prefs, allApps)
             syncLaunchCounts(allApps)
 
             // Final State Update
-            appsHolder = AppsHolder(allApps, prefsList!!)
+            appsHolder = AppsHolder(allApps, prefsList)
 
             finalizeGroups()
 
@@ -222,95 +191,43 @@ class AppsManager(context: Context) : XMLPrefsElement {
         }
     }
 
-    private fun handleMissingPreferences(
-        document: Document,
-        root: Element,
-        file: File,
-        remainingEnums: List<Apps>
-    ) {
-        if (remainingEnums.isNotEmpty()) {
-            for (appEnum in remainingEnums) {
-                val defaultValue = appEnum.defaultValue()
-                val label = appEnum.label()
-                val newElement = document.createElement(label)
-                newElement.setAttribute(XMLPrefsManager.VALUE_ATTRIBUTE, defaultValue)
-                root.appendChild(newElement)
-                prefsList?.add(label, defaultValue)
-            }
-            XMLPrefsManager.writeTo(document, file)
-        }
-    }
+    private fun appsPrefs(): SharedPreferences = context!!.getSharedPreferences(PATH, Context.MODE_PRIVATE)
 
-    private fun processXmlNodes(root: Element, allApps: MutableList<Launchable>, enums: MutableList<Apps>) {
-        prefsList = DomXMLPrefsList()
-        val nodes = root.getElementsByTagName("*")
-
-        for (i in 0 until nodes.length) {
-            val node = nodes.item(i)
-            val nodeName = node.nodeName
-            val enumMatch = enums.find { it.label() == nodeName }
-
-            if (enumMatch != null) {
-                handlePreferenceNode(node, nodeName)
-                enums.remove(enumMatch)
-            } else if (node is Element) {
-                handleCustomElement(node, allApps)
-            }
-        }
-    }
-
-    private fun handlePreferenceNode(node: Node, name: String) {
-        val value = if (name.startsWith("d")) {
-            node.attributes.getNamedItem(XMLPrefsManager.VALUE_ATTRIBUTE).nodeValue
-        } else {
-            XMLPrefsManager.getStringAttribute(node as Element, XMLPrefsManager.VALUE_ATTRIBUTE)
-        }
-        prefsList?.add(name, value)
-    }
-
-    private fun handleCustomElement(element: Element, allApps: MutableList<Launchable>) {
-        if (element.hasAttribute(APPS_ATTRIBUTE)) {
-            createGroupFromElement(element, allApps)
-        } else {
-            handleHiddenApp(element, allApps)
-        }
-    }
-
-    private fun createGroupFromElement(e: Element, allApps: List<Launchable>) {
-        val name = e.nodeName
-        if (name.contains(Tuils.SPACE)) {
-            OutputTuils.sendOutput(context, "${PATH}: ${context?.getString(R.string.output_groupspace)}: $name", Color.RED)
-            return
-        }
-
-        val group = Group(name, this).apply {
-            val appNames = e.getAttribute(APPS_ATTRIBUTE).split(APPS_SEPARATOR).filter { it.isNotEmpty() }
-            val available = allApps.toMutableList()
-
-            appNames.forEach { s ->
-                val match = available.find { it.names().contains(s) }
-                if (match != null) {
-                    add(match, false)
-                    available.remove(match)
-                }
-            }
-
-            sort()
-            parseColorAttribute(e, BGCOLOR_ATTRIBUTE)?.let { bgColor = it }
-            parseColorAttribute(e, FORECOLOR_ATTRIBUTE)?.let { foreColor = it }
-        }
-        groups.add(group)
-    }
-
-    private fun handleHiddenApp(element: Element, allApps: MutableList<Launchable>) {
-        val isShown = !element.hasAttribute(SHOW_ATTRIBUTE) || element.getAttribute(SHOW_ATTRIBUTE).toBoolean()
-        if (!isShown) {
-            val key = element.nodeName
+    private fun applyHiddenApps(prefs: SharedPreferences, allApps: MutableList<Launchable>) {
+        val hiddenKeys = loadJsonList<String>(prefs, HIDDEN_APPS_KEY)
+        for (key in hiddenKeys) {
             val match = allApps.find { launchable -> launchable.storageKey() == key }
             if (match != null) {
                 allApps.remove(match)
                 hiddenLaunchables.add(match)
             }
+        }
+    }
+
+    private fun loadGroups(prefs: SharedPreferences, allApps: List<Launchable>) {
+        val records = loadJsonList<GroupRecord>(prefs, GROUPS_KEY)
+        for (record in records) {
+            if (record.name.contains(Tuils.SPACE)) {
+                OutputTuils.sendOutput(context, "${PATH}: ${context?.getString(R.string.output_groupspace)}: ${record.name}", Color.RED)
+                continue
+            }
+
+            val group = Group(record.name, this).apply {
+                val available = allApps.toMutableList()
+
+                record.apps.forEach { s ->
+                    val match = available.find { it.names().contains(s) }
+                    if (match != null) {
+                        add(match, false)
+                        available.remove(match)
+                    }
+                }
+
+                sort()
+                bgColor = record.bgColor ?: Int.MAX_VALUE
+                foreColor = record.foreColor ?: Int.MAX_VALUE
+            }
+            groups.add(group)
         }
     }
 
@@ -327,20 +244,6 @@ class AppsManager(context: Context) : XMLPrefsElement {
         Group.sorting = XMLPrefsManager.getInt(Apps.app_groups_sorting)
         groups.forEach { it.sort() }
         groups.sortWith { o1, o2 -> StringTuils.alphabeticCompare(o1.name()!!, o2.name()!!) }
-    }
-
-    // Helper to extract color parsing logic
-    private fun parseColorAttribute(e: Element, attr: String): Int? {
-        if (e.hasAttribute(attr)) {
-            val colorStr = e.getAttribute(attr)
-            if (colorStr.isNotEmpty()) {
-                return try { Color.parseColor(colorStr) } catch (err: Exception) {
-                    OutputTuils.sendOutput(context, "${PATH}: ${context?.getString(R.string.output_invalidcolor)}: $colorStr", Color.RED)
-                    null
-                }
-            }
-        }
-        return null
     }
 
 // Helper to centralize the ComponentName search logic
@@ -592,27 +495,36 @@ class AppsManager(context: Context) : XMLPrefsElement {
         return true
     }
 
+    private fun loadGroupRecords(): MutableList<GroupRecord> = loadJsonList(appsPrefs(), GROUPS_KEY)
+    private fun saveGroupRecords(records: List<GroupRecord>) = saveJsonList(appsPrefs(), GROUPS_KEY, records)
+
+    private fun groupToRecord(group: Group): GroupRecord = GroupRecord(
+        name = group.name,
+        apps = group.apps.map { it.storageKey() },
+        bgColor = group.bgColor.takeIf { it != Int.MAX_VALUE },
+        foreColor = group.foreColor.takeIf { it != Int.MAX_VALUE },
+    )
+
     fun hideActivity(launchable: Launchable): String? {
-        XMLPrefsManager.set(
-            file,
-            launchable.storageKey(),
-            arrayOf(SHOW_ATTRIBUTE),
-            arrayOf("false")
-        )
+        val prefs = appsPrefs()
+        val keys = loadJsonList<String>(prefs, HIDDEN_APPS_KEY)
+        val key = launchable.storageKey()
+        if (!keys.contains(key)) keys.add(key)
+        saveJsonList(prefs, HIDDEN_APPS_KEY, keys)
+
         appsHolder!!.remove(launchable)
         appsHolder!!.update(true)
-        hiddenLaunchables!!.add(launchable)
+        hiddenLaunchables.add(launchable)
         return launchable.name()
     }
 
     fun showActivity(launchable: Launchable): String? {
-        XMLPrefsManager.set(
-            file,
-            launchable.storageKey(),
-            arrayOf(SHOW_ATTRIBUTE),
-            arrayOf("true")
-        )
-        hiddenLaunchables!!.remove(launchable)
+        val prefs = appsPrefs()
+        val keys = loadJsonList<String>(prefs, HIDDEN_APPS_KEY)
+        keys.remove(launchable.storageKey())
+        saveJsonList(prefs, HIDDEN_APPS_KEY, keys)
+
+        hiddenLaunchables.remove(launchable)
         appsHolder!!.add(launchable)
         appsHolder!!.update(false)
         return launchable.name()
@@ -621,13 +533,13 @@ class AppsManager(context: Context) : XMLPrefsElement {
     fun createGroup(name: String): String? {
         val index = StringTuils.find(name, groups)
         if (index == -1) {
-            groups.add(Group(name, this))
-            return XMLPrefsManager.set(
-                file,
-                name,
-                arrayOf<String>(APPS_ATTRIBUTE),
-                arrayOf<String>(Tuils.EMPTYSTRING)
-            )
+            val group = Group(name, this)
+            groups.add(group)
+
+            val records = loadGroupRecords()
+            records.add(groupToRecord(group))
+            saveGroupRecords(records)
+            return null
         }
 
         return context!!.getString(R.string.output_groupexists)
@@ -640,12 +552,12 @@ class AppsManager(context: Context) : XMLPrefsElement {
         }
 
         groups.get(index).bgColor = Color.parseColor(color)
-        return XMLPrefsManager.set(
-            file,
-            name,
-            arrayOf<String>(BGCOLOR_ATTRIBUTE),
-            arrayOf<String?>(color)
-        )
+
+        val records = loadGroupRecords()
+        val recordIndex = records.indexOfFirst { it.name == name }
+        if (recordIndex >= 0) records[recordIndex] = groupToRecord(groups[index])
+        saveGroupRecords(records)
+        return null
     }
 
     fun groupForeColor(name: String?, color: String?): String? {
@@ -655,197 +567,74 @@ class AppsManager(context: Context) : XMLPrefsElement {
         }
 
         groups.get(index).foreColor = Color.parseColor(color)
-        return XMLPrefsManager.set(
-            file,
-            name,
-            arrayOf<String>(FORECOLOR_ATTRIBUTE),
-            arrayOf<String?>(color)
-        )
+
+        val records = loadGroupRecords()
+        val recordIndex = records.indexOfFirst { it.name == name }
+        if (recordIndex >= 0) records[recordIndex] = groupToRecord(groups[index])
+        saveGroupRecords(records)
+        return null
     }
 
     fun removeGroup(name: String?): String? {
-        val output = XMLPrefsManager.removeNode(file, name)
-
-        if (output == null) return null
-        if (output.length == 0) return context!!.getString(R.string.output_groupnotfound)
+        val records = loadGroupRecords()
+        val removed = records.removeIf { it.name == name }
+        if (!removed) return context!!.getString(R.string.output_groupnotfound)
+        saveGroupRecords(records)
 
         val index = StringTuils.find(name, groups)
         if (index != -1) groups.removeAt(index)
 
-        return output
+        return null
     }
 
     fun addAppToGroup(group: String?, launchable: Launchable): String? {
-        val o: Array<Any?>?
-        try {
-            o = XMLPrefsManager.buildDocument(file, null)
-            if (o == null) {
-                OutputTuils.sendXMLParseError(context, PATH)
-                return null
-            }
-        } catch (e: Exception) {
-            return e.toString()
-        }
-
-        val d = o[0] as Document?
-        val root = o[1] as Element?
-
-        val node = XMLPrefsManager.findNode(root, group)
-        if (node == null) return context!!.getString(R.string.output_groupnotfound)
-
-        val e = node as Element
-        var apps = e.getAttribute(APPS_ATTRIBUTE)
-
-        val groupIndex = StringTuils.find(group, groups)
-        if (groupIndex != -1) {
-            val existingApp = groups[groupIndex].apps.find { it.names().contains(launchable.name()) }
-            if (existingApp != null) return null
-        }
-
-        apps = apps + APPS_SEPARATOR + launchable.storageKey()
-        if (apps.startsWith(APPS_SEPARATOR)) apps = apps.substring(1)
-
-        e.setAttribute(APPS_ATTRIBUTE, apps)
-
-        XMLPrefsManager.writeTo(d, file)
-
         val index = StringTuils.find(group, groups)
-        if (index != -1) groups.get(index).add(launchable, true)
+        if (index == -1) return context!!.getString(R.string.output_groupnotfound)
+
+        val existingApp = groups[index].apps.find { it.names().contains(launchable.name()) }
+        if (existingApp != null) return null
+
+        groups[index].add(launchable, true)
+
+        val records = loadGroupRecords()
+        val recordIndex = records.indexOfFirst { it.name == group }
+        if (recordIndex >= 0) records[recordIndex] = groupToRecord(groups[index])
+        saveGroupRecords(records)
 
         return null
     }
 
     fun removeAppFromGroup(group: String?, launchable: Launchable): String? {
-        val o: Array<Any?>?
-        try {
-            o = XMLPrefsManager.buildDocument(file, null)
-            if (o == null) {
-                OutputTuils.sendXMLParseError(context, PATH)
-                return null
-            }
-        } catch (e: Exception) {
-            return e.toString()
-        }
-
-        val d = o[0] as Document?
-        val root = o[1] as Element?
-
-        val node = XMLPrefsManager.findNode(root, group)
-        if (node == null) return context!!.getString(R.string.output_groupnotfound)
-
-        val e = node as Element
-
-        var apps = e.getAttribute(APPS_ATTRIBUTE)
-        if (apps == null) return null
+        val index = StringTuils.find(group, groups)
+        if (index == -1) return context!!.getString(R.string.output_groupnotfound)
 
         val writeKey = launchable.storageKey()
-        val split = apps.split(APPS_SEPARATOR).filter { it.isNotEmpty() }
-        val found = split.any {
-            it == writeKey || (launchable is AppLauncher && it == launchable.packageName)
+        val found = groups[index].apps.any {
+            it.storageKey() == writeKey || (launchable is AppLauncher && it is AppLauncher && it.packageName == launchable.packageName)
         }
         if (!found) return null
 
-        val temp = apps.replace(writeKey.toRegex(), Tuils.EMPTYSTRING)
-        if (temp.length < apps.length) {
-            apps = temp
-            apps = apps.replace((APPS_SEPARATOR + APPS_SEPARATOR).toRegex(), APPS_SEPARATOR)
-            if (apps.startsWith(APPS_SEPARATOR)) apps = apps.substring(1)
-            if (apps.endsWith(APPS_SEPARATOR)) apps = apps.substring(0, apps.length - 1)
+        groups[index].remove(launchable)
 
-            e.setAttribute(APPS_ATTRIBUTE, apps)
-
-            XMLPrefsManager.writeTo(d, file)
-
-            val index = StringTuils.find(group, groups)
-            if (index != -1) groups.get(index).remove(launchable)
-        }
+        val records = loadGroupRecords()
+        val recordIndex = records.indexOfFirst { it.name == group }
+        if (recordIndex >= 0) records[recordIndex] = groupToRecord(groups[index])
+        saveGroupRecords(records)
 
         return null
     }
 
     fun listGroup(group: String?): String? {
-        val o: Array<Any?>?
-        try {
-            o = XMLPrefsManager.buildDocument(file, null)
-            if (o == null) {
-                OutputTuils.sendXMLParseError(context, PATH)
-                return null
-            }
-        } catch (e: Exception) {
-            return e.toString()
-        }
+        val index = StringTuils.find(group, groups)
+        if (index == -1) return context!!.getString(R.string.output_groupnotfound)
 
-        val root = o[1] as Element?
-
-        val node = XMLPrefsManager.findNode(root, group)
-        if (node == null) return context!!.getString(R.string.output_groupnotfound)
-
-        val e = node as Element
-
-        val apps = e.getAttribute(APPS_ATTRIBUTE)
-        if (apps == null) return "[]"
-
-        var labels = Tuils.EMPTYSTRING
-
-        val manager = context!!.getPackageManager()
-        val split: Array<String> =
-            apps.split(APPS_SEPARATOR.toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-        for (s in split) {
-            if (s.length == 0) continue
-
-            val label: String?
-
-            val componentInfo = s.split("-").filter { it.isNotEmpty() }
-            val name = if (componentInfo.size >= 2) ComponentName(componentInfo[0], componentInfo[1]) else null
-            if (name == null) {
-                try {
-                    label = manager.getApplicationInfo(s, 0).loadLabel(manager).toString()
-                } catch (e1: Exception) {
-                    continue
-                }
-            } else {
-                try {
-                    label = manager.getActivityInfo(name, 0).loadLabel(manager).toString()
-                } catch (e1: Exception) {
-                    continue
-                }
-            }
-
-            labels = labels + Tuils.NEWLINE + label
-        }
-
-        return labels.trim { it <= ' ' }
+        val labels = groups[index].apps.joinToString(Tuils.NEWLINE) { it.name() ?: Tuils.EMPTYSTRING }
+        return labels.trim { it <= ' ' }.ifEmpty { "[]" }
     }
 
     fun listGroups(): String? {
-        val o: Array<Any?>?
-        try {
-            o = XMLPrefsManager.buildDocument(file, null)
-            if (o == null) {
-                OutputTuils.sendXMLParseError(context, PATH)
-                return null
-            }
-        } catch (e: Exception) {
-            return e.toString()
-        }
-
-        val root = o[1] as Element
-
-        var groups = Tuils.EMPTYSTRING
-
-        val list = root.getElementsByTagName("*")
-        for (count in 0 until list.getLength()) {
-            val node = list.item(count)
-            if (node !is Element) continue
-
-            val e = node
-            if (!e.hasAttribute(APPS_ATTRIBUTE)) continue
-
-            groups = groups + Tuils.NEWLINE + e.getNodeName()
-        }
-
-        if (groups.length == 0) return "[]"
-        return groups.trim { it <= ' ' }
+        if (groups.isEmpty()) return "[]"
+        return groups.joinToString(Tuils.NEWLINE) { it.name }.trim { it <= ' ' }
     }
 
     fun shownApps(): MutableList<Launchable>? {
@@ -943,6 +732,14 @@ class AppsManager(context: Context) : XMLPrefsElement {
             unregisterReceiver(context)
         }
     }
+
+    @Serializable
+    data class GroupRecord(
+        val name: String,
+        val apps: List<String> = emptyList(),
+        val bgColor: Int? = null,
+        val foreColor: Int? = null,
+    )
 
     class Group(var name: String, private val appsManager: AppsManager) : MainManager.Group, StringableObject {
         var apps: MutableList<Launchable>
@@ -1217,6 +1014,9 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
         const val PATH: String = "apps.xml"
         const val APPS_SEPARATOR = ";"
+
+        private const val HIDDEN_APPS_KEY = "hidden_apps"
+        private const val GROUPS_KEY = "groups"
 
         const val DEFAULT_APP_SLOT_COUNT: Int = 5
 

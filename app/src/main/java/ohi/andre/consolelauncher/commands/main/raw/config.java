@@ -283,16 +283,8 @@ public class config extends ParamCommand {
 
             @Override
             public String exec(CommandContext pack) {
-                File folder = FileTuils.getFolder(pack.context);
-
                 for(XMLPrefsManager.XMLPrefsRoot root : XMLPrefsManager.XMLPrefsRoot.values()) {
-                    if (root.getSharedPrefsBacked()) {
-                        root.getValues().clear();
-                    } else {
-                        File file = new File(folder, root.path);
-                        FileTuils.insertOld(pack.context, file);
-                        XMLPrefsManager.resetFile(file, root.name());
-                    }
+                    root.getValues().clear();
                 }
 
                 for(XMLPrefsSave save : Notifications.values()) {

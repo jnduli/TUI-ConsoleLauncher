@@ -2,8 +2,6 @@ package ohi.andre.consolelauncher.commands.main.raw;
 
 import android.content.Intent;
 
-import java.io.File;
-
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.CommandContext;
@@ -14,7 +12,6 @@ import ohi.andre.consolelauncher.managers.launchable.AppLauncher;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 import ohi.andre.consolelauncher.tuils.SystemUtils;
-import ohi.andre.consolelauncher.tuils.FileTuils;
 
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
 
@@ -181,18 +178,6 @@ public class notifications extends ParamCommand implements APICommand {
             @Override
             public String onArgNotFound(CommandContext pack, int index) {
                 return pack.context.getString(R.string.invalid_integer);
-            }
-        },
-        file {
-            @Override
-            public int[] args() {
-                return new int[0];
-            }
-
-            @Override
-            public String exec(CommandContext pack) {
-                pack.context.startActivity(FileTuils.openFile(pack.context, new File(FileTuils.getFolder(pack.context), NotificationManager.PATH)));
-                return null;
             }
         },
         access {

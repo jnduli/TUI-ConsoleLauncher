@@ -13,11 +13,14 @@ import android.text.style.ForegroundColorSpan
 import android.util.Log
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.jayway.jsonpath.JsonPath
+import kotlinx.serialization.Serializable
 import net.minidev.json.JSONArray
 import ohi.andre.consolelauncher.BuildConfig
 import ohi.andre.consolelauncher.R
 import ohi.andre.consolelauncher.UIManager
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
+import ohi.andre.consolelauncher.managers.xml.classes.loadJsonList
+import ohi.andre.consolelauncher.managers.xml.classes.saveJsonList
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Theme
 import ohi.andre.consolelauncher.tuils.LongClickableSpan
@@ -36,9 +39,6 @@ import okhttp3.Request
 import android.text.Html
 import org.htmlcleaner.HtmlCleaner
 import org.htmlcleaner.TagNode
-import org.w3c.dom.Element
-import org.xml.sax.SAXParseException
-import java.io.File
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 import kotlin.collections.ArrayList
@@ -464,34 +464,21 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
         jsons = ArrayList<StoreableValue>()
         formats = ArrayList<StoreableValue>()
 
-        val file = File(FileTuils.getFolder(context), PATH)
-        if (!file.exists()) {
-            XMLPrefsManager.resetFile(file, NAME)
-        }
-
-        val o: Array<Any?>?
         try {
-            o = XMLPrefsManager.buildDocument(file, NAME)
-            val root = o!![1] as Element
-            val nodes = root.getElementsByTagName("*")
-            for (count in 0..<nodes.getLength()) {
-                val n = nodes.item(count)
-                try {
-                    val v = StoreableValue.Companion.fromNode((n as org.w3c.dom.Element?)!!)
-                    if (v != null) {
-                        getListFromType(v.type).add(v)
-                    }
-                } catch (e: Exception) {
-                }
+            val prefs = context.getSharedPreferences(PATH, Context.MODE_PRIVATE)
+            for (type in StoreableValue.Type.values()) {
+                val records = loadJsonList<StoreableValueRecord>(prefs, type.name)
+                val list = getListFromType(type)
+                for (record in records) list.add(StoreableValue(record.id, record.value, type))
             }
-        } catch (e: SAXParseException) {
-            OutputTuils.sendXMLParseError(context, PATH, e)
-            Log.e(TAG, e.toString())
         } catch (e: Exception) {
             LogTuils.log(e)
             Log.e(TAG, e.toString())
         }
     }
+
+    @Serializable
+    data class StoreableValueRecord(val id: Int, val value: String?)
 
     class StoreableValue {
         enum class Type {
@@ -511,71 +498,32 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
             this.type = type
         }
 
-        private constructor(id: Int, value: String?, type: String?) {
-            this.id = id
-            this.value = value
-            this.type = Type.valueOf(type!!)
-        }
-
         fun remove(context: Context?) {
-            val file = File(FileTuils.getFolder(context), PATH)
-            if (!file.exists()) {
-                XMLPrefsManager.resetFile(file, NAME)
-            }
-
-            val output = XMLPrefsManager.removeNode(
-                file,
-                type.name,
-                arrayOf<String?>(ID),
-                arrayOf<String>(id.toString())
-            )
-            if (output != null) {
-                if (output.isNotEmpty()) OutputTuils.sendOutput(context, output, Color.RED)
-                else {
-                    OutputTuils.sendOutput(context, R.string.id_notfound, Color.RED)
-                }
+            val prefs = context!!.getSharedPreferences(PATH, Context.MODE_PRIVATE)
+            val records = loadJsonList<StoreableValueRecord>(prefs, type.name)
+            val removed = records.removeIf { it.id == id }
+            if (removed) {
+                saveJsonList(prefs, type.name, records)
+            } else {
+                OutputTuils.sendOutput(context, R.string.id_notfound, Color.RED)
             }
         }
 
         fun edit(context: Context?, newExpression: String?) {
-            val file = File(FileTuils.getFolder(context), PATH)
-            if (!file.exists()) {
-                XMLPrefsManager.resetFile(file, NAME)
+            val prefs = context!!.getSharedPreferences(PATH, Context.MODE_PRIVATE)
+            val records = loadJsonList<StoreableValueRecord>(prefs, type.name)
+            val index = records.indexOfFirst { it.id == id }
+            if (index < 0) {
+                OutputTuils.sendOutput(context, R.string.id_notfound, Color.RED)
+                return
             }
 
-            val output = XMLPrefsManager.set(
-                file,
-                type.name,
-                arrayOf<String?>(ID),
-                arrayOf<String>(id.toString()),
-                arrayOf<String>(XMLPrefsManager.VALUE_ATTRIBUTE),
-                arrayOf<String?>(newExpression),
-                false
-            )
-            if (output != null) {
-                if (output.isNotEmpty()) OutputTuils.sendOutput(context, output, Color.RED)
-                else {
-                    OutputTuils.sendOutput(context, R.string.id_notfound, Color.RED)
-                }
-            } else {
-                this.value = newExpression
-            }
+            records[index] = StoreableValueRecord(id, newExpression)
+            saveJsonList(prefs, type.name, records)
+            this.value = newExpression
         }
 
         companion object {
-            fun fromNode(e: Element): StoreableValue? {
-                val nn = e.getNodeName()
-
-                val id = XMLPrefsManager.getIntAttribute(e, ID)
-                val value = XMLPrefsManager.getStringAttribute(e, XMLPrefsManager.VALUE_ATTRIBUTE)
-
-                try {
-                    return StoreableValue(id, value, nn)
-                } catch (e1: Exception) {
-                    return null
-                }
-            }
-
             fun create(
                 values: MutableList<StoreableValue>,
                 context: Context?,
@@ -590,24 +538,13 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                     }
                 }
 
-                val file = File(FileTuils.getFolder(context), PATH)
-                if (!file.exists()) {
-                    XMLPrefsManager.resetFile(file, NAME)
-                }
+                val type = Type.valueOf(tag!!)
+                val prefs = context!!.getSharedPreferences(PATH, Context.MODE_PRIVATE)
+                val records = loadJsonList<StoreableValueRecord>(prefs, type.name)
+                records.add(StoreableValueRecord(id, path))
+                saveJsonList(prefs, type.name, records)
 
-                val output = XMLPrefsManager.add(
-                    file,
-                    tag,
-                    arrayOf<String?>(ID, XMLPrefsManager.VALUE_ATTRIBUTE),
-                    arrayOf<String?>(id.toString(), path)
-                )
-                if (output != null) {
-                    if (output.isNotEmpty()) OutputTuils.sendOutput(context, output, Color.RED)
-                    else OutputTuils.sendOutput(context, R.string.output_error, Color.RED)
-                    return null
-                }
-
-                return StoreableValue(id, path, tag)
+                return StoreableValue(id, path, type)
             }
         }
     }
@@ -639,7 +576,6 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
 
         @JvmField
         var PATH: String = "htmlextract.xml"
-        var NAME: String = "HTMLEXTRACT"
 
         @JvmField
         var broadcastCount: Int = 0

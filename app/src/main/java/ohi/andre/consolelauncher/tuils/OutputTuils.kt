@@ -7,7 +7,6 @@ import android.os.Parcelable
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import ohi.andre.consolelauncher.R
 import ohi.andre.consolelauncher.managers.TerminalManager
-import org.xml.sax.SAXParseException
 
 object OutputTuils {
 
@@ -48,21 +47,4 @@ object OutputTuils {
         LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
     }
 
-    @JvmStatic
-    fun sendXMLParseError(context: Context?, PATH: String, e: SAXParseException) {
-        sendOutput(
-            context,
-            context!!.getString(R.string.output_xmlproblem1) + Tuils.SPACE + PATH + context.getString(R.string.output_xmlproblem2) + Tuils.NEWLINE + context.getString(R.string.output_errorlabel) +
-                "File: " + e.systemId + Tuils.NEWLINE +
-                "Message" + e.message + Tuils.NEWLINE +
-                "Line" + e.lineNumber + Tuils.NEWLINE +
-                "Column" + e.columnNumber,
-            Color.RED
-        )
-    }
-
-    @JvmStatic
-    fun sendXMLParseError(context: Context?, PATH: String) {
-        sendOutput(context, context!!.getString(R.string.output_xmlproblem1) + Tuils.SPACE + PATH + context.getString(R.string.output_xmlproblem2), Color.RED)
-    }
 }

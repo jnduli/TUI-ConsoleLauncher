@@ -71,12 +71,6 @@
     <string name="permissions_toast">You have to grant Storage permission</string>
     <string name="output_usedefapp">You can use \"apps -default_app\" instead</string>
 
-    <!-- tui folder not found -->
-    <string name="tuinotfound_app">Your apps preferences couldn\'t be loaded because your \"t-ui\" folder is not readable at the moment (you should try to use the command \"restart\")</string>
-    <string name="tuinotfound_rss">Your rss preferences couldn\'t be loaded because your \"t-ui\" folder is not readable at the moment (you should try to use the command \"restart\")</string>
-    <string name="tuinotfound_notifications">Your notifications preferences couldn\'t be loaded because your \"t-ui\" folder is not readable at the moment (you should try to use the command \"restart\")</string>
-    <string name="tuinotfound_xmlprefs">Your xml preferences couldn\'t be loaded because your \"t-ui\" folder is not readable at the moment (you should try to use the command \"restart\")</string>
-
     <!-- hints -->
     <string-array name="hints">
         <item name="hint_twitter">Did you know? t-ui is on Twitter. Have a look (\"$ tui -twitter\")</item>
@@ -126,9 +120,6 @@
     <string name="output_lessarg">Less arguments than expected</string>
     <string name="invalid_integer">Invalid integer</string>
     <string name="output_nothing_found">Not found</string>
-    <string name="output_xmlproblem1">There was an XML problem with your file</string>
-    <string name="output_xmlproblem2">, t-ui will use default values.\nFix or delete the file to recover your options</string>
-    <string name="output_errorlabel">Error:</string>
     <string name="output_invalidcolor">Invalid color</string>
     <string name="output_groupnotfound">Group not found</string>
     <string name="output_groupexists">This group already exists</string>
@@ -203,7 +194,6 @@
         \n-st [appName] -> show Settings details for an app
         \n-default_app [index] [appName or most_used or null] -> set the default_app at the specified index
         \n-frc [appName] -> force t-ui to launch an app
-        \n-file -> open apps.xml
         \n-reset [appName] -> reset the \"launched_times\" value of the given app to 0
         \n-mkgp [groupName] -> create a new group with the given name
         \n-rmgp [groupName] -> delete the group with the given name
@@ -264,8 +254,7 @@
         \n-rm [ID] -> remove an existing expression
         \n-edit [ID] [expression] -> change an existing expression
         \n-ls [type] -> shows the expressions of the given type
-        \n-tutorial -> show the tutorial on GitHub
-        \n-file -> open the file htmlextract.xml</string>
+        \n-tutorial -> show the tutorial on GitHub</string>
     <string name="help_rate">Leave a feedback on the Play Store page</string>
     <string name="help_refresh">Refresh apps, alias, contacts</string>
     <string name="help_regex">-add [ID] [regex] -> add a new regex with the given ID
@@ -366,7 +355,6 @@
         \n-rm_filter [ID] -> delete the filter having the given ID
         \n-rm_format [ID] -> delete the format having the given ID
         \n-access -> show the system settings page dedicated to the Notification Access
-        \n-file -> open notifications.xml
         \n-tutorial -> show the tutorial page</string>
     <string name="help_location">Show your current location</string>
     <string name="help_cntcts">-ls -> list your contacts

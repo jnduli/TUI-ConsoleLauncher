@@ -24,9 +24,6 @@ import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave
 import ohi.andre.consolelauncher.managers.xml.options.Apps
 import ohi.andre.consolelauncher.tuils.Tuils
 import ohi.andre.consolelauncher.tuils.SystemUtils
-import ohi.andre.consolelauncher.tuils.FileTuils
-
-import java.io.File
 
 class apps(private val appsManager: AppsManager) : ParamCommand() {
 
@@ -168,20 +165,6 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
         }
     }
 
-    private val file = object : Param("file") {
-        override fun args(): IntArray = IntArray(0)
-
-        override fun exec(pack: CommandContext): String? {
-            pack.context.startActivity(
-                FileTuils.openFile(
-                    pack.context,
-                    File(FileTuils.getFolder(pack.context), AppsManager.PATH)
-                )
-            )
-            return null
-        }
-    }
-
     private val reset = object : Param("reset") {
         override fun args(): IntArray = intArrayOf(VISIBLE_PACKAGE)
 
@@ -318,7 +301,7 @@ class apps(private val appsManager: AppsManager) : ParamCommand() {
     }
 
     private fun values(): Array<Param> = arrayOf(
-        ls, lsh, show, hide, l, ps, default_app, st, frc, file, reset, mkgp, rmgp,
+        ls, lsh, show, hide, l, ps, default_app, st, frc, reset, mkgp, rmgp,
         gp_bg_color, gp_fore_color, lsgp, addtogp, rmfromgp, addweb, listweb, tutorial
     )
 

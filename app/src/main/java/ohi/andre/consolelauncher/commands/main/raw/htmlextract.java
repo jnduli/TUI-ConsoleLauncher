@@ -4,8 +4,6 @@ import android.content.Intent;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import java.io.File;
-
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.CommandContext;
@@ -15,7 +13,6 @@ import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 import ohi.andre.consolelauncher.tuils.SystemUtils;
-import ohi.andre.consolelauncher.tuils.FileTuils;
 
 /**
  * Created by francescoandreuzzi on 29/03/2018.
@@ -162,19 +159,6 @@ public class htmlextract extends ParamCommand {
             @Override
             public String exec(CommandContext pack) {
                 pack.context.startActivity(SystemUtils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/HTMLExtract"));
-                return null;
-            }
-        },
-        file {
-            @Override
-            public int[] args() {
-                return new int[0];
-            }
-
-            @Override
-            public String exec(CommandContext pack) {
-                File file = new File(FileTuils.getFolder(pack.context), HTMLExtractManager.PATH);
-                pack.context.startActivity(FileTuils.openFile(pack.context, file));
                 return null;
             }
         };
