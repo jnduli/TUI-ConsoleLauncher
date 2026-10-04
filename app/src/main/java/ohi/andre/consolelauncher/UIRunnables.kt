@@ -41,6 +41,7 @@ import ohi.andre.consolelauncher.UIManager.Companion.NEXT_UNLOCK_CYCLE_RESTART
 import ohi.andre.consolelauncher.UIManager.Companion.UNLOCK_KEY
 import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.WeatherRepository
+import ohi.andre.consolelauncher.managers.formatWeather
 import ohi.andre.consolelauncher.managers.weatherURL
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
@@ -293,19 +294,12 @@ class WeatherViewModel(application: Application): AndroidViewModel(application) 
             location = loc
             Log.e(TAG, "Found location: $loc")
             OutputTuils.sendOutput(application, "Found location: $loc", type = TerminalManager.CATEGORY_OUTPUT)
-            val url = weatherURL(
-                key,
-                loc.latitude,
-                loc.longitude,
-                XMLPrefsManager.get(Behavior.weather_temperature_measure)
-            )
+            val units = XMLPrefsManager.get(Behavior.weather_temperature_measure)
+            val url = weatherURL(key, loc.latitude, loc.longitude, units)
             weatherRepository.fetchWeather(url) { weatherData ->
                 if (weatherData != null) {
-                    val weather_string: StringBuilder = StringBuilder("Weather: ")
-                    weatherData.weather.forEach { weather_string.append("${it.main};") }
-                    val temp = weatherData.main.temp
-                    weather_string.append(" Temp: $temp")
-                    trySend(colorString(weather_string, fg_color))
+                    val format = XMLPrefsManager.get(Behavior.weather_format)
+                    trySend(colorString(formatWeather(format, weatherData, units), fg_color))
                 }
             }
         }

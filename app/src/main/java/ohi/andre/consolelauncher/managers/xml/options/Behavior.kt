@@ -169,7 +169,11 @@ enum class Behavior(
         "metric = Celsius; imperial = Fahrenheit; standard = Kelvin",
         XMLPrefsSave.TEXT,
     ),
-    weather_format("Weather: %main, Temp: %temp", "The format used to show the weather", XMLPrefsSave.TEXT),
+    weather_format(
+        "Weather: %emoji %main, Temp: %temp%unit",
+        "The format used to show the weather. Available: %emoji, %main, %desc, %temp, %feels, %unit, %humidity, %wind, %city",
+        XMLPrefsSave.TEXT,
+    ),
     unlock_counter_cycle_start(
         "6.00",
         "The starting hour of the unlock counter cycle (hh.mm)",

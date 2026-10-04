@@ -27,7 +27,13 @@ data class WeatherResponse(
 data class Coordinates(val lon: Double, val lat: Double)
 
 @Serializable
-data class WeatherDescription(val main: String, val description: String)
+data class WeatherDescription(
+    val id: Int = 0,
+    val main: String,
+    val description: String,
+    /** e.g. "01d" / "01n"; the trailing letter tells day from night. */
+    val icon: String = "",
+)
 
 @Serializable
 data class MainStats(
@@ -46,6 +52,55 @@ fun weatherURL(appId: String, latitude: Double, longitude: Double, units: String
     return "https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=$appId&units=$units"
 }
 
+
+/** Maps an OpenWeatherMap condition code (https://openweathermap.org/weather-conditions) to an emoji. */
+fun weatherEmoji(description: WeatherDescription): String {
+    val night = description.icon.endsWith("n")
+    return when (description.id) {
+        in 200..299 -> "⛈️"
+        in 300..399 -> "🌦️"
+        511 -> "🌨️"
+        in 500..599 -> "🌧️"
+        in 611..616 -> "🌨️"
+        in 600..699 -> "❄️"
+        762 -> "🌋"
+        781 -> "🌪️"
+        711, 731, 751, 761, 771 -> "💨"
+        in 700..799 -> "🌫️"
+        800 -> if (night) "🌙" else "☀️"
+        801 -> if (night) "🌙" else "🌤️"
+        802 -> "⛅"
+        803 -> "🌥️"
+        804 -> "☁️"
+        else -> "🌡️"
+    }
+}
+
+private fun temperatureUnit(units: String): String = when (units) {
+    "imperial" -> "°F"
+    "standard" -> "K"
+    else -> "°C"
+}
+
+/**
+ * Fills in [format] (see Behavior.weather_format). Placeholders: %emoji, %main, %desc, %temp,
+ * %feels, %unit, %humidity, %wind, %city. With several conditions, each is joined with ", ".
+ */
+fun formatWeather(format: String, data: WeatherResponse, units: String): String {
+    fun Double.rounded() = Math.round(this).toString()
+    val values = linkedMapOf(
+        "%emoji" to data.weather.joinToString("") { weatherEmoji(it) },
+        "%main" to data.weather.joinToString(", ") { it.main },
+        "%desc" to data.weather.joinToString(", ") { it.description },
+        "%temp" to data.main.temp.rounded(),
+        "%feels" to data.main.feelsLike.rounded(),
+        "%unit" to temperatureUnit(units),
+        "%humidity" to data.main.humidity.toString(),
+        "%wind" to data.wind.speed.toString(),
+        "%city" to data.name,
+    )
+    return values.entries.fold(format) { acc, (key, value) -> acc.replace(key, value) }
+}
 
 class WeatherRepository {
     private val client = OkHttpClient()
@@ -70,14 +125,19 @@ class WeatherRepository {
 
             override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
                 response.use {
-                    if (!it.isSuccessful) callback(null)
                     val bodyString = it.body?.string()
-                    if (bodyString != null) {
-                        val weatherData = json.decodeFromString<WeatherResponse>(bodyString)
-                        callback(weatherData)
-                    } else {
+                    if (!it.isSuccessful || bodyString == null) {
+                        Log.e(WEATHER_TAG, "Weather request failed: ${it.code} $bodyString")
                         callback(null)
+                        return
                     }
+                    val weatherData = try {
+                        json.decodeFromString<WeatherResponse>(bodyString)
+                    } catch (e: Exception) {
+                        Log.e(WEATHER_TAG, "Couldn't parse weather response", e)
+                        null
+                    }
+                    callback(weatherData)
                 }
             }
         })

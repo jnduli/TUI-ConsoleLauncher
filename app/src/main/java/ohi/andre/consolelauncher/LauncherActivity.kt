@@ -22,19 +22,11 @@ import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
 import android.widget.Toast
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
-import ohi.andre.consolelauncher.compose.StatusLabelsScreen
+import ohi.andre.consolelauncher.compose.StatusPanel
 import ohi.andre.consolelauncher.managers.RegexManager
 import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.TimeManager
@@ -188,17 +180,6 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         }
     }
 
-    private val timeViewModel by viewModels<TimeViewModel>()
-    private val memoryViewModel by viewModels<MemoryViewModel>()
-    private val storageViewModel by viewModels<StorageViewModel>()
-    private val networkViewModel by viewModels<NetworkViewModel>()
-    private val wifiViewModel by viewModels<WifiViewModel>()
-    private val mobileViewModel by viewModels<MobileViewModel>()
-    private val bluetoothViewModel by viewModels<BlueToothViewModel>()
-    private val batteryViewModel by viewModels<BatteryViewModel>()
-    private val weatherViewModel by viewModels<WeatherViewModel>()
-    private val unlockTimeViewModel by viewModels<UnlockTimeViewModel>()
-
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         overridePendingTransition(0, 0)
@@ -211,31 +192,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
         checkAndRequestPermissions(REQUIRED_LOCATION_PERMISSIONS, LOCATION_REQUEST_PERMISSION)
 
-        val combinedNetworkFlow = combine(
-            networkViewModel.connectionStatus, wifiViewModel.ssid, mobileViewModel.status,
-            bluetoothViewModel.status,
-        ) { ntwk, wifi, mobile, bth -> colorString("$ntwk | Wifi: $wifi | Mob: $mobile | Bth: $bth",
-            XMLPrefsManager.getColor(Theme.network_info_color))}.stateIn(lifecycleScope,
-            SharingStarted.WhileSubscribed(5000), "Loading...")
-
-        val username = XMLPrefsManager.get(Ui.username)
-        val deviceName = XMLPrefsManager.get(Ui.deviceName) ?: Build.DEVICE
-        val deviceText = if (XMLPrefsManager.getBoolean(Ui.show_device_name)) "$username: $deviceName" else null
-        val deviceColor = ComposeColor(XMLPrefsManager.getColor(Theme.device_color))
-
-        findViewById<ComposeView>(R.id.status_labels_compose_view).setContent {
-            StatusLabelsScreen(
-                time = timeViewModel.currentText.collectAsStateWithLifecycle(),
-                memory = memoryViewModel.currentText.collectAsStateWithLifecycle(),
-                battery = batteryViewModel.batteryStatus.collectAsStateWithLifecycle(),
-                storage = storageViewModel.currentText.collectAsStateWithLifecycle(),
-                network = combinedNetworkFlow.collectAsStateWithLifecycle(),
-                deviceText = deviceText,
-                deviceColor = deviceColor,
-                weather = weatherViewModel.weather.collectAsStateWithLifecycle(),
-                unlockTime = unlockTimeViewModel.currentText.collectAsStateWithLifecycle(),
-            )
-        }
+        StatusPanel(this).load()
     }
 
     private fun setOrientation() {
