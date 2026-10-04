@@ -10,10 +10,12 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.os.Message
+import android.security.KeyChain
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.ViewGroup
+import android.webkit.ClientCertRequest
 import android.webkit.ConsoleMessage
 import android.webkit.DownloadListener
 import android.webkit.URLUtil
@@ -114,6 +116,27 @@ class LauncherWebViewClient(
 
     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
         if (request.isForMainFrame) onMainFrameError(error.description?.toString())
+    }
+
+    /** WebView never consults the system KeyChain on its own (the default implementation cancels),
+     * so sites that require a client certificate fail unless we let the user pick an installed one. */
+    override fun onReceivedClientCertRequest(view: WebView, request: ClientCertRequest) {
+        val activity = context as? Activity ?: return request.cancel()
+        KeyChain.choosePrivateKeyAlias(
+            activity,
+            { alias ->
+                if (alias == null) return@choosePrivateKeyAlias request.cancel()
+                // The callback runs on a background thread, so the blocking KeyChain calls are fine here
+                try {
+                    val key = KeyChain.getPrivateKey(activity, alias)
+                    val chain = KeyChain.getCertificateChain(activity, alias)
+                    if (key != null && chain != null) request.proceed(key, chain) else request.cancel()
+                } catch (e: Exception) {
+                    request.cancel()
+                }
+            },
+            request.keyTypes, request.principals, request.host, request.port, null,
+        )
     }
 }
 
