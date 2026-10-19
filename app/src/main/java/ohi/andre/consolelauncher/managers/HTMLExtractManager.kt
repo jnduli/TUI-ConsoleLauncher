@@ -33,9 +33,11 @@ import ohi.andre.consolelauncher.tuils.OutputTuils
 import ohi.andre.consolelauncher.tuils.StringTuils
 import ohi.andre.consolelauncher.tuils.ViewTuils
 
+import java.io.InputStream
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import android.text.Html
 import org.htmlcleaner.HtmlCleaner
 import org.htmlcleaner.TagNode
@@ -76,6 +78,91 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
         LocalBroadcastManager.getInstance(context).unregisterReceiver(receiver)
     }
 
+    /** xpaths, jsons and formats, in the order they're searched. */
+    private fun allLists(): List<MutableList<StoreableValue>> = listOf(xpaths, jsons, formats)
+
+    private fun add(context: Context, tag: String?, type: StoreableValue.Type?, value: String?, id: Int) {
+        if (type == null) {
+            Log.e(TAG, "unknown type: $tag")
+            return
+        }
+        // create() reports R.string.id_already itself when the id is taken
+        val values = getListFromType(type)
+        val v = StoreableValue.Companion.create(values, context, type, value, id)
+        if (v != null) values.add(v)
+    }
+
+    /** Removes [id] from every list that has it (ids are only unique per type). */
+    private fun remove(context: Context, id: Int) {
+        var found = false
+        for (list in allLists()) {
+            val index = list.indexOfFirst { it.id == id }
+            if (index == -1) continue
+
+            list.removeAt(index).remove(context)
+            found = true
+        }
+        if (!found) OutputTuils.sendOutput(context, R.string.id_notfound)
+    }
+
+    /** Edits the first value with [id], searching xpaths, then jsons, then formats. */
+    private fun edit(context: Context, id: Int, newValue: String?) {
+        if (newValue.isNullOrEmpty()) return
+
+        val target = allLists().firstNotNullOfOrNull { list -> list.find { it.id == id } }
+        if (target == null) {
+            OutputTuils.sendOutput(context, R.string.id_notfound)
+            return
+        }
+        target.edit(context, newValue)
+    }
+
+    /** Lists the values of [type], or of every type (grouped) when [type] is null. */
+    private fun list(context: Context, type: StoreableValue.Type?) {
+        val builder = StringBuilder()
+        if (type != null) {
+            for (v in getListFromType(type)) {
+                builder.append("- ID: ").append(v.id).append(" -> ").append(v.value).append(Tuils.NEWLINE)
+            }
+        } else {
+            val items = arrayOf(Pair("Xpaths:", xpaths), Pair("JsonPaths:", jsons), Pair("Formats:", formats))
+            items.forEach {
+                builder.append(it.first).append(Tuils.NEWLINE)
+                for (v in it.second) {
+                    builder.append(Tuils.DOUBLE_SPACE).append("- ID: ").append(v.id).append(" -> ").append(v.value).append(Tuils.NEWLINE)
+                }
+            }
+        }
+        val text = builder.toString().trim { it <= ' ' }
+        OutputTuils.sendOutput(context, text.ifEmpty { "[]" })
+    }
+
+    /** `htmlextract query`: looks up the saved path [pathId] and the requested format, then runs the query. */
+    private fun query(context: Context, intent: Intent, pathId: Int, website: String?) {
+        if (website == null) return
+        val weatherArea = intent.getBooleanExtra(WEATHER_AREA, false)
+
+        var format = intent.getStringExtra(FORMAT_ID)
+        if (format == null) {
+            val formatId = intent.getIntExtra(FORMAT_ID, Int.MAX_VALUE)
+            // no format id: query() falls back to the default format
+            if (formatId != Int.MAX_VALUE) {
+                format = formats.find { it.id == formatId }?.value
+                if (format == null) {
+                    OutputTuils.sendOutput(context, context.getString(R.string.id_notfound) + ": " + formatId + "(" + StoreableValue.Type.format.name + ")" )
+                }
+            }
+        }
+
+        // jsons are checked first, matching the original Java (where a json match overrode an xpath one)
+        val stored = jsons.find { it.id == pathId } ?: xpaths.find { it.id == pathId }
+        if (stored == null) {
+            OutputTuils.sendOutput(context, context.getString(R.string.id_notfound) + ": " + pathId)
+            return
+        }
+        query(context, stored.value, stored.type, format, website, weatherArea)
+    }
+
     var weatherFormatPattern: Pattern =
         Pattern.compile("%([a-z_]+)(\\d)*(?:\\$\\(([\\.\\+\\-\\*\\/\\^\\d]+)\\))?")
 
@@ -90,199 +177,198 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
         object : Thread() {
             override fun run() {
                 super.run()
+                runQuery(context, path, pathType, format, url, weatherArea)
+            }
+        }.start()
+    }
 
-                if (!SystemUtils.hasInternetAccess()) {
-                    output(R.string.no_internet, context, weatherArea)
-                    return
-                }
+    /** Runs on a background thread: fetches [url] and prints (or, for [weatherArea], broadcasts) the result. */
+    private fun runQuery(
+        context: Context,
+        path: String?,
+        pathType: StoreableValue.Type?,
+        format: String?,
+        url: String,
+        weatherArea: Boolean
+    ) {
+        if (!SystemUtils.hasInternetAccess()) {
+            output(R.string.no_internet, context, weatherArea)
+            return
+        }
 
+        try {
+            val request = Request.Builder()
+                .url(url)
+                .cacheControl(CacheControl.FORCE_NETWORK)
+                .addHeader(
+                    "User-Agent",
+                    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0.1"
+                )
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            if (!checkResponse(context, response, weatherArea)) return
+
+            val inputStream = (response.body ?: throw java.io.IOException("empty response body")).byteStream()
+            val f = format ?: defaultFormat
+
+            when {
+                weatherArea -> showWeather(context, FileTuils.inputStreamToString(inputStream), url)
+                pathType == StoreableValue.Type.xpath -> showXPathResult(context, inputStream, path, f, url)
+                else -> showJsonPathResult(context, inputStream, path, f, url)
+            }
+        } catch (e: Exception) {
+            output(e.toString(), context, weatherArea)
+            LogTuils.toFile(e)
+            LogTuils.log(e)
+        }
+    }
+
+    /** True if [response] has a usable body; otherwise reports the error (or asks the weather area to retry later). */
+    private fun checkResponse(context: Context, response: Response, weatherArea: Boolean): Boolean {
+        if (response.code == 429 && weatherArea) {
+            LocalBroadcastManager.getInstance(context.getApplicationContext())
+                .sendBroadcast(Intent(UIManager.ACTION_WEATHER_DELAY))
+            return false
+        }
+        if (response.isSuccessful) return true
+
+        val message = context.getString(R.string.internet_error) + Tuils.SPACE + response.code
+        if (weatherArea) {
+            val i = Intent(UIManager.ACTION_WEATHER)
+            i.putExtra(XMLPrefsManager.VALUE_ATTRIBUTE, message)
+            LocalBroadcastManager.getInstance(context.getApplicationContext()).sendBroadcast(i)
+        } else {
+            output(message, context, false)
+        }
+        return false
+    }
+
+    private fun showWeather(context: Context, json: String, url: String) {
+        var o = fillWeatherFormat(json)
+        o = replaceLinkColorReplace(context, o, url)
+        o = removeDelimiter(o)
+
+        val i = Intent(UIManager.ACTION_WEATHER)
+        i.putExtra(XMLPrefsManager.VALUE_ATTRIBUTE, o)
+        LocalBroadcastManager.getInstance(context.getApplicationContext()).sendBroadcast(i)
+    }
+
+    /**
+     * Replaces each `%name[n][$(expr)]` field of [weatherFormat] with the n-th (default 1st) value of
+     * `"name"` in [json], optionally passed through the arithmetic expression `expr`.
+     */
+    private fun fillWeatherFormat(json: String): CharSequence {
+        var o: CharSequence = ViewTuils.span(weatherFormat, weatherColor)
+
+        val m = weatherFormatPattern.matcher(weatherFormat)
+        while (m.find()) {
+            val name = m.group(1)
+            val occurrence = m.group(2)?.ifEmpty { null }?.toInt() ?: 1
+            val converter = m.group(3)
+
+            var value = nthJsonValue(json, name, occurrence) ?: continue
+
+            if (converter != null && converter.isNotEmpty()) {
                 try {
-                    val builder = Request.Builder()
-                        .url(url)
-                        .cacheControl(CacheControl.FORCE_NETWORK)
-                        .addHeader(
-                            "User-Agent",
-                            "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0.1"
-                        )
-                        .get()
-
-                    val response = client.newCall(builder.build()).execute()
-
-                    if (response.code == 429 && weatherArea) {
-                        val i = Intent(UIManager.ACTION_WEATHER_DELAY)
-                        LocalBroadcastManager.getInstance(context.getApplicationContext())
-                            .sendBroadcast(i)
-
-                        return
-                    } else if (!response.isSuccessful) {
-                        val message =
-                            context.getString(R.string.internet_error) + Tuils.SPACE + response.code
-
-                        if (weatherArea) {
-                            val i = Intent(UIManager.ACTION_WEATHER)
-                            i.putExtra(XMLPrefsManager.VALUE_ATTRIBUTE, message)
-                            LocalBroadcastManager.getInstance(context.getApplicationContext())
-                                .sendBroadcast(i)
-                        } else {
-                            output(message, context, false)
-                        }
-
-                        return
-                    }
-
-                    val inputStream = (response.body ?: throw java.io.IOException("empty response body")).byteStream()
-
-                    var output: CharSequence? = ViewTuils.span(Tuils.EMPTYSTRING, outputColor)
-
-                    if (weatherArea) {
-                        val json = FileTuils.inputStreamToString(inputStream)
-
-                        //                        json = json.replaceAll("\"temp\":([\\d\\.]*)", "\"temp\":-4.3");
-                        var o: CharSequence = ViewTuils.span(weatherFormat, weatherColor)
-
-                        val m = weatherFormatPattern.matcher(weatherFormat)
-                        while (m.find()) {
-                            val name = m.group(1)
-                            var delay = m.group(2)
-                            if (delay == null || delay.length == 0) delay = "1"
-                            val converter = m.group(3)
-
-                            val stopAt = delay.toInt()
-
-                            val p =
-                                Pattern.compile("\"" + name + "\":(?:\"([^\"]+)\"|(-?\\d+\\.?\\d*))")
-                            val m1 = p.matcher(json)
-                            var c = 1
-                            while (m1.find()) {
-                                if (c == stopAt) {
-                                    var value = m1.group(1)
-                                    if (value == null || value.length == 0) value = m1.group(2)
-
-                                    if (converter != null && converter.isNotEmpty()) {
-                                        try {
-                                            var d = value.toDouble()
-                                            d = MathTuils.textCalculus(d, converter)
-                                            value = String.format("%.2f", d)
-                                        } catch (e: Exception) {
-                                            LogTuils.log(e)
-                                        }
-                                    }
-
-                                    o = TextUtils.replace(
-                                        o, arrayOf<String?>(m.group(0)), arrayOf<String>(
-                                            delimiterStart + value + delimiterEnd
-                                        )
-                                    )
-
-                                    break
-                                } else c++
-                            }
-                        }
-
-                        o = replaceLinkColorReplace(context, o, url)
-                        o = removeDelimiter(o)
-
-                        val i = Intent(UIManager.ACTION_WEATHER)
-                        i.putExtra(XMLPrefsManager.VALUE_ATTRIBUTE, o)
-                        LocalBroadcastManager.getInstance(context.getApplicationContext())
-                            .sendBroadcast(i)
-                    } else if (pathType == StoreableValue.Type.xpath) {
-                        val cleaner = HtmlCleaner()
-                        val props = cleaner.getProperties()
-                        props.setOmitComments(true)
-
-                        var node = cleaner.clean(inputStream)
-                        val nodes = node.evaluateXPath(path)
-                        if (nodes.size == 0) {
-                            OutputTuils.sendOutput(context, R.string.no_result)
-                            return
-                        }
-
-                        for (c in nodes.indices) {
-                            node = nodes[c] as TagNode
-
-                            val f = if (format == null) defaultFormat else format
-                            var copy: CharSequence = ViewTuils.span(f, outputColor)
-
-                            copy = Companion.replaceAllAttributesString(
-                                copy,
-                                node.getAttributes().entries as MutableSet<MutableMap.MutableEntry<String?, String?>?>
-                            )
-                            copy = replaceTagNameString(copy, node.getName(), node.getAttributes())
-                            copy = replaceNodeValue(copy, node.getText().toString())
-                            copy = replaceNewline(copy)
-                            copy = replaceLinkColorReplace(context, copy, url)
-                            copy = removeDelimiter(copy)
-
-                            if (copy.toString().trim { it <= ' ' }.isNotEmpty()) output =
-                                TextUtils.concat(
-                                    output,
-                                    (if (c != 0) Tuils.NEWLINE + Tuils.NEWLINE else Tuils.EMPTYSTRING),
-                                    copy
-                                )
-                        }
-
-                        output(output, context, weatherArea, TerminalManager.CATEGORY_NO_COLOR)
-                    } else {
-                        val o = JsonPath.read<Any>(inputStream, path)
-
-                        if (o is MutableMap<*, *>) {
-//                            this should be a single JSON object
-
-                            val f = if (format == null) defaultFormat else format
-                            var copy: CharSequence = ViewTuils.span(f, outputColor)
-                            val entry = o.entries as MutableSet<MutableMap.MutableEntry<String?, Any?>?>
-
-                            copy = Companion.replaceAllAttributesObject(copy, entry)
-                            copy = replaceTagNameObject(copy, null, o as MutableMap<String?, Any?>)
-                            copy = replaceNewline(copy)
-                            copy = replaceLinkColorReplace(context, copy, url)
-                            copy = removeDelimiter(copy)
-
-                            output = copy
-
-                            output(output, context, weatherArea, TerminalManager.CATEGORY_NO_COLOR)
-                        } else if (o is MutableList<*>) {
-//                            this is an array of JSON objects
-                            val a = o as JSONArray
-
-                            for (c in a.indices) {
-                                val f = if (format == null) defaultFormat else format
-                                var copy: CharSequence = ViewTuils.span(f, outputColor)
-
-                                val m = a.get(c) as LinkedHashMap<String?, Any?>
-
-                                copy = Companion.replaceAllAttributesObject(copy,
-                                    m.entries as MutableSet<MutableMap.MutableEntry<String?, Any?>?>
-                                )
-                                copy = replaceTagNameObject(copy, null, m)
-                                copy = replaceNewline(copy)
-                                copy = replaceLinkColorReplace(context, copy, url)
-                                copy = removeDelimiter(copy)
-
-                                if (copy.toString().trim { it <= ' ' }.isNotEmpty()) output =
-                                    TextUtils.concat(
-                                        output,
-                                        (if (c != 0) Tuils.NEWLINE + Tuils.NEWLINE else Tuils.EMPTYSTRING),
-                                        copy
-                                    )
-                            }
-
-                            output(output, context, weatherArea, TerminalManager.CATEGORY_NO_COLOR)
-                        } else if (o is String) {
-                            output = ViewTuils.span(o.toString(), outputColor)
-                            output(output, context, weatherArea, TerminalManager.CATEGORY_NO_COLOR)
-                        } else {
-                            OutputTuils.sendOutput(context, o.toString(), outputColor)
-                        }
-                    }
+                    value = String.format("%.2f", MathTuils.textCalculus(value.toDouble(), converter))
                 } catch (e: Exception) {
-                    output(e.toString(), context, weatherArea)
-                    LogTuils.toFile(e)
                     LogTuils.log(e)
                 }
             }
-        }.start()
+
+            o = TextUtils.replace(
+                o, arrayOf<String?>(m.group(0)), arrayOf<String>(delimiterStart + value + delimiterEnd)
+            )
+        }
+        return o
+    }
+
+    /** The [n]-th (1-based) string or number value of the key [name] in [json], or null if there are fewer. */
+    private fun nthJsonValue(json: String, name: String?, n: Int): String? {
+        val m = Pattern.compile("\"" + name + "\":(?:\"([^\"]+)\"|(-?\\d+\\.?\\d*))").matcher(json)
+        var c = 1
+        while (m.find()) {
+            if (c == n) return m.group(1)?.ifEmpty { null } ?: m.group(2)
+            c++
+        }
+        return null
+    }
+
+    private fun showXPathResult(context: Context, inputStream: InputStream, path: String?, format: String, url: String) {
+        val cleaner = HtmlCleaner()
+        cleaner.getProperties().setOmitComments(true)
+
+        val nodes = cleaner.clean(inputStream).evaluateXPath(path)
+        if (nodes.size == 0) {
+            OutputTuils.sendOutput(context, R.string.no_result)
+            return
+        }
+
+        var output: CharSequence? = ViewTuils.span(Tuils.EMPTYSTRING, outputColor)
+        for (c in nodes.indices) {
+            val node = nodes[c] as TagNode
+
+            var copy: CharSequence = ViewTuils.span(format, outputColor)
+            copy = Companion.replaceAllAttributesString(
+                copy,
+                node.getAttributes().entries as MutableSet<MutableMap.MutableEntry<String?, String?>?>
+            )
+            copy = replaceTagNameString(copy, node.getName(), node.getAttributes())
+            copy = replaceNodeValue(copy, node.getText().toString())
+
+            output = appendResult(output, finishFormat(context, copy, url), c)
+        }
+
+        output(output, context, false, TerminalManager.CATEGORY_NO_COLOR)
+    }
+
+    private fun showJsonPathResult(context: Context, inputStream: InputStream, path: String?, format: String, url: String) {
+        val o = JsonPath.read<Any>(inputStream, path)
+
+        when (o) {
+            // a single JSON object
+            is MutableMap<*, *> -> {
+                val copy = formatJsonObject(ViewTuils.span(format, outputColor), o as MutableMap<String?, Any?>)
+                output(finishFormat(context, copy, url), context, false, TerminalManager.CATEGORY_NO_COLOR)
+            }
+            // an array of JSON objects
+            is MutableList<*> -> {
+                val a = o as JSONArray
+
+                var output: CharSequence? = ViewTuils.span(Tuils.EMPTYSTRING, outputColor)
+                for (c in a.indices) {
+                    val copy = formatJsonObject(ViewTuils.span(format, outputColor), a.get(c) as LinkedHashMap<String?, Any?>)
+                    output = appendResult(output, finishFormat(context, copy, url), c)
+                }
+
+                output(output, context, false, TerminalManager.CATEGORY_NO_COLOR)
+            }
+            is String -> output(ViewTuils.span(o.toString(), outputColor), context, false, TerminalManager.CATEGORY_NO_COLOR)
+            else -> OutputTuils.sendOutput(context, o.toString(), outputColor)
+        }
+    }
+
+    private fun formatJsonObject(format: CharSequence, obj: MutableMap<String?, Any?>): CharSequence {
+        val copy = Companion.replaceAllAttributesObject(
+            format,
+            obj.entries as MutableSet<MutableMap.MutableEntry<String?, Any?>?>
+        )
+        return replaceTagNameObject(copy, null, obj)
+    }
+
+    /** The formatting steps every result goes through last: newlines, links/colors/replacements, delimiters. */
+    private fun finishFormat(context: Context, copy: CharSequence, url: String): CharSequence {
+        var s = replaceNewline(copy)
+        s = replaceLinkColorReplace(context, s, url)
+        return removeDelimiter(s)
+    }
+
+    /** Appends a non-blank [result] to [output], separated by a blank line from the previous one. */
+    private fun appendResult(output: CharSequence?, result: CharSequence, index: Int): CharSequence? {
+        if (result.toString().trim { it <= ' ' }.isEmpty()) return output
+        return TextUtils.concat(output, if (index != 0) Tuils.NEWLINE + Tuils.NEWLINE else Tuils.EMPTYSTRING, result)
     }
 
     private fun query(context: Context, format: String?, url: String) {
@@ -310,107 +396,11 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                 val intent_value = intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE)
 
                 when (action) {
-                    ACTION_ADD -> {
-                        if (intent_type == null) {
-                            Log.e(TAG, "unknown type: $intent_tag")
-                            return
-                        }
-                        // create() reports R.string.id_already itself when the id is taken
-                        val values = getListFromType(intent_type)
-                        val v = StoreableValue.Companion.create(values, context, intent_type, intent_value, intent_id)
-                        if (v != null) values.add(v)
-                    }
-                    ACTION_RM -> {
-                        var check = false
-                        for (c in xpaths.indices) {
-                            if (xpaths.get(c).id == intent_id) {
-                                xpaths.removeAt(c).remove(context)
-                                check = true
-                                break
-                            }
-                        }
-                        for (c in jsons.indices) {
-                            if (jsons.get(c).id == intent_id) {
-                                jsons.removeAt(c).remove(context)
-                                check = true
-                                break
-                            }
-                        }
-                        for (c in formats.indices) {
-                            if (formats.get(c).id == intent_id) {
-                                formats.removeAt(c).remove(context)
-                                check = true
-                                break
-                            }
-                        }
-                        if (!check) OutputTuils.sendOutput(context, R.string.id_notfound)
-                    }
-                    ACTION_EDIT -> {
-                        if (intent_value == null || intent_value.length == 0) return
-                        for (c in xpaths.indices) {
-                            if (xpaths.get(c).id == intent_id) {
-                                xpaths.get(c).edit(context, intent_value)
-                                return
-                            }
-                        }
-                        for (c in jsons.indices) {
-                            if (jsons.get(c).id == intent_id) {
-                                jsons.get(c).edit(context, intent_value)
-                                return
-                            }
-                        }
-                        for (c in formats.indices) {
-                            if (formats.get(c).id == intent_id) {
-                                formats.get(c).edit(context, intent_value)
-                                return
-                            }
-                        }
-                        OutputTuils.sendOutput(context, R.string.id_notfound)
-                    }
-                    ACTION_LS -> {
-                        val builder = StringBuilder()
-                        if (intent_type != null) {
-                            for (v in getListFromType(intent_type)) {
-                                builder.append("- ID: ").append(v.id).append(" -> ").append(v.value).append(Tuils.NEWLINE)
-                            }
-                        } else {
-                            val items = arrayOf(Pair("Xpaths:", xpaths), Pair("JsonPaths:", jsons), Pair("Formats:", formats))
-                            items.forEach {
-                                builder.append(it.first).append(Tuils.NEWLINE)
-                                for (v in it.second) {
-                                    builder.append(Tuils.DOUBLE_SPACE).append("- ID: ").append(v.id).append(" -> ").append(v.value).append(Tuils.NEWLINE)
-                                }
-
-                            }
-                        }
-                        var text = builder.toString().trim { it <= ' ' }
-                        if (text.length == 0) text = "[]"
-                        OutputTuils.sendOutput(context, text)
-                    }
-                    ACTION_QUERY -> {
-                        val website = intent_value ?: return
-                        val weatherArea = intent.getBooleanExtra(WEATHER_AREA, false)
-
-                        var format = intent.getStringExtra(FORMAT_ID)
-                        if (format == null) {
-                            val formatId = intent.getIntExtra(FORMAT_ID, Int.MAX_VALUE)
-                            // no format id: query() falls back to the default format
-                            if (formatId != Int.MAX_VALUE) {
-                                format = formats.find { it.id == formatId }?.value
-                                if (format == null) {
-                                    OutputTuils.sendOutput(context, context.getString(R.string.id_notfound) + ": " + formatId + "(" + StoreableValue.Type.format.name + ")" )
-                                }
-                            }
-                        }
-
-                        // jsons are checked first, matching the original Java (where a json match overrode an xpath one)
-                        val stored = jsons.find { it.id == intent_id } ?: xpaths.find { it.id == intent_id }
-                        if (stored == null) {
-                            OutputTuils.sendOutput(context, context.getString(R.string.id_notfound) + ": " + intent_id)
-                            return
-                        }
-                        query(context, stored.value, stored.type, format, website, weatherArea)
-                    }
+                    ACTION_ADD -> add(context, intent_tag, intent_type, intent_value, intent_id)
+                    ACTION_RM -> remove(context, intent_id)
+                    ACTION_EDIT -> edit(context, intent_id, intent_value)
+                    ACTION_LS -> list(context, intent_type)
+                    ACTION_QUERY -> query(context, intent, intent_id, intent_value)
                     ACTION_WEATHER -> {
                         val url = intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE) ?: return
                         query(context, weatherFormat, url)

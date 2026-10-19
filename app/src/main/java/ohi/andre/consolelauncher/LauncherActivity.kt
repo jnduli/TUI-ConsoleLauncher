@@ -211,6 +211,41 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         RegexManager(this@LauncherActivity)
         TimeManager(this)
 
+        registerIOReceivers()
+        setOrientation()
+        applySystemBarColors()
+
+        backButtonEnabled = XMLPrefsManager.getBoolean(Behavior.back_button_enabled)
+        if (XMLPrefsManager.getBoolean(Behavior.tui_notification)) startKeeperService()
+
+        // window features and the theme must be set before setContentView()
+        val fullscreen = XMLPrefsManager.getBoolean(Ui.fullscreen)
+        if (fullscreen) applyFullscreen()
+        setTheme(if (XMLPrefsManager.getBoolean(Ui.system_wallpaper)) R.style.Custom_SystemWP else R.style.Custom_Solid)
+
+        setupNotifications()
+
+        LongClickableSpan.longPressVibrateDuration =
+            XMLPrefsManager.getInt(Behavior.long_click_vibration_duration)
+
+        openKeyboardOnStart = XMLPrefsManager.getBoolean(Behavior.auto_show_keyboard)
+        if (!openKeyboardOnStart) {
+            this.getWindow()
+                .setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN or WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        }
+
+        setContentView(R.layout.base_view)
+        showRestartMessage()
+
+        categories = HashSet()
+        buildManagers()
+
+        if (fullscreen) Assist.assistActivity(this)
+
+        System.gc()
+    }
+
+    private fun registerIOReceivers() {
         val filter = IntentFilter()
         filter.addAction(PrivateIOReceiver.ACTION_INPUT)
         filter.addAction(PrivateIOReceiver.ACTION_OUTPUT)
@@ -227,40 +262,33 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
         publicIOReceiver = PublicIOReceiver()
         getApplicationContext().registerReceiver(publicIOReceiver, filter1)
-        setOrientation()
+    }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && !XMLPrefsManager.getBoolean(Ui.ignore_bar_color)) {
-            val window = getWindow()
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
-            window.setStatusBarColor(XMLPrefsManager.getColor(Theme.statusbar_color))
-            window.setNavigationBarColor(XMLPrefsManager.getColor(Theme.navigationbar_color))
-        }
+    private fun applySystemBarColors() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP || XMLPrefsManager.getBoolean(Ui.ignore_bar_color)) return
 
-        backButtonEnabled = XMLPrefsManager.getBoolean(Behavior.back_button_enabled)
-        val showNotification = XMLPrefsManager.getBoolean(Behavior.tui_notification)
-        if (showNotification) {
-            val keeperIntent = Intent(this, KeeperService::class.java)
-            keeperIntent.putExtra(KeeperService.PATH_KEY, XMLPrefsManager.get(Behavior.home_path))
-            startService(keeperIntent)
-        }
+        val window = getWindow()
+        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+        window.setStatusBarColor(XMLPrefsManager.getColor(Theme.statusbar_color))
+        window.setNavigationBarColor(XMLPrefsManager.getColor(Theme.navigationbar_color))
+    }
 
-        val fullscreen = XMLPrefsManager.getBoolean(Ui.fullscreen)
-        if (fullscreen) {
-            requestWindowFeature(Window.FEATURE_NO_TITLE)
-            getWindow().setFlags(
-                WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN
-            )
-        }
+    private fun startKeeperService() {
+        val keeperIntent = Intent(this, KeeperService::class.java)
+        keeperIntent.putExtra(KeeperService.PATH_KEY, XMLPrefsManager.get(Behavior.home_path))
+        startService(keeperIntent)
+    }
 
-        val useSystemWP = XMLPrefsManager.getBoolean(Ui.system_wallpaper)
-        if (useSystemWP) {
-            setTheme(R.style.Custom_SystemWP)
-        } else {
-            setTheme(R.style.Custom_Solid)
-        }
+    private fun applyFullscreen() {
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        getWindow().setFlags(
+            WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            WindowManager.LayoutParams.FLAG_FULLSCREEN
+        )
+    }
 
+    private fun setupNotifications() {
         try {
             NotificationManager.create(this)
         } catch (e: Exception) {
@@ -271,67 +299,56 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
             XMLPrefsManager.getBoolean(Notifications.show_notifications) || XMLPrefsManager.get(
                 Notifications.show_notifications
             ).equals("enabled", ignoreCase = true)
-        if (notifications) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                try {
-                    val notificationComponent = ComponentName(this, NotificationService::class.java)
-                    val pm = getPackageManager()
-                    pm.setComponentEnabledSetting(
-                        notificationComponent,
-                        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                        PackageManager.DONT_KILL_APP
-                    )
+        if (!notifications) return
 
-                    if (!SystemUtils.hasNotificationAccess(this)) {
-                        val i = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
-                        if (i.resolveActivity(getPackageManager()) == null) {
-                            Toast.makeText(this, R.string.no_notification_access, Toast.LENGTH_LONG)
-                                .show()
-                        } else {
-                            startActivity(i)
-                        }
-                    }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            OutputTuils.sendOutput(this, R.string.notification_low_api, Color.RED)
+            return
+        }
 
-                    val monitor = Intent(this, NotificationMonitorService::class.java)
-                    startService(monitor)
+        try {
+            startNotificationServices()
+        } catch (er: NoClassDefFoundError) {
+            val intent = Intent(PrivateIOReceiver.ACTION_OUTPUT)
+            intent.putExtra(
+                PrivateIOReceiver.TEXT,
+                getString(R.string.output_notification_error) + Tuils.SPACE + er.toString()
+            )
+        }
+    }
 
-                    val notificationIntent = Intent(this, NotificationService::class.java)
-                    startService(notificationIntent)
-                } catch (er: NoClassDefFoundError) {
-                    val intent = Intent(PrivateIOReceiver.ACTION_OUTPUT)
-                    intent.putExtra(
-                        PrivateIOReceiver.TEXT,
-                        getString(R.string.output_notification_error) + Tuils.SPACE + er.toString()
-                    )
-                }
+    /** Enables the notification listener, asks for notification access if needed, and starts the services. */
+    private fun startNotificationServices() {
+        val notificationComponent = ComponentName(this, NotificationService::class.java)
+        getPackageManager().setComponentEnabledSetting(
+            notificationComponent,
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+            PackageManager.DONT_KILL_APP
+        )
+
+        if (!SystemUtils.hasNotificationAccess(this)) {
+            val i = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+            if (i.resolveActivity(getPackageManager()) == null) {
+                Toast.makeText(this, R.string.no_notification_access, Toast.LENGTH_LONG)
+                    .show()
             } else {
-                OutputTuils.sendOutput(this, R.string.notification_low_api, Color.RED)
+                startActivity(i)
             }
         }
 
-        LongClickableSpan.longPressVibrateDuration =
-            XMLPrefsManager.getInt(Behavior.long_click_vibration_duration)
+        startService(Intent(this, NotificationMonitorService::class.java))
+        startService(Intent(this, NotificationService::class.java))
+    }
 
-        openKeyboardOnStart = XMLPrefsManager.getBoolean(Behavior.auto_show_keyboard)
-        if (!openKeyboardOnStart) {
-            this.getWindow()
-                .setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN or WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-        }
+    private fun showRestartMessage() {
+        if (!XMLPrefsManager.getBoolean(Ui.show_restart_message)) return
 
-        setContentView(R.layout.base_view)
+        val s = getIntent().getCharSequenceExtra(Reloadable.MESSAGE) ?: return
+        out.onOutput(ViewTuils.span(s, XMLPrefsManager.getColor(Theme.restart_message_color)))
+    }
 
-        if (XMLPrefsManager.getBoolean(Ui.show_restart_message)) {
-            val s = getIntent().getCharSequenceExtra(Reloadable.MESSAGE)
-            if (s != null) out.onOutput(
-                ViewTuils.span(
-                    s,
-                    XMLPrefsManager.getColor(Theme.restart_message_color)
-                )
-            )
-        }
-
-        categories = HashSet()
-
+    /** Creates [main] and [ui] and wires them together. Needs the layout to be inflated. */
+    private fun buildManagers() {
         val mgr = MainManager(this)
         main = mgr
 
@@ -352,10 +369,6 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
 
         `in`.`in`(Tuils.EMPTYSTRING)
         uiMgr.focusTerminal()
-
-        if (fullscreen) Assist.assistActivity(this)
-
-        System.gc()
     }
 
     override fun onStart() {
