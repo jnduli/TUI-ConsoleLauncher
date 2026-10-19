@@ -29,7 +29,7 @@ object FileArgResolver {
             }
         }
 
-        val strings = ArgExtractors.textList(trimmed)!!.arg as MutableList<String>
+        val strings = ArgExtractors.textList(trimmed).arg as MutableList<String>
 
         var toVerify = Tuils.EMPTYSTRING
         var count = 0

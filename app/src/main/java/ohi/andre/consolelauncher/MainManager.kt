@@ -162,8 +162,8 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     var colorExtractor: Pattern =
         Pattern.compile("(#[^(]{6})\\[([^\\)]*)\\]", Pattern.CASE_INSENSITIVE)
 
-    fun onCommand(input: String?, alias: String?) {
-        val input = StringTuils.removeUnncesarySpaces(input!!)
+    fun onCommand(input: String, alias: String?) {
+        val input = StringTuils.removeUnncesarySpaces(input)
 
         if (alias == null) updateServices(input)
 
@@ -259,7 +259,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     fun executer(): CommandExecuter {
         return CommandExecuter { input: String?, obj: Any? ->
             val launchable = if (obj is Launchable) obj else null
-            onCommand(input!!, launchable)
+            onCommand(input ?: return@CommandExecuter, launchable)
         }
     }
 
@@ -409,7 +409,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     private inner class AliasTrigger : CmdTrigger {
         override fun trigger(input: String): Boolean {
             val alias = aliasManager.getAlias(input, true) ?: return false
-            val aliasValue = aliasManager.format(alias[0] ?: return false, alias[2]!!)
+            val aliasValue = aliasManager.format(alias[0] ?: return false, alias[2].orEmpty())
             onCommand(aliasValue, alias[1])
             return true
         }

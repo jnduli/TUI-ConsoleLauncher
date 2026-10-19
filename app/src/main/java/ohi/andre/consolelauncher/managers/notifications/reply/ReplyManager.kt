@@ -31,6 +31,8 @@ import ohi.andre.consolelauncher.tuils.Tuils
  */
 class ReplyManager(context: Context) : XMLPrefsElement {
 
+    private val context: Context = context
+
     @Serializable
     data class BoundAppRecord(val packageName: String, val applicationId: Int)
 
@@ -47,12 +49,10 @@ class ReplyManager(context: Context) : XMLPrefsElement {
 
         if (enabled) {
             notificationWears = HashSet()
-            ReplyManager.context = context
-
             instance = this
 
             XMLPrefsManager.seedSharedPrefsDefaults(prefs, Reply.values().toList())
-            enabled = values.get(Reply.reply_enabled)!!.value.toBoolean()
+            enabled = values.get(Reply.reply_enabled)?.value?.toBoolean() == true
 
             if (!enabled) {
                 notificationWears = null
@@ -65,32 +65,27 @@ class ReplyManager(context: Context) : XMLPrefsElement {
                 filter.addAction(ACTION_UPDATE)
                 filter.addAction(ACTION_LS)
 
-                receiver = object : BroadcastReceiver() {
+                val receiver = object : BroadcastReceiver() {
                     override fun onReceive(receiverContext: Context, intent: Intent) {
                         when (intent.action) {
                             ACTION -> {
                                 val app = intent.getStringExtra(ID)
                                 val what = intent.getStringExtra(WHAT)
 
-                                val id: Int = try {
-                                    app!!.toInt()
-                                } catch (e: Exception) {
-                                    val bapp = findApp(app)
-                                    if (bapp == null) {
-                                        OutputTuils.sendOutput(
-                                            receiverContext,
-                                            receiverContext.getString(R.string.reply_app_not_found) + Tuils.SPACE + app,
-                                        )
-                                        return
-                                    }
-                                    bapp.applicationId
+                                // ID is either a bound app's numeric id or its package name
+                                val id: Int = app?.toIntOrNull() ?: findApp(app)?.applicationId ?: run {
+                                    OutputTuils.sendOutput(
+                                        receiverContext,
+                                        receiverContext.getString(R.string.reply_app_not_found) + Tuils.SPACE + app,
+                                    )
+                                    return
                                 }
 
                                 if (what == null) {
                                     check(id)
                                 } else {
                                     if (id == -1) return
-                                    replyTo(ReplyManager.context!!, id, what)
+                                    replyTo(context, id, what)
                                 }
                             }
                             ACTION_UPDATE -> load()
@@ -99,26 +94,27 @@ class ReplyManager(context: Context) : XMLPrefsElement {
                     }
                 }
 
-                LocalBroadcastManager.getInstance(context.applicationContext).registerReceiver(receiver!!, filter)
+                this.receiver = receiver
+                LocalBroadcastManager.getInstance(context.applicationContext).registerReceiver(receiver, filter)
             }
         }
     }
 
     private fun load() {
-        val list = boundApps
-        if (list != null) list.clear() else boundApps = ArrayList()
+        val list = boundApps ?: ArrayList<BoundApp>().also { boundApps = it }
+        list.clear()
 
-        val prefs = context!!.getSharedPreferences(PATH, Context.MODE_PRIVATE)
+        val prefs = context.getSharedPreferences(PATH, Context.MODE_PRIVATE)
         val records = loadJsonList<BoundAppRecord>(prefs, BOUND_APPS_KEY)
 
-        val mgr = context!!.packageManager
+        val mgr = context.packageManager
         for (record in records) {
             val label = try {
                 mgr.getApplicationInfo(record.packageName, 0).loadLabel(mgr).toString()
             } catch (e: Exception) {
                 continue
             }
-            boundApps!!.add(BoundApp(record.applicationId, record.packageName, label))
+            list.add(BoundApp(record.applicationId, record.packageName, label))
         }
 
         nextUsableId = nextUsableId()
@@ -133,7 +129,7 @@ class ReplyManager(context: Context) : XMLPrefsElement {
 
         val old = findNotificationWear(app)
 
-        if (old != null && (w.pendingIntent == null || w.remoteInputs == null || w.remoteInputs!!.isEmpty())) return
+        if (old != null && (w.pendingIntent == null || w.remoteInputs.isNullOrEmpty())) return
         if (old != null) notificationWears?.remove(old)
 
         w.text = text
@@ -198,10 +194,10 @@ class ReplyManager(context: Context) : XMLPrefsElement {
     private fun findApp(pkg: String?): BoundApp? = boundApps?.find { it.packageName == pkg }
 
     private fun findNotificationWear(bapp: BoundApp): NotificationWear? =
-        notificationWears?.find { it.app != null && it.app!!.packageName == bapp.packageName }
+        notificationWears?.find { it.app?.packageName == bapp.packageName }
 
     private fun findNotificationWear(id: Int): NotificationWear? =
-        notificationWears?.find { it.app != null && it.app!!.applicationId == id }
+        notificationWears?.find { it.app?.applicationId == id }
 
     fun dispose(context: Context) {
         try {
@@ -235,7 +231,7 @@ class ReplyManager(context: Context) : XMLPrefsElement {
 
         val app = findApp(id)
         if (app == null) {
-            OutputTuils.sendOutput(context, context!!.getString(R.string.reply_id_not_found) + Tuils.SPACE + id)
+            OutputTuils.sendOutput(context, context.getString(R.string.reply_id_not_found) + Tuils.SPACE + id)
             return
         }
 
@@ -288,8 +284,6 @@ class ReplyManager(context: Context) : XMLPrefsElement {
 
         @JvmField
         var instance: ReplyManager? = null
-
-        private var context: Context? = null
 
         @JvmField
         var nextUsableId: Int = 0

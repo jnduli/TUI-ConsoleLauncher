@@ -41,8 +41,12 @@ class AliasManager(private val context: Context) {
     private val receiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
-                ACTION_ADD -> add(context, intent.getStringExtra(NAME)!!, intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE)!!)
-                ACTION_RM -> remove(context, intent.getStringExtra(NAME)!!)
+                ACTION_ADD -> {
+                    val name = intent.getStringExtra(NAME) ?: return
+                    val value = intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE) ?: return
+                    add(context, name, value)
+                }
+                ACTION_RM -> remove(context, intent.getStringExtra(NAME) ?: return)
                 ACTION_LS -> OutputTuils.sendOutput(context, printAliases())
             }
         }
@@ -153,9 +157,9 @@ class AliasManager(private val context: Context) {
             if (!file.exists()) file.createNewFile()
 
             BufferedReader(InputStreamReader(FileInputStream(file))).use { reader ->
-                var line: String?
-                readLoop@ while (reader.readLine().also { line = it } != null) {
-                    val splatted = Pattern.compile("=").split(line!!)
+                readLoop@ while (true) {
+                    val line = reader.readLine() ?: break
+                    val splatted = Pattern.compile("=").split(line)
                     if (splatted.size < 2) continue@readLoop
 
                     var name = splatted[0]
@@ -233,9 +237,9 @@ class AliasManager(private val context: Context) {
             BufferedReader(FileReader(inputFile)).use { reader ->
                 BufferedWriter(FileWriter(tempFile)).use { writer ->
                     val prefix = "$name="
-                    var line: String?
-                    readLoop@ while (reader.readLine().also { line = it } != null) {
-                        if (line!!.startsWith(prefix)) continue@readLoop
+                    readLoop@ while (true) {
+                        val line = reader.readLine() ?: break
+                        if (line.startsWith(prefix)) continue@readLoop
                         writer.write(line + Tuils.NEWLINE)
                     }
                 }

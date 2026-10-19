@@ -1,6 +1,5 @@
 package ohi.andre.consolelauncher.managers.suggestions
 
-import android.os.Build
 import it.andreuzzi.comparestring2.AlgMap
 import kotlinx.coroutines.ensureActive
 import it.andreuzzi.comparestring2.AlgMap.Alg
@@ -26,12 +25,8 @@ import ohi.andre.consolelauncher.managers.notifications.NotificationManager
 import ohi.andre.consolelauncher.managers.notifications.reply.BoundApp
 import ohi.andre.consolelauncher.managers.notifications.reply.ReplyManager
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
-import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager.XMLPrefsRoot
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave
-import ohi.andre.consolelauncher.managers.xml.options.Apps
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
-import ohi.andre.consolelauncher.managers.xml.options.Notifications
-import ohi.andre.consolelauncher.managers.xml.options.Reply
 import ohi.andre.consolelauncher.managers.xml.options.Suggestions
 import ohi.andre.consolelauncher.tuils.LogTuils
 import ohi.andre.consolelauncher.tuils.StringTuils
@@ -1000,14 +995,13 @@ class SuggestionGenerator(
         beforeLastSpace: String?,
         canClickToLaunch: Boolean
     ) {
-        var apps = apps
-        if (apps == null || apps.size == 0) return
-
-        apps = ArrayList<Launchable?>(apps) as MutableList<Launchable>?
+        if (apps.isNullOrEmpty()) return
+        // a copy, so the app list can change while suggestions are computed
+        val apps: MutableList<Launchable> = ArrayList(apps)
 
         var canInsert = counts?.get(SuggestionCategory.APP) ?: 0
         if (afterLastSpace == null || afterLastSpace.length == 0) {
-            for (l in apps!!) {
+            for (l in apps) {
                 if (canInsert == 0) return
                 canInsert--
 
@@ -1024,7 +1018,7 @@ class SuggestionGenerator(
             val embed = canClickToLaunch && clickToLaunch
             val counter = quickCompare(
                 afterLastSpace,
-                apps!!,
+                apps,
                 suggestions,
                 beforeLastSpace,
                 canInsert,
@@ -1035,7 +1029,7 @@ class SuggestionGenerator(
             val infos = CompareObjects.topMatchesWithDeadline<Launchable?>(
                 Launchable::class.java,
                 afterLastSpace,
-                apps!!.size,
+                apps.size,
                 apps,
                 canInsert - counter,
                 suggestionsDeadline,
@@ -1066,19 +1060,7 @@ class SuggestionGenerator(
         afterLastSpace: String?,
         beforeLastSpace: String?
     ) {
-        if (ConfigEntryLookup.xmlPrefsEntrys == null) {
-            val entries = ArrayList<XMLPrefsSave>()
-
-            for (element in XMLPrefsRoot.entries.toTypedArray()) entries.addAll(element.enums)
-
-            Collections.addAll(entries, *Apps.values())
-            Collections.addAll(entries, *Notifications.values())
-            Collections.addAll(entries, *Reply.values())
-
-            ConfigEntryLookup.xmlPrefsEntrys = entries
-        }
-
-        val list: MutableList<XMLPrefsSave> = ArrayList(ConfigEntryLookup.xmlPrefsEntrys!!)
+        val list: MutableList<XMLPrefsSave> = ArrayList(ConfigEntryLookup.entries)
 
         if (afterLastSpace == null || afterLastSpace.length == 0) {
             for (s in list) {
@@ -1127,16 +1109,7 @@ class SuggestionGenerator(
         beforeLastSpace: String?
     ) {
         var afterLastSpace = afterLastSpace
-        if (ConfigEntryLookup.xmlPrefsFiles == null) {
-            val files = ArrayList<String>()
-            for (element in XMLPrefsRoot.entries.toTypedArray()) files.add(element.path)
-            files.add(AppsManager.PATH)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) files.add(ReplyManager.PATH)
-            files.add(NotificationManager.PATH)
-
-            ConfigEntryLookup.xmlPrefsFiles = files
-        }
-        val xmlPrefsFiles = ConfigEntryLookup.xmlPrefsFiles!!
+        val xmlPrefsFiles = ConfigEntryLookup.files
 
         if (afterLastSpace == null || afterLastSpace.length == 0) {
             for (s in xmlPrefsFiles) {

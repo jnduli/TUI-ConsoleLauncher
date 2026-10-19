@@ -1,6 +1,7 @@
 package ohi.andre.consolelauncher.commands.main.raw
 
 import android.content.ActivityNotFoundException
+import android.content.Context
 import java.io.File
 import ohi.andre.consolelauncher.R
 import ohi.andre.consolelauncher.UIManager
@@ -11,10 +12,12 @@ import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.FILE
 import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.INT
 import ohi.andre.consolelauncher.commands.CommandAbstraction.Companion.PLAIN_TEXT
 import ohi.andre.consolelauncher.commands.CommandContext
+import ohi.andre.consolelauncher.commands.ConfigEntryLookup
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand
 import ohi.andre.consolelauncher.managers.AppsManager
 import ohi.andre.consolelauncher.managers.notifications.NotificationManager
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
+import ohi.andre.consolelauncher.managers.xml.classes.SharedPrefsXMLPrefsList
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave
 import ohi.andre.consolelauncher.managers.xml.options.Apps
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
@@ -156,32 +159,16 @@ class config : ParamCommand() {
 
         override fun exec(pack: CommandContext): String {
             val file = File(FileTuils.getFolder(pack.context), pack.getString())
-            val name = file.name
+            val path = ConfigEntryLookup.files.firstOrNull { it.equals(file.name, ignoreCase = true) }
+                ?: return "[]"
 
-            for (r in XMLPrefsManager.XMLPrefsRoot.entries) {
-                if (name.equals(r.path, ignoreCase = true)) {
-                    val strings = ArrayList(r.getValues().values())
-                    StringTuils.addPrefix(strings, Tuils.DOUBLE_SPACE)
-                    strings.add(0, r.path)
-                    return StringTuils.toPlanString(strings, Tuils.NEWLINE)
-                }
-            }
-
-            if (name.equals(AppsManager.PATH, ignoreCase = true)) {
-                val strings = ArrayList(AppsManager.instance!!.getValues().values())
-                StringTuils.addPrefix(strings, Tuils.DOUBLE_SPACE)
-                strings.add(0, AppsManager.PATH)
-                return StringTuils.toPlanString(strings, Tuils.NEWLINE)
-            }
-
-            if (name.equals(NotificationManager.PATH, ignoreCase = true)) {
-                val strings = ArrayList(NotificationManager.instance!!.getValues().values())
-                StringTuils.addPrefix(strings, Tuils.DOUBLE_SPACE)
-                strings.add(0, NotificationManager.PATH)
-                return StringTuils.toPlanString(strings, Tuils.NEWLINE)
-            }
-
-            return "[]"
+            // every settings file (XMLPrefsRoot's, AppsManager's, NotificationManager's, ReplyManager's)
+            // is a SharedPreferences file named after its path, so this needs none of the managers
+            val prefs = pack.context.getSharedPreferences(path, Context.MODE_PRIVATE)
+            val strings = ArrayList(SharedPrefsXMLPrefsList(prefs).values())
+            StringTuils.addPrefix(strings, Tuils.DOUBLE_SPACE)
+            strings.add(0, path)
+            return StringTuils.toPlanString(strings, Tuils.NEWLINE)
         }
 
         override fun onArgNotFound(pack: CommandContext, index: Int): String {
@@ -272,8 +259,9 @@ class config : ParamCommand() {
 
             if (!file.name.endsWith(".xml")) {
                 // is font
-                if (ViewTuils.fontPath != null) {
-                    val font = File(ViewTuils.fontPath!!)
+                val fontPath = ViewTuils.fontPath
+                if (fontPath != null) {
+                    val font = File(fontPath)
                     if (font.exists()) {
                         val files = font.listFiles()
                         if (files != null && files.isNotEmpty()) FileTuils.insertOld(pack.context, files[0])

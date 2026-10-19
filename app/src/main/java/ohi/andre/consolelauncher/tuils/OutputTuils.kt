@@ -31,13 +31,13 @@ object OutputTuils {
         if (longAction is String) intent.putExtra(PrivateIOReceiver.LONG_ACTION, longAction)
         else if (longAction is Parcelable) intent.putExtra(PrivateIOReceiver.LONG_ACTION, longAction)
 
-        LocalBroadcastManager.getInstance(context!!).sendBroadcast(intent)
+        LocalBroadcastManager.getInstance(context ?: return).sendBroadcast(intent)
     }
 
     @JvmStatic
     @JvmOverloads
     fun sendOutput(context: Context?, res: Int, color: Int = Integer.MAX_VALUE) {
-        sendOutput(context, context!!.getString(res), color)
+        sendOutput(context, context?.getString(res) ?: return, color)
     }
 
     @JvmStatic

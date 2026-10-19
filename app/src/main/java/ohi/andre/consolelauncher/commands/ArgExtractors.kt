@@ -12,7 +12,7 @@ import ohi.andre.consolelauncher.tuils.Tuils
 object ArgExtractors {
 
     fun dataStoreType(input: String): ArgInfo? {
-        val a = noSpaceString(input) ?: return null
+        val a = noSpaceString(input)
         if (a.found) {
             val s = a.arg as String
             return try {
@@ -88,9 +88,7 @@ object ArgExtractors {
         )
     }
 
-    fun textList(input: String?): ArgInfo? {
-        if (input == null) return null
-
+    fun textList(input: String): ArgInfo {
         // Kotlin's Regex split, unlike Java's String.split, keeps trailing empty matches — drop
         // them to match the original Java semantics this parsing logic relies on.
         val strings = input.split(Regex(Tuils.SPACE + "+")).toMutableList()
@@ -99,9 +97,7 @@ object ArgExtractors {
         return ArgInfo(strings, null, true, strings.size)
     }
 
-    fun noSpaceString(input: String?): ArgInfo? {
-        if (input == null) return null
-
+    fun noSpaceString(input: String): ArgInfo {
         var index = input.indexOf(Tuils.SPACE)
         if (index == -1) index = input.length
 
@@ -114,7 +110,7 @@ object ArgExtractors {
     }
 
     fun command(string: String, active: CommandGroup): ArgInfo {
-        val i = noSpaceString(string)!!
+        val i = noSpaceString(string)
         val name = i.arg as String
 
         var abstraction: CommandAbstraction? = null

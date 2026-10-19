@@ -130,7 +130,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                         return
                     }
 
-                    val inputStream = response.body!!.byteStream()
+                    val inputStream = (response.body ?: throw java.io.IOException("empty response body")).byteStream()
 
                     var output: CharSequence? = ViewTuils.span(Tuils.EMPTYSTRING, outputColor)
 
@@ -304,33 +304,20 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                 val action = intent.getAction()
 
                 val intent_id = intent.getIntExtra(ID, Int.Companion.MAX_VALUE)
-                val intent_tag: String = intent.getStringExtra(TAG_NAME).toString()
+                val intent_tag: String? = intent.getStringExtra(TAG_NAME)
+                // null when the extra is missing or isn't a known type (e.g. `htmlextract ls` with no type)
+                val intent_type = StoreableValue.Type.entries.find { it.name == intent_tag }
                 val intent_value = intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE)
 
                 when (action) {
                     ACTION_ADD -> {
-                        var id_already = false
-                        if (intent_tag == StoreableValue.Type.format.name) {
-                            id_already = formats.indices.any { formats.get(it).id == intent_id }
-                        } else if (intent_tag == StoreableValue.Type.xpath.name) {
-                            id_already = xpaths.indices.any { xpaths.get(it).id == intent_id}
-                        } else {
-                            id_already = jsons.indices.any { jsons.get(it).id == intent_id}
-                        }
-                        if (id_already) {
-                            OutputTuils.sendOutput(context, R.string.id_already)
+                        if (intent_type == null) {
+                            Log.e(TAG, "unknown type: $intent_tag")
                             return
                         }
-
-                        val values: MutableList<StoreableValue>
-                        try {
-                            val p = StoreableValue.Type.valueOf(intent_tag)
-                            values = getListFromType(p)
-                        } catch (e: Exception) {
-                            Log.e(TAG, e.toString())
-                            return
-                        }
-                        val v = StoreableValue.Companion.create(values, context, intent_tag, intent_value, intent_id)
+                        // create() reports R.string.id_already itself when the id is taken
+                        val values = getListFromType(intent_type)
+                        val v = StoreableValue.Companion.create(values, context, intent_type, intent_value, intent_id)
                         if (v != null) values.add(v)
                     }
                     ACTION_RM -> {
@@ -381,15 +368,12 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                         OutputTuils.sendOutput(context, R.string.id_notfound)
                     }
                     ACTION_LS -> {
-                        val values: MutableList<StoreableValue>
                         val builder = StringBuilder()
-                        try {
-                            val p = StoreableValue.Type.valueOf(intent_tag)
-                            values = getListFromType(p)
-                            for (v in values) {
+                        if (intent_type != null) {
+                            for (v in getListFromType(intent_type)) {
                                 builder.append("- ID: ").append(v.id).append(" -> ").append(v.value).append(Tuils.NEWLINE)
                             }
-                        } catch (e: Exception) {
+                        } else {
                             val items = arrayOf(Pair("Xpaths:", xpaths), Pair("JsonPaths:", jsons), Pair("Formats:", formats))
                             items.forEach {
                                 builder.append(it.first).append(Tuils.NEWLINE)
@@ -404,40 +388,32 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                         OutputTuils.sendOutput(context, text)
                     }
                     ACTION_QUERY -> {
-                        val website = intent_value
+                        val website = intent_value ?: return
                         val weatherArea = intent.getBooleanExtra(WEATHER_AREA, false)
-                        var path: String? = intent_id.toString()
+
                         var format = intent.getStringExtra(FORMAT_ID)
-
                         if (format == null) {
-                            val formatId = intent.getIntExtra(FORMAT_ID, Int.Companion.MAX_VALUE)
-                            format = formats.find { it.id == formatId }?.value ?: null
-                            if (format == null) {
-                                OutputTuils.sendOutput(context, context.getString(R.string.id_notfound) + ": " + formatId + "(" + StoreableValue.Type.format.name + ")" )
+                            val formatId = intent.getIntExtra(FORMAT_ID, Int.MAX_VALUE)
+                            // no format id: query() falls back to the default format
+                            if (formatId != Int.MAX_VALUE) {
+                                format = formats.find { it.id == formatId }?.value
+                                if (format == null) {
+                                    OutputTuils.sendOutput(context, context.getString(R.string.id_notfound) + ": " + formatId + "(" + StoreableValue.Type.format.name + ")" )
+                                }
                             }
                         }
 
-                        var pathType: StoreableValue.Type? = StoreableValue.Type.json
-                        if (path == null) {
-                            val pathId = intent.getIntExtra(ID, Int.Companion.MAX_VALUE)
-                            val xpath = xpaths.find { it.id == pathId}
-                            path = xpath?.value
-                            pathType = xpath?.type
-
-                            val jsonpath = jsons.find { it.id == pathId }
-                            path = jsonpath?.value
-                            pathType = jsonpath?.type
-
-                            if (path == null) {
-                                OutputTuils.sendOutput( context, context.getString(R.string.id_notfound) + ": " + pathId )
-                                return
-                            }
+                        // jsons are checked first, matching the original Java (where a json match overrode an xpath one)
+                        val stored = jsons.find { it.id == intent_id } ?: xpaths.find { it.id == intent_id }
+                        if (stored == null) {
+                            OutputTuils.sendOutput(context, context.getString(R.string.id_notfound) + ": " + intent_id)
+                            return
                         }
-                        query(context, path, pathType, format, website!!, weatherArea)
+                        query(context, stored.value, stored.type, format, website, weatherArea)
                     }
                     ACTION_WEATHER -> {
-                        val url = intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE)
-                        query(context, weatherFormat, url!!)
+                        val url = intent.getStringExtra(XMLPrefsManager.VALUE_ATTRIBUTE) ?: return
+                        query(context, weatherFormat, url)
                     }
                 }
             }
@@ -498,8 +474,8 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
             this.type = type
         }
 
-        fun remove(context: Context?) {
-            val prefs = context!!.getSharedPreferences(PATH, Context.MODE_PRIVATE)
+        fun remove(context: Context) {
+            val prefs = context.getSharedPreferences(PATH, Context.MODE_PRIVATE)
             val records = loadJsonList<StoreableValueRecord>(prefs, type.name)
             val removed = records.removeIf { it.id == id }
             if (removed) {
@@ -509,8 +485,8 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
             }
         }
 
-        fun edit(context: Context?, newExpression: String?) {
-            val prefs = context!!.getSharedPreferences(PATH, Context.MODE_PRIVATE)
+        fun edit(context: Context, newExpression: String?) {
+            val prefs = context.getSharedPreferences(PATH, Context.MODE_PRIVATE)
             val records = loadJsonList<StoreableValueRecord>(prefs, type.name)
             val index = records.indexOfFirst { it.id == id }
             if (index < 0) {
@@ -526,8 +502,8 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
         companion object {
             fun create(
                 values: MutableList<StoreableValue>,
-                context: Context?,
-                tag: String?,
+                context: Context,
+                type: Type,
                 path: String?,
                 id: Int
             ): StoreableValue? {
@@ -538,8 +514,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                     }
                 }
 
-                val type = Type.valueOf(tag!!)
-                val prefs = context!!.getSharedPreferences(PATH, Context.MODE_PRIVATE)
+                val prefs = context.getSharedPreferences(PATH, Context.MODE_PRIVATE)
                 val records = loadJsonList<StoreableValueRecord>(prefs, type.name)
                 records.add(StoreableValueRecord(id, path))
                 saveJsonList(prefs, type.name, records)
@@ -702,10 +677,11 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
                 val b = StringBuilder()
                 b.append(delimiterStart)
                 for (element in set) {
+                    if (element == null) continue
                     var temp = first
-                    temp = attributeName.matcher(temp).replaceAll(element?.key)
+                    temp = attributeName.matcher(temp).replaceAll(element.key)
                     temp = attributeValue.matcher(temp)
-                        .replaceAll(StringTuils.removeUnncesarySpaces(element?.value!!.trim { it <= ' ' }))
+                        .replaceAll(StringTuils.removeUnncesarySpaces(element.value.orEmpty().trim { it <= ' ' }))
                     b.append(temp)
                     b.append(separator)
                 }
@@ -822,10 +798,10 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
 
             m = linkPattern.matcher(original)
             while (m.find()) {
-                var text = m.group(1)
+                var text = m.group(1) ?: continue
 
                 //            fix relative links
-                if (text!!.startsWith("/")) {
+                if (text.startsWith("/")) {
                     val m1: Matcher = extractUrl.matcher(url)
                     if (m1.find()) {
                         text = m1.group(1) + text
@@ -855,20 +831,18 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
 
             m = replacePattern.matcher(original)
             while (m.find()) {
-                val replaceGroups = m.group(1)
-                var text = m.group(2)
+                val replaceGroups = m.group(1) ?: continue
+                var text = m.group(2) ?: continue
 
-                val groups: Array<String?> =
-                    replaceGroups!!.split("]".toRegex()).dropLastWhile { it.isEmpty() }
-                        .toTypedArray()
-                for (c in groups.indices) {
-                    groups[c] = groups[c]!!.replace("[\\[\\]]".toRegex(), Tuils.EMPTYSTRING)
+                val groups = replaceGroups.split("]".toRegex()).dropLastWhile { it.isEmpty() }
+                for (group in groups) {
+                    val split = group.replace("[\\[\\]]".toRegex(), Tuils.EMPTYSTRING)
+                        .split(optionalValueSeparator.toRegex())
+                        .dropLastWhile { it.isEmpty() }
+                    // needs both a pattern and its replacement
+                    if (split.size < 2) continue
 
-                    val split: Array<String?> = groups[c]!!.split(optionalValueSeparator.toRegex())
-                        .dropLastWhile { it.isEmpty() }.toTypedArray()
-                    if (split.size == 0) continue
-
-                    text = text!!.replace(split[0]!!.toRegex(), split[1]!!)
+                    text = text.replace(split[0].toRegex(), split[1])
                 }
 
                 original = TextUtils.replace(

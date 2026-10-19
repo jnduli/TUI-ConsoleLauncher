@@ -61,7 +61,7 @@ import java.util.regex.Pattern
 private val APP_TAG: String = "AppsManager"
 
 class AppsManager(context: Context) : XMLPrefsElement {
-    private val context: Context?
+    private val context: Context = context
 
     private var appsHolder: AppsHolder? = null
     private var hiddenLaunchables: MutableList<Launchable> = ArrayList()
@@ -75,8 +75,8 @@ class AppsManager(context: Context) : XMLPrefsElement {
     @JvmField
     var groups: MutableList<Group>
 
-    private var pp: Pattern? = null
-    private var pl: Pattern? = null
+    private val pp: Pattern = Pattern.compile("%p", Pattern.CASE_INSENSITIVE)
+    private val pl: Pattern = Pattern.compile("%l", Pattern.CASE_INSENSITIVE)
     private var appInstalledFormat: String?
     private var appUninstalledFormat: String?
     var appInstalledColor: Int = 0
@@ -101,7 +101,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     private val appsBroadcast: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent) {
             val action = intent.getAction()
-            val data = intent.getData()!!.getSchemeSpecificPart()
+            val data = intent.data?.schemeSpecificPart ?: return
             if (action == Intent.ACTION_PACKAGE_ADDED) {
                 appInstalled(data)
             } else {
@@ -112,7 +112,6 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
     init {
         instance = this
-        this.context = context
 
         appInstalledFormat =
             if (XMLPrefsManager.getBoolean(Ui.show_app_installed)) XMLPrefsManager.get(
@@ -124,14 +123,8 @@ class AppsManager(context: Context) : XMLPrefsElement {
             ) else null
 
         if (appInstalledFormat != null || appUninstalledFormat != null) {
-            pp = Pattern.compile("%p", Pattern.CASE_INSENSITIVE)
-            pl = Pattern.compile("%l", Pattern.CASE_INSENSITIVE)
-
             appInstalledColor = XMLPrefsManager.getColor(Theme.app_installed_color)
             appUninstalledColor = XMLPrefsManager.getColor(Theme.app_uninstalled_color)
-        } else {
-            pp = null
-            pl = null
         }
 
         val appsPrefs = context.getSharedPreferences(PATH, Context.MODE_PRIVATE)
@@ -164,7 +157,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     }
 
     fun fill() {
-        val allApps = createAppMap(context!!.packageManager).toMutableList()
+        val allApps = createAppMap(context.packageManager).toMutableList()
         hiddenLaunchables = ArrayList()
         groups.clear()
 
@@ -181,7 +174,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
             finalizeGroups()
 
-            LocalBroadcastManager.getInstance(context!!.applicationContext).sendBroadcast(
+            LocalBroadcastManager.getInstance(context.applicationContext).sendBroadcast(
                 Intent(UIManager.ACTION_UPDATE_SUGGESTIONS)
             )
 
@@ -191,7 +184,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         }
     }
 
-    private fun appsPrefs(): SharedPreferences = context!!.getSharedPreferences(PATH, Context.MODE_PRIVATE)
+    private fun appsPrefs(): SharedPreferences = context.getSharedPreferences(PATH, Context.MODE_PRIVATE)
 
     private fun applyHiddenApps(prefs: SharedPreferences, allApps: MutableList<Launchable>) {
         val hiddenKeys = loadJsonList<String>(prefs, HIDDEN_APPS_KEY)
@@ -208,7 +201,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         val records = loadJsonList<GroupRecord>(prefs, GROUPS_KEY)
         for (record in records) {
             if (record.name.contains(Tuils.SPACE)) {
-                OutputTuils.sendOutput(context, "${PATH}: ${context?.getString(R.string.output_groupspace)}: ${record.name}", Color.RED)
+                OutputTuils.sendOutput(context, "${PATH}: ${context.getString(R.string.output_groupspace)}: ${record.name}", Color.RED)
                 continue
             }
 
@@ -243,7 +236,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     private fun finalizeGroups() {
         Group.sorting = XMLPrefsManager.getInt(Apps.app_groups_sorting)
         groups.forEach { it.sort() }
-        groups.sortWith { o1, o2 -> StringTuils.alphabeticCompare(o1.name()!!, o2.name()!!) }
+        groups.sortWith { o1, o2 -> StringTuils.alphabeticCompare(o1.name, o2.name) }
     }
 
 // Helper to centralize the ComponentName search logic
@@ -283,7 +276,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
         // Note: For SIM TOolkit, the name 'SIM Toolkit' is defined as one of the shortcuts so not the actual app name found by
         // resovleinfo.loadLabel(mgr), so ensure T-UI is the default for this to work
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1 && SystemUtils.isMyLauncherDefault(context!!.getPackageManager())) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1 && SystemUtils.isMyLauncherDefault(context.getPackageManager())) {
             val launcherApps =
                 context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
             for (ri in main) {
@@ -376,82 +369,57 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
     private fun appInstalled(packageName: String) {
         try {
-            val manager = context!!.getPackageManager()
+            val manager = context.getPackageManager()
 
             val packageInfo = manager.getPackageInfo(packageName, 0)
 
-            if (appInstalledFormat != null) {
-                var cp = appInstalledFormat!!
-
-                cp = pp!!.matcher(cp).replaceAll(packageName)
-                if (packageInfo != null) {
-                    val sequence = packageInfo.applicationInfo?.loadLabel(manager)
-                    if (sequence != null) cp = pl!!.matcher(cp).replaceAll(sequence.toString())
-                } else {
-                    val index = packageName.lastIndexOf(Tuils.DOT)
-                    if (index == -1) cp = pl!!.matcher(cp).replaceAll(Tuils.EMPTYSTRING)
-                    else {
-                        cp = pl!!.matcher(cp).replaceAll(packageName.substring(index + 1))
-                    }
-                }
-
-                cp = StringTuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE)
-
-                OutputTuils.sendOutput(context, cp, appInstalledColor)
+            appInstalledFormat?.let { format ->
+                // the label is left as-is (unreplaced) when the package has no loadable label
+                val label = packageInfo?.applicationInfo?.loadLabel(manager)?.toString()
+                    ?: if (packageInfo == null) shortPackageName(packageName) else null
+                OutputTuils.sendOutput(context, formatAppMessage(format, packageName, label), appInstalledColor)
             }
 
-            val i = manager.getLaunchIntentForPackage(packageName)
-            if (i == null) return
-
-            val name = i.getComponent()
-            val activity = name!!.getClassName()
+            val i = manager.getLaunchIntentForPackage(packageName) ?: return
+            val name = i.component ?: return
             val label = manager.getActivityInfo(name, 0).loadLabel(manager).toString()
 
-            val app = AppLauncher(packageName, activity, label)
-            appsHolder!!.add(app)
+            appsHolder?.add(AppLauncher(packageName, name.className, label))
         } catch (e: Exception) {
         }
     }
 
     private fun appUninstalled(packageName: String) {
-        if (appsHolder == null || context == null) return
+        val holder = appsHolder ?: return
 
-        val infos = appsHolder!!.launchables.filter { 
-            (it as? AppLauncher)?.packageName == packageName 
+        val infos = holder.launchables.filter {
+            (it as? AppLauncher)?.packageName == packageName
         }
 
-        if (appUninstalledFormat != null) {
-            var cp = appUninstalledFormat!!
-
-            cp = pp!!.matcher(cp).replaceAll(packageName)
-            if (infos.isNotEmpty()) {
-                cp = pl!!.matcher(cp).replaceAll(infos[0].name())
-            } else {
-                val index = packageName.lastIndexOf(Tuils.DOT)
-                if (index == -1) cp = pl!!.matcher(cp).replaceAll(Tuils.EMPTYSTRING)
-                else {
-                    cp = pl!!.matcher(cp).replaceAll(packageName.substring(index + 1))
-                }
-            }
-            cp = StringTuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE)
-
-            OutputTuils.sendOutput(context, cp, appUninstalledColor)
+        appUninstalledFormat?.let { format ->
+            val label = infos.firstOrNull()?.name() ?: shortPackageName(packageName)
+            OutputTuils.sendOutput(context, formatAppMessage(format, packageName, label), appUninstalledColor)
         }
 
-        for (i in infos) appsHolder!!.remove(i)
+        for (i in infos) holder.remove(i)
+    }
+
+    /** Fills `%p` (package name) and `%l` (label; left untouched when [label] is null) in an app installed/uninstalled message. */
+    private fun formatAppMessage(format: String, packageName: String, label: String?): String {
+        var cp = pp.matcher(format).replaceAll(packageName)
+        if (label != null) cp = pl.matcher(cp).replaceAll(label)
+        return StringTuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE)
+    }
+
+    /** The last segment of a package name (`com.example.app` → `app`), used when no label is available. */
+    private fun shortPackageName(packageName: String): String {
+        val index = packageName.lastIndexOf(Tuils.DOT)
+        return if (index == -1) Tuils.EMPTYSTRING else packageName.substring(index + 1)
     }
 
     fun findLaunchableWithLabel(label: String, type: Int): Launchable? {
-        if (appsHolder == null) return null
-
-        val appList: MutableList<Launchable>?
-        if (type == SHOWN_APPS) {
-            appList = appsHolder!!.launchables
-        } else {
-            appList = hiddenLaunchables
-        }
-
-        if (appList == null) return null
+        val appList: MutableList<Launchable> =
+            if (type == SHOWN_APPS) appsHolder?.launchables ?: return null else hiddenLaunchables
 
         val labelLower = label.lowercase(Locale.getDefault())
         val unspacedLabel = StringTuils.removeSpaces(labelLower)
@@ -475,7 +443,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
             editor.commit()
         }
 
-        if (appsHolder != null) appsHolder!!.update(true)
+        appsHolder?.update(true)
     }
 
     fun getIntent(launchable: Launchable): Intent {
@@ -487,11 +455,11 @@ class AppsManager(context: Context) : XMLPrefsElement {
             }
         }.start()
 
-        return launchable.toIntent(context!!)
+        return launchable.toIntent(context)
     }
 
     fun performLaunch(launchable: Launchable): Boolean {
-        launchable.launch(context!!)
+        launchable.launch(context)
         return true
     }
 
@@ -512,8 +480,10 @@ class AppsManager(context: Context) : XMLPrefsElement {
         if (!keys.contains(key)) keys.add(key)
         saveJsonList(prefs, HIDDEN_APPS_KEY, keys)
 
-        appsHolder!!.remove(launchable)
-        appsHolder!!.update(true)
+        appsHolder?.run {
+            remove(launchable)
+            update(true)
+        }
         hiddenLaunchables.add(launchable)
         return launchable.name()
     }
@@ -525,8 +495,10 @@ class AppsManager(context: Context) : XMLPrefsElement {
         saveJsonList(prefs, HIDDEN_APPS_KEY, keys)
 
         hiddenLaunchables.remove(launchable)
-        appsHolder!!.add(launchable)
-        appsHolder!!.update(false)
+        appsHolder?.run {
+            add(launchable)
+            update(false)
+        }
         return launchable.name()
     }
 
@@ -542,13 +514,13 @@ class AppsManager(context: Context) : XMLPrefsElement {
             return null
         }
 
-        return context!!.getString(R.string.output_groupexists)
+        return context.getString(R.string.output_groupexists)
     }
 
     fun groupBgColor(name: String?, color: String?): String? {
         val index = StringTuils.find(name, groups)
         if (index == -1) {
-            return context!!.getString(R.string.output_groupnotfound)
+            return context.getString(R.string.output_groupnotfound)
         }
 
         groups.get(index).bgColor = Color.parseColor(color)
@@ -563,7 +535,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     fun groupForeColor(name: String?, color: String?): String? {
         val index = StringTuils.find(name, groups)
         if (index == -1) {
-            return context!!.getString(R.string.output_groupnotfound)
+            return context.getString(R.string.output_groupnotfound)
         }
 
         groups.get(index).foreColor = Color.parseColor(color)
@@ -578,7 +550,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     fun removeGroup(name: String?): String? {
         val records = loadGroupRecords()
         val removed = records.removeIf { it.name == name }
-        if (!removed) return context!!.getString(R.string.output_groupnotfound)
+        if (!removed) return context.getString(R.string.output_groupnotfound)
         saveGroupRecords(records)
 
         val index = StringTuils.find(name, groups)
@@ -589,7 +561,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
     fun addAppToGroup(group: String?, launchable: Launchable): String? {
         val index = StringTuils.find(group, groups)
-        if (index == -1) return context!!.getString(R.string.output_groupnotfound)
+        if (index == -1) return context.getString(R.string.output_groupnotfound)
 
         val existingApp = groups[index].apps.find { it.names().contains(launchable.name()) }
         if (existingApp != null) return null
@@ -606,7 +578,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
     fun removeAppFromGroup(group: String?, launchable: Launchable): String? {
         val index = StringTuils.find(group, groups)
-        if (index == -1) return context!!.getString(R.string.output_groupnotfound)
+        if (index == -1) return context.getString(R.string.output_groupnotfound)
 
         val writeKey = launchable.storageKey()
         val found = groups[index].apps.any {
@@ -626,7 +598,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
     fun listGroup(group: String?): String? {
         val index = StringTuils.find(group, groups)
-        if (index == -1) return context!!.getString(R.string.output_groupnotfound)
+        if (index == -1) return context.getString(R.string.output_groupnotfound)
 
         val labels = groups[index].apps.joinToString(Tuils.NEWLINE) { it.name() ?: Tuils.EMPTYSTRING }
         return labels.trim { it <= ' ' }.ifEmpty { "[]" }
@@ -638,8 +610,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     }
 
     fun shownApps(): MutableList<Launchable>? {
-        if (appsHolder == null) return ArrayList()
-        return appsHolder!!.launchables
+        return appsHolder?.launchables ?: ArrayList()
     }
 
     fun hiddenApps(): MutableList<Launchable> {
@@ -648,8 +619,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
     val suggestedApps: Array<Launchable?>
         get() {
-            if (appsHolder == null) return arrayOfNulls(0)
-            return appsHolder!!.suggestedApps
+            return appsHolder?.suggestedApps ?: arrayOfNulls(0)
         }
 
     val suggestedLaunchables: Array<Launchable?>
@@ -681,7 +651,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     private fun printNApps(type: Int, n: Int): String? {
         try {
             val labels: MutableList<String> = Launchable.labelList(
-                (if (type == SHOWN_APPS) appsHolder!!.launchables else hiddenLaunchables)!!,
+                (if (type == SHOWN_APPS) appsHolder?.launchables ?: return "[]" else hiddenLaunchables),
                 true
             )
 
@@ -704,7 +674,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         var with = withStr
         try {
             val labels: MutableList<String> = Launchable.labelList(
-                (if (type == SHOWN_APPS) appsHolder!!.launchables else hiddenLaunchables)!!,
+                (if (type == SHOWN_APPS) appsHolder?.launchables ?: return "[]" else hiddenLaunchables),
                 true
             )
 
@@ -728,9 +698,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
     }
 
     fun onDestroy() {
-        if (context != null) {
-            unregisterReceiver(context)
-        }
+        unregisterReceiver(context)
     }
 
     @Serializable
@@ -853,9 +821,9 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
                 val PREFIX = "default_app_n"
                 for (count in 0..4) {
-                    val vl = values.get(Apps.valueOf(PREFIX + (count + 1)))!!.value
+                    val vl = values.get(Apps.valueOf(PREFIX + (count + 1)))?.value
 
-                    if (vl == Apps.NULL) continue
+                    if (vl == null || vl == Apps.NULL) continue
                     if (vl == Apps.MOST_USED) suggested.add(SuggestedApp(null, MOST_USED, count + 1))
                     else {
                         val match = launchables.find { launchable -> launchable.storageKey() == vl }
@@ -901,8 +869,8 @@ class AppsManager(context: Context) : XMLPrefsElement {
                     for (count in 0..lastWriteable) {
                         val app = get(count)
 
-                        if (app.launchable == null || launchable.launchTimes > app.launchable!!.launchTimes) {
-                            val before = app.launchable
+                        val before = app.launchable
+                        if (before == null || launchable.launchTimes > before.launchTimes) {
                             suggested[count].change(launchable)
 
                             if (before != null) {
@@ -951,15 +919,13 @@ class AppsManager(context: Context) : XMLPrefsElement {
         }
 
         fun update(sort: Boolean) {
-            if (suggestedAppMgr == null) {
-                suggestedAppMgr = SuggestedAppMgr(values, launchables)
-            }
+            suggestedAppMgr()
 
             if (sort) {
                 Collections.sort(launchables)
             }
 
-            LocalBroadcastManager.getInstance(context!!.applicationContext)
+            LocalBroadcastManager.getInstance(context.applicationContext)
                 .sendBroadcast(Intent(UIManager.ACTION_UPDATE_SUGGESTIONS))
         }
 
@@ -969,16 +935,12 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
         val suggestedApps: Array<Launchable?>
             get() {
-                if (suggestedAppMgr == null) {
-                    suggestedAppMgr = SuggestedAppMgr(values, launchables)
-                }
-
-                val result = arrayOfNulls<Launchable>(suggestedAppMgr!!.size())
-                for (count in 0 until suggestedAppMgr!!.size()) {
-                    result[count] = suggestedAppMgr!!.get(count).launchable
-                }
-                return result
+                val mgr = suggestedAppMgr()
+                return Array(mgr.size()) { mgr.get(it).launchable }
             }
+
+        private fun suggestedAppMgr(): SuggestedAppMgr =
+            suggestedAppMgr ?: SuggestedAppMgr(values, launchables).also { suggestedAppMgr = it }
 
         private fun <T> find(obj: T, list: List<T>): Int {
             for (count in list.indices) {
@@ -1026,7 +988,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
 
     /** The raw stored value (a [Launchable.storageKey], [Apps.MOST_USED] or [Apps.NULL]) of a `default_app_nX` slot. */
     fun defaultAppSlotValue(index: Int): String? {
-        return prefsList?.get(Apps.valueOf("default_app_n$index"))?.value
+        return prefsList.get(Apps.valueOf("default_app_n$index"))?.value
     }
 
     /** A user-facing label for what's currently pinned (or not) in a `default_app_nX` slot. */

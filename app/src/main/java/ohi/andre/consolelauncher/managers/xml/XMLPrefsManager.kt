@@ -3,6 +3,7 @@ package ohi.andre.consolelauncher.managers.xml
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Color
+import android.os.Environment
 import ohi.andre.consolelauncher.managers.xml.classes.SharedPrefsXMLPrefsList
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsElement
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsList
@@ -133,11 +134,20 @@ object XMLPrefsManager {
         return LogTuils.getDefaultValue(c as Class<Any>)
     }
 
+    /** The stored value of [prefsSave], or its default when nothing has been stored yet. */
+    private fun storedOrDefault(prefsSave: XMLPrefsSave): String? =
+        prefsSave.parent().getValues().get(prefsSave)?.value ?: prefsSave.defaultValue()
+
+    /** The configured home folder, or the device's external storage when that's unset or missing. */
     @JvmStatic
-    fun getInt(prefsSave: XMLPrefsSave): Int = get(Int::class.javaPrimitiveType!!, prefsSave)
+    fun homeDirectory(): File =
+        getOrNull(File::class.java, Behavior.home_path) ?: Environment.getExternalStorageDirectory()
 
     @JvmStatic
-    fun getBoolean(prefsSave: XMLPrefsSave): Boolean = get(Boolean::class.javaPrimitiveType!!, prefsSave)
+    fun getInt(prefsSave: XMLPrefsSave): Int = get(Int::class.java, prefsSave)
+
+    @JvmStatic
+    fun getBoolean(prefsSave: XMLPrefsSave): Boolean = get(Boolean::class.java, prefsSave)
 
     @JvmStatic
     fun getColor(prefsSave: XMLPrefsSave): Int {
@@ -148,8 +158,9 @@ object XMLPrefsManager {
         }
 
         try {
-            return transform(prefsSave.parent().getValues().get(prefsSave)!!.value, Color::class.java) as Int
+            return transform(storedOrDefault(prefsSave), Color::class.java) as Int
         } catch (e: Exception) {
+            // unset or unparseable: fall back to the default, if it has one
             val def = prefsSave.defaultValue()
             if (def == null || def.isEmpty()) {
                 return Integer.MAX_VALUE
@@ -174,11 +185,7 @@ object XMLPrefsManager {
      * installs keep their custom color instead of silently resetting.
      */
     private fun getPaletteRefColor(prefsSave: XMLPrefsSave): Int {
-        val stored: String? = try {
-            prefsSave.parent().getValues().get(prefsSave)!!.value
-        } catch (e: Exception) {
-            prefsSave.defaultValue()
-        }
+        val stored = storedOrDefault(prefsSave)
 
         if (stored == null || stored.isEmpty()) return Integer.MAX_VALUE
 
@@ -213,20 +220,30 @@ object XMLPrefsManager {
 
     @JvmStatic
     fun <T> get(c: Class<T>, root: XMLPrefsRoot, s: String): T? {
+        val stored = root.getValues().get(s)?.value ?: return null
         return try {
-            transform(root.getValues().get(s)!!.value, c) as T
+            transform(stored, c) as T
         } catch (e: Exception) {
             null
         }
     }
 
+    /**
+     * The value of [prefsSave] as [c]. Falls back to its default when the stored value can't be
+     * parsed, and to the type's zero value (`0`, `false`, `null` for objects) when the default can't either.
+     */
     @JvmStatic
-    fun <T> get(c: Class<T>, prefsSave: XMLPrefsSave): T {
+    @Suppress("UNCHECKED_CAST")
+    fun <T> get(c: Class<T>, prefsSave: XMLPrefsSave): T = getOrNull(c, prefsSave) as T
+
+    /** [get], typed honestly: for object types like [File] the last-resort value is `null`. */
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> getOrNull(c: Class<T>, prefsSave: XMLPrefsSave): T? {
         try {
-            return transform(prefsSave.parent().getValues().get(prefsSave)!!.value, c) as T
+            return transform(storedOrDefault(prefsSave), c) as T?
         } catch (e: Exception) {
             LogTuils.log(e)
-            // this will happen if the option is not found
+            // the stored value couldn't be parsed
             try {
                 return transform(prefsSave.defaultValue(), c) as T
             } catch (e1: Exception) {

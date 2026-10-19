@@ -126,13 +126,14 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
                     return
                 }
 
-                var sm: SimpleMutableEntry<CharSequence?, Int?>?
-                while ((textCategory?.poll().also { sm = it }) != null) {
-                    ui?.setOutput(sm!!.key, sm.value!!)
+                while (true) {
+                    val sm = textCategory?.poll() ?: break
+                    ui?.setOutput(sm.key, sm.value ?: continue)
                 }
 
-                while ((textColor?.poll().also { sm = it }) != null) {
-                    ui?.setOutput(sm!!.value!!, sm.key)
+                while (true) {
+                    val sm = textColor?.poll() ?: break
+                    ui?.setOutput(sm.value ?: continue, sm.key)
                 }
 
                 textCategory = null
@@ -475,7 +476,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         permissions: Array<String>,
         grantResults: IntArray
     ) {
-        if (permissions!!.size > 0 && permissions[0] == Manifest.permission.READ_CONTACTS && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (permissions.isNotEmpty() && permissions[0] == Manifest.permission.READ_CONTACTS && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             LocalBroadcastManager.getInstance(this.getApplicationContext())
                 .sendBroadcast(Intent(ContactManager.ACTION_REFRESH))
         }
@@ -560,7 +561,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
                 Log.d(TAG, "Connectivity permissions granted, nothing more to do")
             }
             COMMAND_REQUEST_PERMISSION -> {
-                main?.let { it.onCommand(it.mainPack.lastCommand, null as String?) }
+                main?.let { m -> m.mainPack.lastCommand?.let { m.onCommand(it, null as String?) } }
             }
             COMMAND_SUGGESTION_REQUEST_PERMISSION -> {
                 ui?.setOutput(

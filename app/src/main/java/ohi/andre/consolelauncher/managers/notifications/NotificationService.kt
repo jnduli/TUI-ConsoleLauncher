@@ -43,7 +43,7 @@ class NotificationService : NotificationListenerService() {
     private val ANDROID_LABEL_PREFIX = "android."
     private val NULL_LABEL = "null"
 
-    private var pastNotifications: HashMap<String, MutableList<Notification>>? = null
+    private val pastNotifications = HashMap<String, MutableList<Notification>>()
     private val handler = Handler()
 
     private var format: String? = null
@@ -54,14 +54,13 @@ class NotificationService : NotificationListenerService() {
     private var longClick = false
     private var active = false
 
-    private var queue: Queue<StatusBarNotification>? = null
+    private val queue: Queue<StatusBarNotification> = ArrayBlockingQueue(5)
 
     private val PKG = "%pkg"
     private val APP = "%app"
     private val NEWLINE = "%n"
     private val timePattern: Pattern = Pattern.compile("^%t[0-9]*$")
 
-    private var manager: PackageManager? = null
     private var replyManager: ReplyManager? = null
     private var notificationManager: NotificationManager? = null
 
@@ -100,146 +99,140 @@ class NotificationService : NotificationListenerService() {
                 while (true) {
                     if (isInterrupted) return
 
-                    if (queue != null) {
-                        var sbn: StatusBarNotification?
-                        while (queue!!.poll().also { sbn = it } != null) {
-                            val notification: android.app.Notification = sbn!!.notification ?: continue
+                    while (true) {
+                        val sbn = queue.poll() ?: break
+                        val notification: android.app.Notification = sbn.notification ?: continue
+                        // disposed while this thread was still draining the queue
+                        val notificationManager = notificationManager ?: break
 
-                            val pack = sbn!!.packageName
+                        val pack = sbn.packageName
 
-                            val appName: String = try {
-                                manager!!.getApplicationInfo(pack, 0).loadLabel(manager!!).toString()
-                            } catch (e: PackageManager.NameNotFoundException) {
-                                "null"
-                            }
+                        val appName: String = try {
+                            packageManager.getApplicationInfo(pack, 0).loadLabel(packageManager).toString()
+                        } catch (e: PackageManager.NameNotFoundException) {
+                            "null"
+                        }
 
-                            val nApp = notificationManager!!.getAppState(pack)
-                            if (nApp != null && !nApp.enabled) {
-                                continue
-                            }
+                        val nApp = notificationManager.getAppState(pack)
+                        if (nApp != null && !nApp.enabled) {
+                            continue
+                        }
 
-                            if (nApp == null && !notificationManager!!.default_app_state) {
-                                continue
-                            }
+                        if (nApp == null && !notificationManager.default_app_state) {
+                            continue
+                        }
 
-                            val f = nApp?.format ?: format
-                            val textColor = nApp?.color?.let { Color.parseColor(it) } ?: color
+                        val f = nApp?.format ?: format
+                        val textColor = nApp?.color?.let { Color.parseColor(it) } ?: color
 
-                            var s: CharSequence = ViewTuils.span(f, textColor)
+                        var s: CharSequence = ViewTuils.span(f, textColor)
 
-                            val bundle: Bundle? = NotificationCompat.getExtras(notification)
+                        val bundle: Bundle? = NotificationCompat.getExtras(notification)
 
-                            if (bundle != null) {
-                                val m = formatPattern.matcher(s)
-                                while (m.find()) {
-                                    val match = m.group(0)!!
-                                    if (!match.startsWith(PKG) && !match.startsWith(APP) && !match.startsWith(NEWLINE) && !timePattern.matcher(
-                                            match
-                                        ).matches()
-                                    ) {
-                                        val length = m.group(1)
-                                        val colorGroup = m.group(2)
-                                        var value = m.group(3)
+                        if (bundle != null) {
+                            val m = formatPattern.matcher(s)
+                            while (m.find()) {
+                                val match = m.group(0) ?: continue
+                                if (!match.startsWith(PKG) && !match.startsWith(APP) && !match.startsWith(NEWLINE) && !timePattern.matcher(
+                                        match
+                                    ).matches()
+                                ) {
+                                    val length = m.group(1)
+                                    val colorGroup = m.group(2)
+                                    var value = m.group(3)
 
-                                        if (value.isNullOrEmpty()) value = m.group(4)
+                                    if (value.isNullOrEmpty()) value = m.group(4)
 
-                                        value = value?.trim()
-                                        if (value == null) continue
+                                    value = value?.trim()
+                                    if (value == null) continue
 
-                                        if (value.isEmpty()) continue
+                                    if (value.isEmpty()) continue
 
-                                        if (value == "ttl") value = "title"
-                                        else if (value == "txt") value = "text"
+                                    if (value == "ttl") value = "title"
+                                    else if (value == "txt") value = "text"
 
-                                        val temp = Pattern.compile(":").split(value)
-                                        val split: Array<String> = if (value.endsWith(":")) {
-                                            Array(temp.size + 1) { i -> if (i < temp.size) temp[i] else Tuils.EMPTYSTRING }
-                                        } else temp
+                                    val temp = Pattern.compile(":").split(value)
+                                    val split: Array<String> = if (value.endsWith(":")) {
+                                        Array(temp.size + 1) { i -> if (i < temp.size) temp[i] else Tuils.EMPTYSTRING }
+                                    } else temp
 
-                                        // because the last one is the default text, but only if there is more than one label
-                                        var stopAt = split.size
-                                        if (stopAt > 1) stopAt--
+                                    // because the last one is the default text, but only if there is more than one label
+                                    var stopAt = split.size
+                                    if (stopAt > 1) stopAt--
 
-                                        var text: CharSequence? = null
-                                        for (j in 0 until stopAt) {
-                                            if (split[j].contains(LINES_LABEL)) {
-                                                val array = bundle.getCharSequenceArray(ANDROID_LABEL_PREFIX + split[j])
-                                                if (array != null) {
-                                                    for (c in array) {
-                                                        text = if (text == null) c else TextUtils.concat(text, Tuils.NEWLINE, c)
-                                                    }
+                                    var text: CharSequence? = null
+                                    for (j in 0 until stopAt) {
+                                        if (split[j].contains(LINES_LABEL)) {
+                                            val array = bundle.getCharSequenceArray(ANDROID_LABEL_PREFIX + split[j])
+                                            if (array != null) {
+                                                for (c in array) {
+                                                    text = if (text == null) c else TextUtils.concat(text, Tuils.NEWLINE, c)
                                                 }
-                                            } else {
-                                                text = bundle.getCharSequence(ANDROID_LABEL_PREFIX + split[j])
                                             }
-
-                                            if (text != null && text.isNotEmpty()) break
+                                        } else {
+                                            text = bundle.getCharSequence(ANDROID_LABEL_PREFIX + split[j])
                                         }
 
-                                        if (text == null || text.isEmpty()) {
-                                            text = if (split.size == 1) NULL_LABEL else split[split.size - 1]
-                                        }
-
-                                        var stringed = text.toString().trim()
-
-                                        try {
-                                            val l = length!!.toInt()
-                                            stringed = stringed.substring(0, l)
-                                        } catch (e: Exception) {
-                                        }
-
-                                        val spanned: CharSequence = try {
-                                            ViewTuils.span(stringed, Color.parseColor(colorGroup))
-                                        } catch (e: Exception) {
-                                            stringed
-                                        }
-
-                                        s = TextUtils.replace(s, arrayOf(m.group(0)), arrayOf(spanned))
+                                        if (text != null && text.isNotEmpty()) break
                                     }
+
+                                    if (text == null || text.isEmpty()) {
+                                        text = if (split.size == 1) NULL_LABEL else split[split.size - 1]
+                                    }
+
+                                    var stringed = text.toString().trim()
+
+                                    length?.toIntOrNull()?.let { stringed = stringed.take(it) }
+
+                                    val spanned: CharSequence = try {
+                                        ViewTuils.span(stringed, Color.parseColor(colorGroup))
+                                    } catch (e: Exception) {
+                                        stringed
+                                    }
+
+                                    s = TextUtils.replace(s, arrayOf(m.group(0)), arrayOf(spanned))
                                 }
                             }
-
-                            val text = s.toString()
-
-                            if (notificationManager!!.match(text)) continue
-
-                            val found = isInPastNotifications(pack, text)
-
-                            if (found == 2) continue
-
-                            val n = Notification(System.currentTimeMillis(), text, pack, notification.contentIntent)
-
-                            if (found == 1) {
-                                val ns = ArrayList<Notification>()
-                                ns.add(n)
-                                pastNotifications!![pack] = ns
-                            } else if (found == 0) {
-                                pastNotifications!![pack]!!.add(n)
-                            }
-
-                            s = TextUtils.replace(s, arrayOf(PKG, APP, NEWLINE), arrayOf(pack, appName, Tuils.NEWLINE))
-                            var st = s.toString()
-                            while (st.contains(NEWLINE)) {
-                                s = TextUtils.replace(s, arrayOf(NEWLINE), arrayOf(Tuils.NEWLINE))
-                                st = s.toString()
-                            }
-
-                            try {
-                                s = TimeManager.instance.replace(s)
-                            } catch (e: Exception) {
-                                LogTuils.log(e)
-                            }
-
-                            OutputTuils.sendOutput(
-                                this@NotificationService.applicationContext,
-                                s,
-                                type = TerminalManager.CATEGORY_NO_COLOR,
-                                action = if (click) notification.contentIntent else null,
-                                longAction = if (longClick) n else null
-                            )
-
-                            if (replyManager != null) replyManager!!.onNotification(sbn, s)
                         }
+
+                        val text = s.toString()
+
+                        if (notificationManager.match(text)) continue
+
+                        val found = isInPastNotifications(pack, text)
+
+                        if (found == 2) continue
+
+                        val n = Notification(System.currentTimeMillis(), text, pack, notification.contentIntent)
+
+                        if (found == 1) {
+                            pastNotifications[pack] = arrayListOf(n)
+                        } else if (found == 0) {
+                            pastNotifications[pack]?.add(n)
+                        }
+
+                        s = TextUtils.replace(s, arrayOf(PKG, APP, NEWLINE), arrayOf(pack, appName, Tuils.NEWLINE))
+                        var st = s.toString()
+                        while (st.contains(NEWLINE)) {
+                            s = TextUtils.replace(s, arrayOf(NEWLINE), arrayOf(Tuils.NEWLINE))
+                            st = s.toString()
+                        }
+
+                        try {
+                            s = TimeManager.instance.replace(s)
+                        } catch (e: Exception) {
+                            LogTuils.log(e)
+                        }
+
+                        OutputTuils.sendOutput(
+                            this@NotificationService.applicationContext,
+                            s,
+                            type = TerminalManager.CATEGORY_NO_COLOR,
+                            action = if (click) notification.contentIntent else null,
+                            longAction = if (longClick) n else null
+                        )
+
+                        replyManager?.onNotification(sbn, s)
                     }
 
                     try {
@@ -252,11 +245,10 @@ class NotificationService : NotificationListenerService() {
             }
         }
 
-        manager = packageManager
         enabled = XMLPrefsManager.getBoolean(Notifications.show_notifications) ||
             XMLPrefsManager.get(Notifications.show_notifications).equals("enabled", ignoreCase = true)
 
-        pastNotifications = HashMap()
+        pastNotifications.clear()
 
         format = XMLPrefsManager.get(Notifications.notification_format)
         color = XMLPrefsManager.getColor(Notifications.default_notification_color)
@@ -270,7 +262,7 @@ class NotificationService : NotificationListenerService() {
             override fun run() {
                 val now = System.currentTimeMillis()
 
-                for (entry in pastNotifications!!.entries) {
+                for (entry in pastNotifications.entries) {
                     val notifications = entry.value
 
                     val it = notifications.iterator()
@@ -283,8 +275,8 @@ class NotificationService : NotificationListenerService() {
             }
         })
 
-        queue = ArrayBlockingQueue(5)
-        bgThread!!.start()
+        queue.clear()
+        bgThread?.start()
 
         active = true
     }
@@ -301,28 +293,17 @@ class NotificationService : NotificationListenerService() {
     }
 
     private fun dispose() {
-        if (replyManager != null) {
-            replyManager!!.dispose(this)
-            replyManager = null
-        }
+        replyManager?.dispose(this)
+        replyManager = null
 
-        if (notificationManager != null) {
-            notificationManager!!.dispose()
-            notificationManager = null
-        }
+        notificationManager?.dispose()
+        notificationManager = null
 
-        bgThread!!.interrupt()
+        bgThread?.interrupt()
         bgThread = null
 
-        if (pastNotifications != null) {
-            pastNotifications!!.clear()
-            pastNotifications = null
-        }
-
-        if (queue != null) {
-            queue!!.clear()
-            queue = null
-        }
+        pastNotifications.clear()
+        queue.clear()
 
         active = false
     }
@@ -334,9 +315,9 @@ class NotificationService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (!enabled) return
+        if (!enabled || !active) return
 
-        queue!!.offer(sbn)
+        queue.offer(sbn)
     }
 
     //    0 = not found
@@ -344,7 +325,7 @@ class NotificationService : NotificationListenerService() {
     //    2 = found
     private fun isInPastNotifications(pkg: String, text: String): Int {
         try {
-            val notifications = pastNotifications!![pkg] ?: return 1
+            val notifications = pastNotifications[pkg] ?: return 1
             for (n in notifications) if (n.text == text) return 2
         } catch (e: ConcurrentModificationException) {
         }

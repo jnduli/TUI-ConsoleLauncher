@@ -48,8 +48,8 @@ object SuggestionOrderConfig {
 
     /** Reads all entries, seeding [DEFAULT_ENTRIES] if none are stored yet
      * (fresh install, or an upgrade from the old string-based settings). */
-    fun load(context: Context?): List<SuggestionOrderEntry> {
-        val prefs = context!!.getSharedPreferences(PATH, Context.MODE_PRIVATE)
+    fun load(context: Context): List<SuggestionOrderEntry> {
+        val prefs = context.getSharedPreferences(PATH, Context.MODE_PRIVATE)
 
         val entries = loadJsonList<SuggestionOrderEntry>(prefs, ENTRIES_KEY)
         if (entries.isNotEmpty()) return entries

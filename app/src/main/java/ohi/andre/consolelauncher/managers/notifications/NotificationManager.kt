@@ -83,16 +83,14 @@ class NotificationManager private constructor(context: Context) : XMLPrefsElemen
     private fun reloadFilters(records: List<FilterRecord>) {
         filters = records.map { record ->
             val regex = record.value
-            try {
-                val id = regex.toInt()
-                RegexManager.instance!!.get(id)!!.regex!!
-            } catch (e: Exception) {
-                try {
+            // a number refers to a saved regex (`regex add`). If it isn't found — including when
+            // RegexManager doesn't exist yet or hasn't finished loading — it's treated as a pattern.
+            regex.toIntOrNull()?.let { RegexManager.instance?.get(it)?.regex }
+                ?: try {
                     Pattern.compile(regex)
-                } catch (e2: Exception) {
+                } catch (e: Exception) {
                     Pattern.compile(regex, Pattern.LITERAL)
                 }
-            }
         }.toMutableList()
     }
 

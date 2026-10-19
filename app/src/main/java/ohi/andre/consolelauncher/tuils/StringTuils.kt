@@ -4,7 +4,6 @@ import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave
 import ohi.andre.consolelauncher.managers.xml.options.Behavior
 import ohi.andre.consolelauncher.managers.xml.options.Ui
-import java.io.File
 import java.util.Locale
 import java.util.regex.Matcher
 import java.util.regex.Pattern
@@ -21,7 +20,7 @@ object StringTuils {
     private fun getNicePath(filePath: String?): String {
         if (filePath == null) return "null"
 
-        val home = XMLPrefsManager.get(File::class.java, Behavior.home_path).absolutePath
+        val home = XMLPrefsManager.homeDirectory().absolutePath
 
         return when {
             filePath == home -> "~"

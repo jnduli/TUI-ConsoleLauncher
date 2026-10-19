@@ -2,12 +2,10 @@ package ohi.andre.consolelauncher.tuils.libsuperuser;
 
 import android.content.Context;
 
-import java.io.File;
 import java.util.regex.Pattern;
 
 import ohi.andre.consolelauncher.managers.TerminalManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
-import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 import ohi.andre.consolelauncher.tuils.OutputTuils;
@@ -37,7 +35,7 @@ public class ShellHolder {
                     OutputTuils.sendOutput(context, line, Integer.MAX_VALUE, TerminalManager.CATEGORY_OUTPUT);
                 })
                 .open();
-        interactive.addCommand("cd " + XMLPrefsManager.get(File.class, Behavior.home_path));
+        interactive.addCommand("cd " + XMLPrefsManager.homeDirectory());
         return interactive;
     }
 }

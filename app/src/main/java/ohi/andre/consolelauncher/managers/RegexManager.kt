@@ -74,8 +74,8 @@ class RegexManager(private val context: Context) {
     fun test(id: Int, test: String): CharSequence {
         val regex = get(id) ?: return Tuils.EMPTYSTRING
 
-        if (regex.regex == null) return "null"
-        val m = regex.regex!!.matcher(test)
+        val pattern = regex.regex ?: return "null"
+        val m = pattern.matcher(test)
 
         val color = XMLPrefsManager.getColor(Theme.mark_color)
         val outputColor = XMLPrefsManager.getColor(Theme.output_color)

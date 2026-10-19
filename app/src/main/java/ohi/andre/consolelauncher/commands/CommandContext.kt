@@ -8,7 +8,6 @@ import ohi.andre.consolelauncher.managers.flashlight.TorchManager
 import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave
-import ohi.andre.consolelauncher.managers.xml.options.Behavior
 
 /**
  * Carries per-invocation command state only (arg cursor, current directory, output color).
@@ -23,7 +22,7 @@ class CommandContext(
     @JvmField var args: Array<Any?>? = null
     @JvmField var currentIndex = 0
 
-    @JvmField var currentDirectory: File = XMLPrefsManager.get(File::class.java, Behavior.home_path)!!
+    @JvmField var currentDirectory: File = XMLPrefsManager.homeDirectory()
     @JvmField var res: Resources = context.resources
     @JvmField var cmdPrefs: CommandsPreferences = CommandsPreferences()
     @JvmField var lastCommand: String? = null

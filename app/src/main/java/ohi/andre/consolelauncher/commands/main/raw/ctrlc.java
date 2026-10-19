@@ -4,7 +4,6 @@ import android.content.Intent;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import java.io.File;
 
 import ohi.andre.consolelauncher.MainManager;
 import ohi.andre.consolelauncher.R;
@@ -12,7 +11,6 @@ import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
-import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 import ohi.andre.consolelauncher.tuils.StoppableThread;
 import ohi.andre.consolelauncher.tuils.libsuperuser.ShellHolder;
 
@@ -41,7 +39,7 @@ public class ctrlc implements CommandAbstraction {
 
                 MainManager.interactive = shellHolder.build();
 
-                pack.currentDirectory = XMLPrefsManager.get(File.class, Behavior.home_path);
+                pack.currentDirectory = XMLPrefsManager.homeDirectory();
                 LocalBroadcastManager.getInstance(pack.context.getApplicationContext()).sendBroadcast(new Intent(UIManager.ACTION_UPDATE_HINT));
             }
         }.start();
