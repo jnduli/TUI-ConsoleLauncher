@@ -164,7 +164,7 @@ class HTMLExtractManager(context: Context, client: OkHttpClient) {
     }
 
     var weatherFormatPattern: Pattern =
-        Pattern.compile("%([a-z_]+)(\\d)*(?:\\$\\(([\\.\\+\\-\\*\\/\\^\\d]+)\\))?")
+        Pattern.compile("%([a-z_]+)(\\d*)(?:\\$\\(([\\.\\+\\-\\*\\/\\^\\d]+)\\))?")
 
     private fun query(
         context: Context,

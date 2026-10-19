@@ -309,11 +309,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         try {
             startNotificationServices()
         } catch (er: NoClassDefFoundError) {
-            val intent = Intent(PrivateIOReceiver.ACTION_OUTPUT)
-            intent.putExtra(
-                PrivateIOReceiver.TEXT,
-                getString(R.string.output_notification_error) + Tuils.SPACE + er.toString()
-            )
+            OutputTuils.sendOutput(this, getString(R.string.output_notification_error) + Tuils.SPACE + er.toString())
         }
     }
 
