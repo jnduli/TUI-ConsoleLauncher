@@ -1,6 +1,5 @@
 package ohi.andre.consolelauncher
 
-import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -16,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import ohi.andre.consolelauncher.commands.CommandContext
-import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
 import ohi.andre.consolelauncher.compose.TerminalScreen
 import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.suggestions.SuggestionsManager
@@ -33,7 +31,6 @@ import ohi.andre.consolelauncher.tuils.OutputTuils
 import ohi.andre.consolelauncher.tuils.ViewTuils
 
 import ohi.andre.consolelauncher.tuils.interfaces.CommandExecuter
-import ohi.andre.consolelauncher.tuils.interfaces.OnRedirectionListener
 import ohi.andre.consolelauncher.tuils.stuff.PolicyReceiver
 import java.io.File
 import java.io.FileOutputStream
@@ -113,14 +110,6 @@ class UIManager(
         mTerminalAdapter.setOutput(color, output)
     }
 
-    fun disableSuggestions() {
-        suggestionsManager?.disable()
-    }
-
-    fun enableSuggestions() {
-        suggestionsManager?.enable()
-    }
-
     fun onBackPressed() {
         mTerminalAdapter.onBackPressed()
     }
@@ -150,24 +139,6 @@ class UIManager(
                     mContext.startActivity(i)
                 } else {
                     pol.lockNow()
-                }
-            }
-        }
-    }
-
-    fun buildRedirectionListener(): OnRedirectionListener {
-        return object : OnRedirectionListener {
-            override fun onRedirectionRequest(cmd: RedirectCommand) {
-                (mContext as Activity).runOnUiThread {
-                    mTerminalAdapter.setHint(mContext.getString(cmd.getHint()))
-                    disableSuggestions()
-                }
-            }
-
-            override fun onRedirectionEnd(cmd: RedirectCommand?) {
-                (mContext as Activity).runOnUiThread {
-                    mTerminalAdapter.setDefaultHint()
-                    enableSuggestions()
                 }
             }
         }

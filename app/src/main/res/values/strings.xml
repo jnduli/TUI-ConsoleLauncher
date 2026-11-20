@@ -173,10 +173,7 @@
     <string name="bluetooth_label">Bluetooth:</string>
 
     <!-- contacts -->
-    <string name="sms_hint">write your SMS or nothing to cancel</string>
     <string name="output_numbernotfound">Contact not found</string>
-    <string name="output_smsnotsent">SMS not sent</string>
-    <string name="output_smssent">SMS sent</string>
 
 
     <string name="help_airplane">Toggle airplane mode</string>
@@ -312,11 +309,6 @@
         \n$ uninstall [appName]
     </string>
     <string name="help_wifi">Toggle wifi</string>
-    <string name="help_sms">Send an SMS.
-        \n\nUsage:
-        \n$ sms [contactName/number]
-        \n$ [text]
-    </string>
     <string name="help_vibrate">Make your device vibrate.
         \n\nUsage:
         \n$ vibrate [milliseconds]

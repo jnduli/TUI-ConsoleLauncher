@@ -10,13 +10,11 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import ohi.andre.consolelauncher.commands.CommandAbstraction
 import ohi.andre.consolelauncher.commands.CommandContext
 import ohi.andre.consolelauncher.commands.CommandGroup
 import ohi.andre.consolelauncher.commands.CommandResult
 import ohi.andre.consolelauncher.commands.CommandParser
 import ohi.andre.consolelauncher.commands.main.raw.*
-import ohi.andre.consolelauncher.commands.main.specific.RedirectCommand
 import ohi.andre.consolelauncher.managers.AliasManager
 import ohi.andre.consolelauncher.managers.AppsManager
 import ohi.andre.consolelauncher.tuils.StringTuils.printApps
@@ -42,8 +40,6 @@ import ohi.andre.consolelauncher.tuils.OutputTuils
 import ohi.andre.consolelauncher.tuils.StringTuils
 
 import ohi.andre.consolelauncher.tuils.interfaces.CommandExecuter
-import ohi.andre.consolelauncher.tuils.interfaces.OnRedirectionListener
-import ohi.andre.consolelauncher.tuils.interfaces.Redirectator
 import ohi.andre.consolelauncher.tuils.libsuperuser.Shell
 import ohi.andre.consolelauncher.tuils.libsuperuser.Shell.Interactive
 import ohi.andre.consolelauncher.tuils.libsuperuser.Shell.OnCommandResultListener
@@ -69,27 +65,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.*/
 class MainManager constructor(private var mContext: LauncherActivity) {
-    private var redirect: RedirectCommand? = null
-    private val redirectator: Redirectator = object : Redirectator {
-        override fun prepareRedirection(cmd: RedirectCommand?) {
-            redirect = cmd
-            redirectionListener?.onRedirectionRequest(cmd)
-        }
-
-        override fun cleanup() {
-            redirect?.let {
-                it.beforeObjects.clear()
-                it.afterObjects.clear()
-                redirectionListener?.onRedirectionEnd(it)
-                redirect = null
-            }
-        }
-    }
-    private var redirectionListener: OnRedirectionListener? = null
-    fun setRedirectionListener(redirectionListener: OnRedirectionListener?) {
-        this.redirectionListener = redirectionListener
-    }
-
     private val triggers = arrayOf<CmdTrigger>(
         GroupTrigger(),
         AliasTrigger(),
@@ -114,25 +89,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
     private val receiver: BroadcastReceiver
 
     private val keeperServiceRunning: Boolean
-
-    /**
-     * "sms" (app/src/fdroid/.../raw/sms.java) only exists in the fdroid flavor, so it isn't on
-     * this sourceset's compile classpath and can't be constructed directly here. This is the one
-     * place that still uses reflection, scoped to exactly that flavor-conditional case.
-     */
-    private fun flavorOnlyCommands(): List<CommandAbstraction> {
-        return try {
-            val clazz = Class.forName("ohi.andre.consolelauncher.commands.main.raw.sms")
-            val constructor = clazz.getConstructor(Redirectator::class.java)
-            listOf(constructor.newInstance(redirectator) as CommandAbstraction)
-        } catch (e: ClassNotFoundException) {
-            // not present in this flavor - fine, just skip it
-            emptyList()
-        } catch (e: ReflectiveOperationException) {
-            LogTuils.log(e)
-            emptyList()
-        }
-    }
 
     private fun updateServices(cmd: String?) {
         if (keeperServiceRunning) {
@@ -166,15 +122,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
         val input = StringTuils.removeUnncesarySpaces(input)
 
         if (alias == null) updateServices(input)
-
-        val currentRedirect = redirect
-        if (currentRedirect != null) {
-            if (!currentRedirect.isWaitingPermission()) {
-                currentRedirect.afterObjects.add(input)
-            }
-            OutputTuils.sendOutput(mContext, currentRedirect.onRedirect(mainPack))
-            return
-        }
 
         if (alias != null && showAliasValue) {
             OutputTuils.sendOutput(mContext, aliasManager.formatLabel(alias, input), aliasContentColor)
@@ -217,10 +164,6 @@ class MainManager constructor(private var mContext: LauncherActivity) {
 
     fun onLongBack() {
         OutputTuils.sendInput(mContext, Tuils.EMPTYSTRING)
-    }
-
-    fun sendPermissionNotGrantedWarning() {
-        redirectator.cleanup()
     }
 
     fun dispose() {
@@ -342,7 +285,7 @@ class MainManager constructor(private var mContext: LauncherActivity) {
                 vibrate(),
                 wacall(),
                 apps(appsManager)
-            ) + flavorOnlyCommands()
+            )
         )
 
         mainPack = CommandContext(mContext, group)

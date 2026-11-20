@@ -52,8 +52,6 @@ class SuggestionsManager(
     private val _visible = MutableStateFlow(true)
     val visible: StateFlow<Boolean> = _visible.asStateFlow()
 
-    private var enabled: Boolean
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val inputFlow =
         MutableSharedFlow<String>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -123,8 +121,6 @@ class SuggestionsManager(
         doubleSpaceFirstSuggestion =
             XMLPrefsManager.getBoolean(Suggestions.double_space_click_first_suggestion)
 
-        enabled = true
-
         val spaces = getListOfIntValues(XMLPrefsManager.get(Suggestions.suggestions_spaces), 4, 0)
         chipSpacing = ChipSpacing(
             marginH = spaces.getOrElse(0) { 0 },
@@ -157,18 +153,6 @@ class SuggestionsManager(
 
     fun show() {
         _visible.value = true
-    }
-
-    fun enable() {
-        enabled = true
-
-        show()
-    }
-
-    fun disable() {
-        enabled = false
-
-        hide()
     }
 
     fun clickSuggestion(suggestion: Suggestion) {
@@ -211,8 +195,6 @@ class SuggestionsManager(
     }
 
     fun requestSuggestion(input: String) {
-        if (!enabled) return
-
         try {
             val l = input.length
             if (doubleSpaceFirstSuggestion && l > 0 && input.get(l - 1) == ' ') {
@@ -276,7 +258,7 @@ class SuggestionsManager(
     }
 
     private fun applyResult(input: String, suggestions: List<Suggestion?>?) {
-        if (!enabled || suggestions == null) return
+        if (suggestions == null) return
 
         if (suggestions.isEmpty()) {
             _suggestions.value = emptyList()

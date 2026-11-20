@@ -360,7 +360,6 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
         val uiMgr = UIManager(this, mainView, mgr.mainPack, canApplyTheme, mgr.executer(), mgr.aliasManager, mgr.appsManager, mgr.contactManager)
         ui = uiMgr
 
-        mgr.setRedirectionListener(uiMgr.buildRedirectionListener())
         uiMgr.pack = mgr.mainPack
 
         `in`.`in`(Tuils.EMPTYSTRING)
@@ -634,7 +633,6 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
                     getString(R.string.output_nopermissions),
                     TerminalManager.CATEGORY_OUTPUT
                 )
-                main?.sendPermissionNotGrantedWarning()
             }
         }
     }
