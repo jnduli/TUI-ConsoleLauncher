@@ -36,6 +36,12 @@
     <!-- web menu -->
     <string name="refresh_page">Refresh</string>
     <string name="web_no_app_for_link">No app found to open this link</string>
+
+    <!-- cli launch errors -->
+    <string name="launch_no_activity">%1$s: no app can open this</string>
+    <string name="launch_not_allowed">%1$s: not allowed to launch</string>
+    <string name="launch_unavailable">%1$s: can\'t launch right now</string>
+    <string name="launch_failed">%1$s: couldn\'t launch</string>
     <string name="web_download_started">Downloading file…</string>
     <string name="web_download_failed">Could not start download</string>
     <string name="web_load_error_title">Page failed to load</string>
