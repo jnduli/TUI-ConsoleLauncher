@@ -246,6 +246,10 @@ class WebActivity : AppCompatActivity() {
 
     private lateinit var myWebView: WebView
 
+    /** A URL from onNewIntent that arrived before Compose ran the WebView factory (e.g. when the
+     * activity is recreated from saved state and handed a new intent before its first frame). */
+    private var pendingUrl: String? = null
+
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private val fileChooserLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -316,7 +320,14 @@ class WebActivity : AppCompatActivity() {
             )
             webView.setDownloadListener(createLauncherDownloadListener(context))
 
-            if (restoreFrom == null) loadUrlFromIntent(intent)
+            // A URL delivered via onNewIntent wins over restored history; otherwise only load
+            // the launch intent's URL on a fresh start so restored back-stack isn't clobbered.
+            val queued = pendingUrl
+            pendingUrl = null
+            when {
+                queued != null -> webView.loadUrl(queued)
+                restoreFrom == null -> webView.loadUrl(urlFrom(intent))
+            }
         }
     }
 
@@ -339,7 +350,7 @@ class WebActivity : AppCompatActivity() {
     private fun setUpBackNavigation() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (myWebView.canGoBack()) {
+                if (::myWebView.isInitialized && myWebView.canGoBack()) {
                     myWebView.goBack()
                 } else {
                     isEnabled = false
@@ -356,7 +367,7 @@ class WebActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.refresh_page) {
-            myWebView.reload()
+            if (::myWebView.isInitialized) myWebView.reload()
             return true
         }
         return super.onOptionsItemSelected(item)
@@ -364,13 +375,13 @@ class WebActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        loadUrlFromIntent(intent)
+        setIntent(intent)
+        val url = urlFrom(intent)
+        if (::myWebView.isInitialized) myWebView.loadUrl(url) else pendingUrl = url
     }
 
-    private fun loadUrlFromIntent(intent: android.content.Intent) {
-        val url = intent.getStringExtra(URL_EXTRA) ?: "https://google.com"
-        myWebView.loadUrl(url)
-    }
+    private fun urlFrom(intent: android.content.Intent): String =
+        intent.getStringExtra(URL_EXTRA) ?: "https://google.com"
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)

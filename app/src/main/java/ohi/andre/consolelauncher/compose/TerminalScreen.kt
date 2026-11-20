@@ -33,7 +33,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -210,13 +210,13 @@ private fun InputRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
-                    .onKeyEvent {
-                        if (it.key == Key.Enter && it.type == KeyEventType.KeyUp) {
-                            terminalManager.onNewInput()
-                            true
-                        } else {
-                            false
-                        }
+                    // Preview runs before the text field's own key handling, so consuming Enter
+                    // here stops it from also firing the ImeAction.Go path above - otherwise a
+                    // keyboard that sends both a Go action and an Enter key submits twice.
+                    .onPreviewKeyEvent {
+                        if (it.key != Key.Enter && it.key != Key.NumPadEnter) return@onPreviewKeyEvent false
+                        if (it.type == KeyEventType.KeyDown) terminalManager.onNewInput()
+                        true
                     },
             )
         }
