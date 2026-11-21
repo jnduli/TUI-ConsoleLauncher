@@ -357,7 +357,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
             mainView.setSystemUiVisibility(mainView.getSystemUiVisibility() or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR)
         }
 
-        val uiMgr = UIManager(this, mainView, mgr.mainPack, canApplyTheme, mgr.executer(), mgr.aliasManager, mgr.appsManager, mgr.contactManager)
+        val uiMgr = UIManager(this, mainView, mgr.mainPack, canApplyTheme, mgr.executer(), mgr.aliasManager, mgr.appsManager, mgr.contactManager, mgr.parser)
         ui = uiMgr
 
         uiMgr.pack = mgr.mainPack
@@ -569,7 +569,7 @@ class LauncherActivity : AppCompatActivity(), Reloadable {
                 Log.d(TAG, "Connectivity permissions granted, nothing more to do")
             }
             COMMAND_REQUEST_PERMISSION -> {
-                main?.let { m -> m.mainPack.lastCommand?.let { m.onCommand(it, null as String?) } }
+                main?.let { m -> m.mainPack.lastCommand?.let { m.onCommand(it) } }
             }
             COMMAND_SUGGESTION_REQUEST_PERMISSION -> {
                 ui?.setOutput(

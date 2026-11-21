@@ -3,7 +3,6 @@ package ohi.andre.consolelauncher.commands
 import android.content.Context
 import android.content.res.Resources
 import java.io.File
-import ohi.andre.consolelauncher.managers.TerminalManager
 import ohi.andre.consolelauncher.managers.flashlight.TorchManager
 import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager
@@ -26,7 +25,6 @@ class CommandContext(
     @JvmField var res: Resources = context.resources
     @JvmField var cmdPrefs: CommandsPreferences = CommandsPreferences()
     @JvmField var lastCommand: String? = null
-    @JvmField var commandColor: Int = TerminalManager.NO_COLOR
 
     @Suppress("UNCHECKED_CAST")
     fun <T> get(c: Class<T>): T? = get() as T?
@@ -67,6 +65,5 @@ class CommandContext(
     fun clear() {
         args = null
         currentIndex = 0
-        commandColor = TerminalManager.NO_COLOR
     }
 }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.launch
 import ohi.andre.consolelauncher.UIManager.Companion.getListOfIntValues
 import ohi.andre.consolelauncher.commands.CommandContext
+import ohi.andre.consolelauncher.commands.CommandParser
 import ohi.andre.consolelauncher.managers.AliasManager
 import ohi.andre.consolelauncher.managers.AppsManager
 import ohi.andre.consolelauncher.managers.ContactManager
@@ -37,9 +38,10 @@ class SuggestionsManager(
     private val mTerminalAdapter: TerminalManager,
     private val aliasManager: AliasManager,
     private val appsManager: AppsManager,
-    private val contacts: ContactManager?
+    private val contacts: ContactManager?,
+    parser: CommandParser,
 ) {
-    private val generator = SuggestionGenerator(pack, aliasManager, appsManager, contacts)
+    private val generator = SuggestionGenerator(pack, aliasManager, appsManager, contacts, parser)
 
     private var hideViewValue: HideSuggestionViewValues? = null
 

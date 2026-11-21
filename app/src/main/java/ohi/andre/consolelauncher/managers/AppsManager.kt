@@ -30,6 +30,7 @@ import ohi.andre.consolelauncher.MainManager
 import ohi.andre.consolelauncher.R
 import ohi.andre.consolelauncher.UIManager
 import ohi.andre.consolelauncher.commands.CommandContext
+import ohi.andre.consolelauncher.commands.CommandResult
 import ohi.andre.consolelauncher.managers.launchable.AppLauncher
 import ohi.andre.consolelauncher.managers.launchable.Launchable
 import ohi.andre.consolelauncher.managers.launchable.WebLauncher
@@ -458,10 +459,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
         return launchable.toIntent(context)
     }
 
-    fun performLaunch(launchable: Launchable): Boolean {
-        launchable.launch(context)
-        return true
-    }
+    fun performLaunch(launchable: Launchable): CommandResult = launchable.launch(context)
 
     private fun loadGroupRecords(): MutableList<GroupRecord> = loadJsonList(appsPrefs(), GROUPS_KEY)
     private fun saveGroupRecords(records: List<GroupRecord>) = saveJsonList(appsPrefs(), GROUPS_KEY, records)
@@ -758,7 +756,7 @@ class AppsManager(context: Context) : XMLPrefsElement {
             if (mainPack == null || input == null) return false
             val label = StringTuils.removeSpaces(input)
             val launchable = apps.find { it.names().contains(label) }
-            return launchable?.let { appsManager.performLaunch(it) } ?: false
+            return launchable?.let { appsManager.performLaunch(it) !is CommandResult.Error } ?: false
         }
 
         override fun name(): String? {

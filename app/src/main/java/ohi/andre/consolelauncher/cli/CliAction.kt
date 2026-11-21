@@ -25,6 +25,19 @@ interface CliAction {
     fun run(): CommandResult
 }
 
+/**
+ * An input a resolver recognised but can't run, such as a search on a web entry with no `%s`.
+ * Claiming it with an error keeps the input from falling through to a resolver that would fail
+ * with a misleading message, and leaves an `input -> kind:name -> Error` line in logcat.
+ */
+class FailedAction(
+    override val kind: ActionKind,
+    override val name: String,
+    private val message: String,
+) : CliAction {
+    override fun run(): CommandResult = CommandResult.Error(message)
+}
+
 /** Decides whether a line of input is meant for one kind of [CliAction]. */
 fun interface ActionResolver {
     /** The action [input] resolves to, or null to let the next resolver try. */

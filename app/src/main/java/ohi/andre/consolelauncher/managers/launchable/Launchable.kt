@@ -9,6 +9,8 @@ import it.andreuzzi.comparestring2.StringableObject
 import kotlinx.serialization.Serializable
 import nl.adaptivity.xmlutil.serialization.XML
 import nl.adaptivity.xmlutil.serialization.XmlSerialName
+import ohi.andre.consolelauncher.cli.ActivityStarter
+import ohi.andre.consolelauncher.commands.CommandResult
 import java.util.Locale
 
 private val TAG: String = "Launchable"
@@ -22,10 +24,9 @@ sealed interface Launchable: Comparable<Launchable>, StringableObject, Parcelabl
     var launchTimes: Int
     var componentName: ComponentName?
 
-    fun launch(context: Context) {
+    fun launch(context: Context): CommandResult {
         launchTimes++
-        val intent = toIntent(context)
-        context.startActivity(intent)
+        return ActivityStarter.start(context, toIntent(context), name())
     }
 
     fun toIntent(context: Context): Intent

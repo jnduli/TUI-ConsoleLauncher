@@ -2,13 +2,13 @@ package ohi.andre.consolelauncher.commands.main.raw;
 
 import android.annotation.TargetApi;
 import android.content.Context;
-import android.content.pm.LauncherApps;
 import android.os.Build;
-import android.os.Process;
 
 import java.util.List;
 
 import ohi.andre.consolelauncher.R;
+import ohi.andre.consolelauncher.cli.ActivityStarter;
+import ohi.andre.consolelauncher.commands.CommandResult;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.CommandContext;
 import ohi.andre.consolelauncher.commands.main.specific.APICommand;
@@ -58,10 +58,8 @@ public class shortcut extends ParamCommand implements APICommand {
         String startShortcut(AppLauncher info, Context context) {
             if(info == null) return context.getString(R.string.app_shortcut_not_found);
 
-            LauncherApps apps = (LauncherApps) context.getSystemService(Context.LAUNCHER_APPS_SERVICE);
-            apps.startShortcut(info.getPackageName(), info.getShortcut(), null, null, Process.myUserHandle());
-
-            return null;
+            return CommandResult.toLegacyString(
+                    ActivityStarter.INSTANCE.startShortcut(context, info.getPackageName(), info.getShortcut(), info.getLabel()));
         }
     }
 

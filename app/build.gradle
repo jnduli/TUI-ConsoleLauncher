@@ -19,8 +19,8 @@ android {
         minSdkVersion 21
         flavorDimensions "default"
 
-        versionName "v6.17-jnduli"
-        versionCode 206
+        versionName "v6.18-jnduli"
+        versionCode 207
     }
     buildTypes {
         release {

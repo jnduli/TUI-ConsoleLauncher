@@ -42,6 +42,7 @@
     <string name="launch_not_allowed">%1$s: not allowed to launch</string>
     <string name="launch_unavailable">%1$s: can\'t launch right now</string>
     <string name="launch_failed">%1$s: couldn\'t launch</string>
+    <string name="web_no_query_slot">%1$s: url has no %%s, so it can\'t take a search query</string>
     <string name="web_download_started">Downloading file…</string>
     <string name="web_download_failed">Could not start download</string>
     <string name="web_load_error_title">Page failed to load</string>

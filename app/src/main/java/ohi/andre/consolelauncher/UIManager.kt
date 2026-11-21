@@ -46,6 +46,7 @@ class UIManager(
     aliasManager: ohi.andre.consolelauncher.managers.AliasManager,
     appsManager: ohi.andre.consolelauncher.managers.AppsManager,
     contacts: ohi.andre.consolelauncher.managers.ContactManager?,
+    parser: ohi.andre.consolelauncher.commands.CommandParser,
 ) {
     public lateinit var mContext: Context
 
@@ -237,7 +238,7 @@ class UIManager(
         mTerminalAdapter = TerminalManager(context, requireNotNull(mainPack), requireNotNull(executer))
 
         suggestionsManager = if (XMLPrefsManager.getBoolean(Suggestions.show_suggestions)) {
-            SuggestionsManager(requireNotNull(mainPack), mTerminalAdapter, aliasManager, appsManager, contacts)
+            SuggestionsManager(requireNotNull(mainPack), mTerminalAdapter, aliasManager, appsManager, contacts, parser)
         } else {
             null
         }

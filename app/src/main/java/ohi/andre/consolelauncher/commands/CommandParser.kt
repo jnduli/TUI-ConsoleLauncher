@@ -8,10 +8,18 @@ import ohi.andre.consolelauncher.tuils.LogTuils
 import ohi.andre.consolelauncher.tuils.StringTuils
 import ohi.andre.consolelauncher.tuils.Tuils
 
-/** Turns raw command-line input into a [Command]: resolves the command name, then its args. */
-object CommandParser {
+/**
+ * Turns raw command-line input into a [Command]: resolves the command name, then its args.
+ *
+ * Holds the managers that arg types look things up in (apps for package args, contacts for
+ * phone numbers), so callers only need a parser, not the managers behind it.
+ */
+class CommandParser(
+    private val appsManager: AppsManager,
+    private val contacts: ContactManager?,
+) {
 
-    fun parse(rawInput: String, info: CommandContext, appsManager: AppsManager, contacts: ContactManager?): Command? {
+    fun parse(rawInput: String, info: CommandContext): Command? {
         val command = Command()
 
         val name = findName(rawInput)
@@ -54,7 +62,7 @@ object CommandParser {
                     input = input.trim()
                     if (input.isEmpty()) break
 
-                    val arg = getArg(info, input, types[count], appsManager, contacts) ?: return null
+                    val arg = getArg(info, input, types[count]) ?: return null
 
                     if (!arg.found) {
                         command.parseOutcome = Command.ParseOutcome.ArgNotFound(if (cmd is ParamCommand) count + 1 else count)
@@ -88,8 +96,6 @@ object CommandParser {
         info: CommandContext,
         input: String,
         type: Int,
-        appsManager: AppsManager,
-        contacts: ContactManager?
     ): ArgInfo? = when (type) {
         CommandAbstraction.FILE -> FileArgResolver.file(input, info.currentDirectory)
         CommandAbstraction.CONTACTNUMBER -> ArgExtractors.contactNumber(input, contacts)

@@ -8,6 +8,8 @@ import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 import nl.adaptivity.xmlutil.serialization.XmlSerialName
 import ohi.andre.consolelauncher.WebActivity
+import ohi.andre.consolelauncher.cli.ActivityStarter
+import ohi.andre.consolelauncher.commands.CommandResult
 
 @Parcelize
 @Serializable
@@ -26,13 +28,12 @@ data class WebLauncher(val name: String, val url: String, override var launchTim
         return intent
     }
 
-    fun launchWithQuery(context: Context, query: String) {
+    fun launchWithQuery(context: Context, query: String): CommandResult {
         val resolvedUrl = url.replace("%s", Uri.encode(query))
-        context.startActivity(
-            Intent(context, WebActivity::class.java)
-                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                .putExtra(WebActivity.URL_EXTRA, resolvedUrl)
-        )
+        val intent = Intent(context, WebActivity::class.java)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(WebActivity.URL_EXTRA, resolvedUrl)
+        return ActivityStarter.start(context, intent, name)
     }
 
     override fun names() : Set<String>{

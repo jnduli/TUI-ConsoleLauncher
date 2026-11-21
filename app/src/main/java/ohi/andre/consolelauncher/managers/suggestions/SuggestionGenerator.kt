@@ -51,7 +51,8 @@ class SuggestionGenerator(
     private val pack: CommandContext,
     private val aliasManager: AliasManager,
     private val appsManager: AppsManager,
-    private val contacts: ContactManager?
+    private val contacts: ContactManager?,
+    private val parser: CommandParser,
 ) {
     private val FIRST_INTERVAL = 6
 
@@ -263,7 +264,7 @@ class SuggestionGenerator(
 
     private fun tryParseCommand(beforeLastSpace: String): Command? {
         return try {
-            CommandParser.parse(beforeLastSpace, pack, appsManager, contacts)
+            parser.parse(beforeLastSpace, pack)
         } catch (e: Exception) {
             null
         }
